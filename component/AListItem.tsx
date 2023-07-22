@@ -9,16 +9,14 @@ type AListItemProps = {
 
 const AListItem = (props: AListItemProps) => {
   const copyValue = (item: string) => {
-    // You can implement the logic to copy the name to the clipboard here
-    // For simplicity, let's just log the copied name for demonstration purposes.
     console.log(`Copied: ${item}`);
   };
 
   return (
     <View style={styles.container}>
       <View style={[styles.column, styles.contentColumn]}>
-        <Text>{props.name}</Text>
-        <Text>{props.value}</Text>
+        <Text style={styles.valueText}>{props.name}</Text>
+        <Text style={styles.nameText}>{props.value}</Text>
       </View>
       <View style={[styles.column, styles.iconColumn]}>
         <Icon
@@ -53,8 +51,11 @@ const styles = StyleSheet.create({
   iconColumn: {
     flex: 1,
   },
-  text: {
+  nameText: {
     fontSize: 18,
+  },
+  valueText: {
+    fontSize: 20,
     fontWeight: "bold",
   },
 });

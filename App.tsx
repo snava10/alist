@@ -10,15 +10,14 @@ export default function App() {
     <View style={styles.container}>
       {/* <Text>Open up App.tsx to start working on your app!</Text>
       <StatusBar style="auto" /> */}
-      <View>
-        <FlatList
-          data={alistItems}
-          renderItem={({ item }) => (
-            <AListItem name={item} value={"value"}></AListItem>
-          )}
-          keyExtractor={(item, index) => index.toString()}
-        />
-      </View>
+      <FlatList
+        style={{ alignSelf: "stretch" }}
+        data={alistItems}
+        renderItem={({ item }) => (
+          <AListItem name={item} value={"value"}></AListItem>
+        )}
+        keyExtractor={(item, index) => index.toString()}
+      />
     </View>
   );
 }
