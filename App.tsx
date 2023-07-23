@@ -4,7 +4,13 @@ import AListItem from "./component/AListItem";
 import AddItemModal from "./component/AddItemModal";
 
 export default function App() {
-  const [alistItems, setAListItems] = useState(["Item 1", "Item 2"]);
+  const [alistItems, setAListItems] = useState([
+    { name: "Item1", value: "Value1" } as AListItem,
+  ]);
+
+  function addItemToList(item: AListItem) {
+    setAListItems([...alistItems, item]);
+  }
 
   return (
     <View style={styles.container}>
@@ -14,11 +20,11 @@ export default function App() {
         style={{ alignSelf: "stretch" }}
         data={alistItems}
         renderItem={({ item }) => (
-          <AListItem name={item} value={"value"}></AListItem>
+          <AListItem name={item.name} value={item.value}></AListItem>
         )}
-        keyExtractor={(item, index) => index.toString()}
+        keyExtractor={(item, index) => item.name}
       />
-      <AddItemModal />
+      <AddItemModal saveItem={(item: AListItem) => addItemToList(item)} />
     </View>
   );
 }

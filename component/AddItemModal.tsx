@@ -1,16 +1,9 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Modal,
-  Alert,
-  StyleSheet,
-  Pressable,
-} from "react-native";
-import { TextInput, Button, Portal, Provider } from "react-native-paper";
+import { View, Text, Modal, Alert, StyleSheet, Pressable } from "react-native";
+import { TextInput, Provider } from "react-native-paper";
+import AListItem from "./AListItem";
 
-const AddItemModal = () => {
+const AddItemModal = (props: { saveItem: any }) => {
   const [visible, setVisible] = useState(false);
   const [name, setName] = useState("");
   const [value, setValue] = useState("");
@@ -50,18 +43,27 @@ const AddItemModal = () => {
                 onChangeText={(text) => setValue(text)}
                 style={styles.input}
               />
-              <Pressable
-                style={[styles.button, styles.buttonClose]}
-                onPress={() => setVisible(!visible)}
-              >
-                <Text style={styles.textStyle}>Save</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.button, styles.buttonClose]}
-                onPress={() => setVisible(!visible)}
-              >
-                <Text style={styles.textStyle}>Cancel</Text>
-              </Pressable>
+              <View style={styles.container}>
+                <Pressable
+                  style={[styles.button, styles.buttonClose, styles.column]}
+                  onPress={() => {
+                    props.saveItem({ name, value } as AListItem);
+                    setVisible(!visible);
+                  }}
+                >
+                  <Text style={styles.textStyle}>Save</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.button, styles.buttonClose, styles.column]}
+                  onPress={() => {
+                    setName("");
+                    setValue("");
+                    setVisible(!visible);
+                  }}
+                >
+                  <Text style={styles.textStyle}>Cancel</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         </Modal>
@@ -120,6 +122,19 @@ const styles = StyleSheet.create({
   input: {
     marginBottom: 10,
     alignSelf: "stretch",
+  },
+  column: {
+    marginHorizontal: 8,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  container: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    padding: 16,
   },
 });
 

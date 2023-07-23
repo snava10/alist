@@ -2,12 +2,12 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
 
-type AListItemProps = {
+type AListItem = {
   name: string;
   value: string;
 };
 
-const AListItem = (props: AListItemProps) => {
+const AListItem = (props: AListItem) => {
   const copyValue = (item: string) => {
     console.log(`Copied: ${item}`);
   };
