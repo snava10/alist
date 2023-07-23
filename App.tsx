@@ -1,7 +1,7 @@
-import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { FlatList, StyleSheet, View } from "react-native";
 import AListItem from "./component/AListItem";
+import AddItemModal from "./component/AddItemModal";
 
 export default function App() {
   const [alistItems, setAListItems] = useState(["Item 1", "Item 2"]);
@@ -18,6 +18,7 @@ export default function App() {
         )}
         keyExtractor={(item, index) => index.toString()}
       />
+      <AddItemModal />
     </View>
   );
 }
