@@ -1,16 +1,29 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import AListItem from "./component/AListItem";
 import AddItemModal from "./component/AddItemModal";
+import { getAllItems, saveItem } from "./component/Storage";
 
 export default function App() {
-  const [alistItems, setAListItems] = useState([
-    { name: "Item1", value: "Value1" } as AListItem,
-  ]);
+  const [alistItems, setAListItems] = useState([] as AListItem[]);
 
-  function addItemToList(item: AListItem) {
-    setAListItems([...alistItems, item]);
-  }
+  const loadItemsFromLocalStorage = async () => {
+    console.log("Loading all items");
+    var items: AListItem[] = [];
+    try {
+      getAllItems().then((items) => {
+        console.log("Items " + JSON.stringify(items));
+        setAListItems(items);
+      });
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  useEffect(() => {
+    loadItemsFromLocalStorage();
+    console.log(alistItems);
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -24,7 +37,12 @@ export default function App() {
         )}
         keyExtractor={(item, index) => item.name}
       />
-      <AddItemModal saveItem={(item: AListItem) => addItemToList(item)} />
+      <AddItemModal
+        saveItem={async (item: AListItem) => {
+          await saveItem(item);
+          await loadItemsFromLocalStorage();
+        }}
+      />
     </View>
   );
 }

@@ -1,6 +1,8 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
+import * as Clipboard from "expo-clipboard";
+import { IconButton, Portal, Provider, Tooltip } from "react-native-paper";
 
 type AListItem = {
   name: string;
@@ -8,7 +10,8 @@ type AListItem = {
 };
 
 const AListItem = (props: AListItem) => {
-  const copyValue = (item: string) => {
+  const copyValue = async (item: string) => {
+    await Clipboard.setStringAsync(item);
     console.log(`Copied: ${item}`);
   };
 
