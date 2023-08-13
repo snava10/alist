@@ -30,19 +30,21 @@ export default function App() {
       {/* <Text>Open up App.tsx to start working on your app!</Text>
       <StatusBar style="auto" /> */}
       <FlatList
-        style={{ alignSelf: "stretch" }}
+        style={{ alignSelf: "stretch", flex: 0.85, marginBottom: 20 }}
         data={alistItems}
         renderItem={({ item }) => (
           <AListItem name={item.name} value={item.value}></AListItem>
         )}
         keyExtractor={(item, index) => item.name}
       />
-      <AddItemModal
-        saveItem={async (item: AListItem) => {
-          await saveItem(item);
-          await loadItemsFromLocalStorage();
-        }}
-      />
+      <View style={{ flex: 0.15, justifyContent: "center" }}>
+        <AddItemModal
+          saveItem={async (item: AListItem) => {
+            await saveItem(item);
+            await loadItemsFromLocalStorage();
+          }}
+        />
+      </View>
     </View>
   );
 }

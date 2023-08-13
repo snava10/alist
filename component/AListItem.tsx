@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { IconButton, Provider, Tooltip } from "react-native-paper";
 
@@ -16,20 +16,29 @@ const AListItem = (props: AListItem) => {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.column, styles.contentColumn]}>
+      <Pressable
+        style={[styles.column, styles.contentColumn]}
+        onPress={() => copyValue(props.value)}
+      >
         <Text style={styles.valueText}>{props.name}</Text>
         <Text style={styles.nameText}>{props.value}</Text>
-      </View>
+      </Pressable>
+
       <View style={[styles.column, styles.iconColumn]}>
-        <Provider>
-          <Tooltip title="Copied">
-            <IconButton
-              icon="content-copy"
-              size={20}
-              onPress={() => copyValue(props.value)}
-            />
-          </Tooltip>
-        </Provider>
+        {/* <Provider>
+          <Tooltip title="Copied"> */}
+        <IconButton
+          icon="pencil"
+          size={20}
+          onPress={() => copyValue(props.value)}
+        />
+        <IconButton
+          icon="delete"
+          size={20}
+          onPress={() => copyValue(props.value)}
+        />
+        {/* </Tooltip>
+        </Provider> */}
       </View>
     </View>
   );
@@ -37,10 +46,10 @@ const AListItem = (props: AListItem) => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 16,
+    padding: 10,
+    height: 80,
   },
   column: {
     marginHorizontal: 8,
@@ -50,11 +59,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   contentColumn: {
-    flex: 3,
+    flex: 0.9,
     backgroundColor: "#f0f0f0",
   },
   iconColumn: {
-    flex: 1,
+    flex: 0.1,
+    flexDirection: "row",
   },
   nameText: {
     fontSize: 18,

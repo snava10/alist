@@ -1,6 +1,13 @@
 import React, { useState } from "react";
-import { View, Modal, StyleSheet } from "react-native";
-import { TextInput, Provider, Button } from "react-native-paper";
+import { View, Modal, StyleSheet, Text } from "react-native";
+import {
+  TextInput,
+  Provider,
+  Button,
+  Dialog,
+  PaperProvider,
+  Portal,
+} from "react-native-paper";
 import AListItem from "./AListItem";
 
 const AddItemModal = (props: { saveItem: any }) => {
@@ -42,7 +49,7 @@ const AddItemModal = (props: { saveItem: any }) => {
                 onChangeText={(text) => setValue(text)}
                 style={styles.input}
               />
-              <View style={styles.container}>
+              <View style={{ flexDirection: "row" }}>
                 <Button
                   mode="outlined"
                   onPress={() => {
