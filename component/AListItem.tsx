@@ -8,7 +8,11 @@ type AListItem = {
   value: string;
 };
 
-const AListItem = (props: AListItem) => {
+const AListItem = (props: {
+  item: AListItem;
+  removeItem: any;
+  editItem: any;
+}) => {
   const [copied, setCopied] = useState(false);
 
   const copyValue = async (item: string) => {
@@ -25,10 +29,10 @@ const AListItem = (props: AListItem) => {
       {!copied && (
         <Pressable
           style={[styles.column, styles.contentColumn]}
-          onPress={() => copyValue(props.value)}
+          onPress={() => copyValue(props.item.value)}
         >
-          <Text style={styles.valueText}>{props.value}</Text>
-          <Text style={styles.nameText}>{props.name}</Text>
+          <Text style={styles.valueText}>{props.item.value}</Text>
+          <Text style={styles.nameText}>{props.item.name}</Text>
         </Pressable>
       )}
 
@@ -47,8 +51,16 @@ const AListItem = (props: AListItem) => {
       <View style={[styles.column, styles.iconColumn]}>
         {/* <Provider>
           <Tooltip title="Copied"> */}
-        <IconButton icon="pencil" size={20} />
-        <IconButton icon="delete" size={20} />
+        <IconButton
+          icon="pencil"
+          size={20}
+          onPress={() => props.editItem(props.item)}
+        />
+        <IconButton
+          icon="delete"
+          size={20}
+          onPress={() => props.removeItem(props.item)}
+        />
         {/* </Tooltip>
         </Provider> */}
       </View>

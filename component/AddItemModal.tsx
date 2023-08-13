@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Modal, StyleSheet, Text } from "react-native";
 import {
   TextInput,
@@ -10,18 +10,25 @@ import {
 } from "react-native-paper";
 import AListItem from "./AListItem";
 
-const AddItemModal = (props: { saveItem: any }) => {
-  const [visible, setVisible] = useState(false);
-  const [name, setName] = useState("");
-  const [value, setValue] = useState("");
+const AddItemModal = (props: {
+  item?: AListItem | null;
+  saveItem: any;
+  hideModal: any;
+  showModal: any;
+  visible: boolean;
+}) => {
+  const [name, setName] = useState(props.item !== null ? props.item?.name : "");
+  const [value, setValue] = useState(
+    props.item !== null ? props.item?.value : ""
+  );
 
-  const showModal = () => setVisible(true);
-  const hideModal = () => setVisible(false);
   const handleSave = () => {
-    // Here you can save the new user details to your database or state management system
-    // For simplicity, we will just log the user details
-    console.log("New User Details:", { name, value });
-    hideModal();
+    if (name && value) {
+      props.saveItem({ name, value } as AListItem);
+      setName("");
+      setValue("");
+      props.hideModal();
+    }
   };
 
   return (
@@ -30,9 +37,9 @@ const AddItemModal = (props: { saveItem: any }) => {
         <Modal
           animationType="slide"
           transparent={true}
-          visible={visible}
+          visible={props.visible}
           onRequestClose={() => {
-            setVisible(!visible);
+            props.hideModal();
           }}
         >
           <View style={styles.centeredView}>
@@ -50,13 +57,7 @@ const AddItemModal = (props: { saveItem: any }) => {
                 style={styles.input}
               />
               <View style={{ flexDirection: "row" }}>
-                <Button
-                  mode="outlined"
-                  onPress={() => {
-                    props.saveItem({ name, value } as AListItem);
-                    setVisible(!visible);
-                  }}
-                >
+                <Button mode="outlined" onPress={handleSave}>
                   Save
                 </Button>
                 <Button
@@ -64,7 +65,7 @@ const AddItemModal = (props: { saveItem: any }) => {
                   onPress={() => {
                     setName("");
                     setValue("");
-                    setVisible(!visible);
+                    props.hideModal();
                   }}
                 >
                   Cancel
@@ -73,9 +74,6 @@ const AddItemModal = (props: { saveItem: any }) => {
             </View>
           </View>
         </Modal>
-        <Button mode="contained" onPress={() => setVisible(true)}>
-          New
-        </Button>
       </View>
     </Provider>
   );

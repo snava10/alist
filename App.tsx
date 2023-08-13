@@ -2,17 +2,22 @@ import { useEffect, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import AListItem from "./component/AListItem";
 import AddItemModal from "./component/AddItemModal";
-import { getAllItems, saveItem } from "./component/Storage";
+import {
+  getAllItems,
+  saveItem,
+  removeItem as storageRemoveItem,
+} from "./component/Storage";
+import { Button } from "react-native-paper";
 
 export default function App() {
   const [alistItems, setAListItems] = useState([] as AListItem[]);
+  const [selectedItem, setSelectedItem] = useState(null as AListItem | null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const loadItemsFromLocalStorage = async () => {
     console.log("Loading all items");
-    var items: AListItem[] = [];
     try {
       getAllItems().then((items) => {
-        console.log("Items " + JSON.stringify(items));
         setAListItems(items);
       });
     } catch (e) {
@@ -20,9 +25,22 @@ export default function App() {
     }
   };
 
+  const removeItem = async (item: AListItem) => {
+    await storageRemoveItem(item);
+    console.log("Removing " + item.name);
+    loadItemsFromLocalStorage();
+  };
+
+  const hideModal = () => {
+    setModalVisible(false);
+    setSelectedItem(null);
+  };
+  const showModal = () => setModalVisible(true);
+
   useEffect(() => {
     loadItemsFromLocalStorage();
-    console.log(alistItems);
+    console.log(selectedItem);
+    console.log(modalVisible);
   }, []);
 
   return (
@@ -33,17 +51,35 @@ export default function App() {
         style={{ alignSelf: "stretch", flex: 0.85, marginBottom: 20 }}
         data={alistItems}
         renderItem={({ item }) => (
-          <AListItem name={item.name} value={item.value}></AListItem>
+          <AListItem
+            item={item}
+            removeItem={removeItem}
+            editItem={(item: AListItem) => {
+              console.log("Editing item " + JSON.stringify(item));
+              setSelectedItem(item);
+              setModalVisible(true);
+            }}
+          ></AListItem>
         )}
         keyExtractor={(item, index) => item.name}
       />
       <View style={{ flex: 0.15, justifyContent: "center" }}>
-        <AddItemModal
-          saveItem={async (item: AListItem) => {
-            await saveItem(item);
-            await loadItemsFromLocalStorage();
-          }}
-        />
+        {modalVisible ? (
+          <AddItemModal
+            item={selectedItem}
+            saveItem={async (item: AListItem) => {
+              await saveItem(item);
+              await loadItemsFromLocalStorage();
+            }}
+            hideModal={hideModal}
+            showModal={showModal}
+            visible={modalVisible}
+          />
+        ) : (
+          <Button mode="contained" onPress={() => setModalVisible(true)}>
+            New
+          </Button>
+        )}
       </View>
     </View>
   );

@@ -25,17 +25,15 @@ export async function getAllItems(): Promise<Array<AListItem>> {
   const kvp = await AsyncStorage.multiGet(
     keys.filter((k) => k.startsWith("_ali_"))
   );
-  console.log("Items " + JSON.stringify(kvp));
   return kvp
     .filter((kvp) => kvp[1] !== null)
     .map((kvp) => JSON.parse(kvp[1] as string) as AListItem);
 }
 
 export async function saveItem(item: AListItem) {
-  console.log("Saving item " + JSON.stringify(item));
-  try {
-    await AsyncStorage.setItem("_ali_" + item.name, JSON.stringify(item));
-  } catch (e) {
-    console.log(e);
-  }
+  await AsyncStorage.setItem("_ali_" + item.name, JSON.stringify(item));
+}
+
+export async function removeItem(item: AListItem) {
+  await AsyncStorage.removeItem("_ali_" + item.name);
 }
