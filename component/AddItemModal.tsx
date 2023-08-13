@@ -57,10 +57,15 @@ const AddItemModal = (props: {
                 style={styles.input}
               />
               <View style={{ flexDirection: "row" }}>
-                <Button mode="outlined" onPress={handleSave}>
+                <Button
+                  style={styles.button}
+                  mode="outlined"
+                  onPress={handleSave}
+                >
                   Save
                 </Button>
                 <Button
+                  style={styles.button}
                   mode="contained"
                   onPress={() => {
                     setName("");
@@ -101,9 +106,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   button: {
-    borderRadius: 20,
-    padding: 10,
-    elevation: 2,
+    marginRight: 3,
+    marginLeft: 3,
   },
   buttonOpen: {
     backgroundColor: "#F194FF",
