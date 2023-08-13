@@ -49,20 +49,18 @@ const AListItem = (props: {
       )}
 
       <View style={[styles.column, styles.iconColumn]}>
-        {/* <Provider>
-          <Tooltip title="Copied"> */}
         <IconButton
           icon="pencil"
           size={20}
           onPress={() => props.editItem(props.item)}
+          style={{ margin: 0 }}
         />
         <IconButton
           icon="delete"
           size={20}
           onPress={() => props.removeItem(props.item)}
+          style={{ margin: 0 }}
         />
-        {/* </Tooltip>
-        </Provider> */}
       </View>
     </View>
   );
@@ -83,11 +81,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   contentColumn: {
-    flex: 0.9,
+    flex: 0.95,
     backgroundColor: "#f0f0f0",
   },
   iconColumn: {
-    flex: 0.1,
+    flex: 0.05,
     flexDirection: "row",
   },
   nameText: {
