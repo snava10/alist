@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { View, Text, Modal, Alert, StyleSheet, Pressable } from "react-native";
-import { TextInput, Provider } from "react-native-paper";
+import { View, Modal, StyleSheet } from "react-native";
+import { TextInput, Provider, Button } from "react-native-paper";
 import AListItem from "./AListItem";
 
 const AddItemModal = (props: { saveItem: any }) => {
@@ -25,7 +25,6 @@ const AddItemModal = (props: { saveItem: any }) => {
           transparent={true}
           visible={visible}
           onRequestClose={() => {
-            Alert.alert("Modal has been closed.");
             setVisible(!visible);
           }}
         >
@@ -44,35 +43,32 @@ const AddItemModal = (props: { saveItem: any }) => {
                 style={styles.input}
               />
               <View style={styles.container}>
-                <Pressable
-                  style={[styles.button, styles.buttonClose, styles.column]}
+                <Button
+                  mode="outlined"
                   onPress={() => {
                     props.saveItem({ name, value } as AListItem);
                     setVisible(!visible);
                   }}
                 >
-                  <Text style={styles.textStyle}>Save</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.button, styles.buttonClose, styles.column]}
+                  Save
+                </Button>
+                <Button
+                  mode="contained"
                   onPress={() => {
                     setName("");
                     setValue("");
                     setVisible(!visible);
                   }}
                 >
-                  <Text style={styles.textStyle}>Cancel</Text>
-                </Pressable>
+                  Cancel
+                </Button>
               </View>
             </View>
           </View>
         </Modal>
-        <Pressable
-          style={[styles.button, styles.buttonOpen]}
-          onPress={() => setVisible(true)}
-        >
-          <Text style={styles.textStyle}>New</Text>
-        </Pressable>
+        <Button mode="contained" onPress={() => setVisible(true)}>
+          New
+        </Button>
       </View>
     </Provider>
   );

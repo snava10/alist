@@ -1,8 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import Icon from "react-native-vector-icons/FontAwesome";
 import * as Clipboard from "expo-clipboard";
-import { IconButton, Portal, Provider, Tooltip } from "react-native-paper";
+import { IconButton, Provider, Tooltip } from "react-native-paper";
 
 type AListItem = {
   name: string;
@@ -22,12 +21,15 @@ const AListItem = (props: AListItem) => {
         <Text style={styles.nameText}>{props.value}</Text>
       </View>
       <View style={[styles.column, styles.iconColumn]}>
-        <Icon
-          name="copy"
-          size={20}
-          color="#007AFF"
-          onPress={() => copyValue(props.value)}
-        />
+        <Provider>
+          <Tooltip title="Copied">
+            <IconButton
+              icon="content-copy"
+              size={20}
+              onPress={() => copyValue(props.value)}
+            />
+          </Tooltip>
+        </Provider>
       </View>
     </View>
   );
