@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import { IconButton, Provider, Tooltip } from "react-native-paper";
+import { IconButton } from "react-native-paper";
 
 type AListItem = {
   name: string;
@@ -9,34 +9,46 @@ type AListItem = {
 };
 
 const AListItem = (props: AListItem) => {
+  const [copied, setCopied] = useState(false);
+
   const copyValue = async (item: string) => {
     await Clipboard.setStringAsync(item);
+    setCopied(true);
+    setTimeout(() => {
+      setCopied(false);
+    }, 1000);
     console.log(`Copied: ${item}`);
   };
 
   return (
     <View style={styles.container}>
-      <Pressable
-        style={[styles.column, styles.contentColumn]}
-        onPress={() => copyValue(props.value)}
-      >
-        <Text style={styles.valueText}>{props.name}</Text>
-        <Text style={styles.nameText}>{props.value}</Text>
-      </Pressable>
+      {!copied && (
+        <Pressable
+          style={[styles.column, styles.contentColumn]}
+          onPress={() => copyValue(props.value)}
+        >
+          <Text style={styles.valueText}>{props.value}</Text>
+          <Text style={styles.nameText}>{props.name}</Text>
+        </Pressable>
+      )}
+
+      {copied && (
+        <View
+          style={[
+            styles.column,
+            styles.contentColumn,
+            { backgroundColor: "green" },
+          ]}
+        >
+          <Text style={styles.copied}>Copied</Text>
+        </View>
+      )}
 
       <View style={[styles.column, styles.iconColumn]}>
         {/* <Provider>
           <Tooltip title="Copied"> */}
-        <IconButton
-          icon="pencil"
-          size={20}
-          onPress={() => copyValue(props.value)}
-        />
-        <IconButton
-          icon="delete"
-          size={20}
-          onPress={() => copyValue(props.value)}
-        />
+        <IconButton icon="pencil" size={20} />
+        <IconButton icon="delete" size={20} />
         {/* </Tooltip>
         </Provider> */}
       </View>
@@ -72,6 +84,10 @@ const styles = StyleSheet.create({
   valueText: {
     fontSize: 20,
     fontWeight: "bold",
+  },
+  copied: {
+    fontSize: 20,
+    color: "white",
   },
 });
 
