@@ -3,7 +3,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export async function getItem(key: string): Promise<AListItem> {
   const value = await AsyncStorage.getItem(key);
-  console.log("Value " + value);
   if (value === null) {
     return new Promise(() => null);
   }
@@ -12,10 +11,8 @@ export async function getItem(key: string): Promise<AListItem> {
     res = JSON.parse(value) as AListItem;
   } catch (e) {
     console.log(e);
-    console.log(value);
   }
   return new Promise(() => {
-    console.log(res);
     return res;
   });
 }

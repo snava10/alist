@@ -15,7 +15,6 @@ export default function App() {
   const [modalVisible, setModalVisible] = useState(false);
 
   const loadItemsFromLocalStorage = async () => {
-    console.log("Loading all items");
     try {
       getAllItems().then((items) => {
         setAListItems(items);
@@ -27,7 +26,6 @@ export default function App() {
 
   const removeItem = async (item: AListItem) => {
     await storageRemoveItem(item);
-    console.log("Removing " + item.name);
     loadItemsFromLocalStorage();
   };
 
@@ -39,8 +37,6 @@ export default function App() {
 
   useEffect(() => {
     loadItemsFromLocalStorage();
-    console.log(selectedItem);
-    console.log(modalVisible);
   }, []);
 
   return (
@@ -55,7 +51,6 @@ export default function App() {
             item={item}
             removeItem={removeItem}
             editItem={(item: AListItem) => {
-              console.log("Editing item " + JSON.stringify(item));
               setSelectedItem(item);
               setModalVisible(true);
             }}
