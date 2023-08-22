@@ -5,8 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="14916def-18f0-4eb5-b461-fd43f7cb819b" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../App.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../component/AListItem.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../component/AListItem.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../component/AddItemModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../component/AddItemModal.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../package-lock.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../package.json" afterDir="false" />
     </list>

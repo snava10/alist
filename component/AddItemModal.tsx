@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { View, Modal, StyleSheet } from "react-native";
-import { TextInput, Provider, Button } from "react-native-paper";
+import { View, Modal, StyleSheet, TextInput, Button } from "react-native";
 import AListItem from "./AListItem";
 
 const AddItemModal = (props: {
@@ -25,54 +24,43 @@ const AddItemModal = (props: {
   };
 
   return (
-    <Provider>
-      <View>
-        <Modal
-          transparent={true}
-          visible={props.visible}
-          onRequestClose={() => {
-            props.hideModal();
-          }}
-        >
-          <View style={styles.centeredView}>
-            <View style={styles.modalView}>
-              <TextInput
-                label="Name"
-                value={name}
-                onChangeText={(text) => setName(text)}
-                style={styles.input}
-              />
-              <TextInput
-                label="Value"
-                value={value}
-                onChangeText={(text) => setValue(text)}
-                style={styles.input}
-              />
-              <View style={{ flexDirection: "row" }}>
-                <Button
-                  style={styles.button}
-                  mode="outlined"
-                  onPress={handleSave}
-                >
-                  Save
-                </Button>
-                <Button
-                  style={styles.button}
-                  mode="contained"
-                  onPress={() => {
-                    setName("");
-                    setValue("");
-                    props.hideModal();
-                  }}
-                >
-                  Cancel
-                </Button>
-              </View>
-            </View>
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={props.visible}
+      onRequestClose={() => {
+        props.hideModal();
+      }}
+    >
+      <View style={styles.centeredView}>
+        <View style={styles.modalView}>
+          <TextInput
+            value={name}
+            onChangeText={(text) => setName(text)}
+            style={styles.input}
+            placeholder="Name"
+          />
+          <TextInput
+            value={value}
+            onChangeText={(text) => setValue(text)}
+            style={styles.input}
+            placeholder="Value"
+          />
+          <View style={{ flexDirection: "row" }}>
+            <Button title="Save" onPress={handleSave} />
+            <Button
+              title="Cancel"
+              onPress={() => {
+                setName("");
+                setValue("");
+                props.hideModal();
+              }}
+              color="red"
+            />
           </View>
-        </Modal>
+        </View>
       </View>
-    </Provider>
+    </Modal>
   );
 };
 

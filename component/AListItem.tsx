@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import { IconButton } from "react-native-paper";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 type AListItem = {
   name: string;
@@ -48,18 +48,19 @@ const AListItem = (props: {
       )}
 
       <View style={[styles.column, styles.iconColumn]}>
-        <IconButton
+        <Ionicons name="md-checkmark-circle" size={32} color="green" />
+        {/* <IconButton
           icon="pencil"
           size={20}
           onPress={() => props.editItem(props.item)}
           style={{ margin: 0 }}
         />
-        <IconButton
+        <Button
           icon="delete"
           size={20}
           onPress={() => props.removeItem(props.item)}
           style={{ margin: 0 }}
-        />
+        /> */}
       </View>
     </View>
   );

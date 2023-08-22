@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FlatList, StyleSheet, View } from "react-native";
+import { Button, FlatList, StyleSheet, View } from "react-native";
 import AListItem from "./component/AListItem";
 import AddItemModal from "./component/AddItemModal";
 import {
@@ -7,7 +7,6 @@ import {
   saveItem,
   removeItem as storageRemoveItem,
 } from "./component/Storage";
-import { Button, FAB } from "react-native-paper";
 
 export default function App() {
   const [alistItems, setAListItems] = useState([] as AListItem[]);
@@ -72,13 +71,14 @@ export default function App() {
         />
       ) : (
         // <View style={{ alignSelf: "flex-end" }}>
-        <FAB
-          icon="plus"
-          color="white"
-          size="medium"
-          style={styles.fab}
-          onPress={() => setModalVisible(true)}
-        />
+        // <FAB
+        //   icon="plus"
+        //   color="white"
+        //   size="medium"
+        //   style={styles.fab}
+        //   onPress={() => setModalVisible(true)}
+        // />
+        <Button title="+" onPress={() => setModalVisible(true)} />
         // </View>
       )}
       {/* </View> */}
