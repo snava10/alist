@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Button, FlatList, StyleSheet, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { FlatList, StyleSheet, View } from "react-native";
 import AListItem from "./component/AListItem";
 import AddItemModal from "./component/AddItemModal";
 import {
@@ -7,6 +7,7 @@ import {
   saveItem,
   removeItem as storageRemoveItem,
 } from "./component/Storage";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 export default function App() {
   const [alistItems, setAListItems] = useState([] as AListItem[]);
@@ -40,8 +41,6 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      {/* <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" /> */}
       <FlatList
         style={{ alignSelf: "stretch", flex: 0.8, marginBottom: 20 }}
         data={alistItems}
@@ -57,7 +56,6 @@ export default function App() {
         )}
         keyExtractor={(item, index) => item.name}
       />
-      {/* <View style={{ flex: 0.2, justifyContent: "center" }}> */}
       {modalVisible ? (
         <AddItemModal
           item={selectedItem}
@@ -70,18 +68,13 @@ export default function App() {
           visible={modalVisible}
         />
       ) : (
-        // <View style={{ alignSelf: "flex-end" }}>
-        // <FAB
-        //   icon="plus"
-        //   color="white"
-        //   size="medium"
-        //   style={styles.fab}
-        //   onPress={() => setModalVisible(true)}
-        // />
-        <Button title="+" onPress={() => setModalVisible(true)} />
-        // </View>
+        <Ionicons
+          name="add-circle"
+          style={styles.fab}
+          size={60}
+          onPress={() => setModalVisible(true)}
+        />
       )}
-      {/* </View> */}
     </View>
   );
 }
@@ -91,7 +84,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
     justifyContent: "center",
-    paddingTop: 50,
   },
   item: {
     padding: 10,
@@ -99,11 +91,12 @@ const styles = StyleSheet.create({
     height: 44,
   },
   fab: {
+    width: 60,
+    height: 60,
     position: "absolute",
-    margin: 40,
-    bottom: 0,
-    right: 0,
-    backgroundColor: "#6750a4",
+    bottom: 20,
+    right: 20,
     borderRadius: 100,
+    alignContent: "center",
   },
 });

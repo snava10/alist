@@ -48,7 +48,18 @@ const AListItem = (props: {
       )}
 
       <View style={[styles.column, styles.iconColumn]}>
-        <Ionicons name="md-checkmark-circle" size={32} color="green" />
+        <Ionicons
+          name="create-outline"
+          size={25}
+          style={{ marginRight: 3 }}
+          onPress={() => props.editItem(props.item)}
+        />
+        <Ionicons
+          name="trash-outline"
+          size={25}
+          style={{ marginLeft: 3 }}
+          onPress={() => props.removeItem(props.item)}
+        />
         {/* <IconButton
           icon="pencil"
           size={20}
@@ -81,11 +92,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   contentColumn: {
-    flex: 0.95,
+    flex: 0.9,
     backgroundColor: "#f0f0f0",
   },
   iconColumn: {
-    flex: 0.05,
+    flex: 0.1,
     flexDirection: "row",
   },
   nameText: {
