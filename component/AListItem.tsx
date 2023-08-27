@@ -60,18 +60,6 @@ const AListItem = (props: {
           style={{ marginLeft: 3 }}
           onPress={() => props.removeItem(props.item)}
         />
-        {/* <IconButton
-          icon="pencil"
-          size={20}
-          onPress={() => props.editItem(props.item)}
-          style={{ margin: 0 }}
-        />
-        <Button
-          icon="delete"
-          size={20}
-          onPress={() => props.removeItem(props.item)}
-          style={{ margin: 0 }}
-        /> */}
       </View>
     </View>
   );

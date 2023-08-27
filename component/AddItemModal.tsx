@@ -1,6 +1,14 @@
 import React, { useState } from "react";
-import { View, Modal, StyleSheet, TextInput, Button } from "react-native";
+import {
+  View,
+  Modal,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  Text,
+} from "react-native";
 import AListItem from "./AListItem";
+import globalStyles from "./GlobalStyles";
 
 const AddItemModal = (props: {
   item?: AListItem | null;
@@ -47,16 +55,23 @@ const AddItemModal = (props: {
             placeholder="Value"
           />
           <View style={{ flexDirection: "row" }}>
-            <Button title="Save" onPress={handleSave} />
-            <Button
-              title="Cancel"
+            <Pressable
+              style={[globalStyles.button, globalStyles.button.primary.main]}
+              onPress={handleSave}
+            >
+              <Text style={globalStyles.button.text.defaut}>Save</Text>
+              {/* <Button title="Save" onPress={handleSave} /> */}
+            </Pressable>
+            <Pressable
+              style={[globalStyles.button, globalStyles.button.error.main]}
               onPress={() => {
                 setName("");
                 setValue("");
                 props.hideModal();
               }}
-              color="red"
-            />
+            >
+              <Text style={globalStyles.button.text.defaut}>Cancel</Text>
+            </Pressable>
           </View>
         </View>
       </View>
@@ -84,25 +99,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
-  },
-  button: {
-    marginRight: 3,
-    marginLeft: 3,
-  },
-  buttonOpen: {
-    backgroundColor: "#F194FF",
-  },
-  buttonClose: {
-    backgroundColor: "#2196F3",
-  },
-  textStyle: {
-    color: "white",
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-  modalText: {
-    marginBottom: 15,
-    textAlign: "center",
   },
   input: {
     marginBottom: 10,
