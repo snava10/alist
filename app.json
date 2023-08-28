@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "alist",
+    "name": "Alist",
     "slug": "alist",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -30,8 +30,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "803c4ed3-6141-41cd-98a1-57004a6a13bf"
+        "projectId": "ab00d1fb-9e8f-4a9f-a854-2eb759490348"
       }
-    }
+    },
+    "owner": "acorn_digital_solutions"
   }
 }
