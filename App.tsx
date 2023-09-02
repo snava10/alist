@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FlatList, StyleSheet, View } from "react-native";
+import { FlatList, StyleSheet, View, Text } from "react-native";
 import AListItem from "./component/AListItem";
 import AddItemModal from "./component/AddItemModal";
 import ConfirmationModal from "./component/ConfirmationModal";
@@ -9,6 +9,7 @@ import {
   removeItem as storageRemoveItem,
 } from "./component/Storage";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import globalStyles from "./component/GlobalStyles";
 
 export default function App() {
   const [alistItems, setAListItems] = useState([] as AListItem[]);
@@ -46,24 +47,39 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        style={{ alignSelf: "stretch", flex: 0.8, marginBottom: 20 }}
-        data={alistItems}
-        renderItem={({ item }) => (
-          <AListItem
-            item={item}
-            removeItem={(item: AListItem) => {
-              setSelectedItem(item);
-              setConfirmationModalVisible(true);
-            }}
-            editItem={(item: AListItem) => {
-              setSelectedItem(item);
-              setModalVisible(true);
-            }}
-          ></AListItem>
-        )}
-        keyExtractor={(item, index) => item.name}
-      />
+      {alistItems.length > 0 ? (
+        <FlatList
+          style={{ alignSelf: "stretch", flex: 0.8, marginBottom: 20 }}
+          data={alistItems}
+          renderItem={({ item }) => (
+            <AListItem
+              item={item}
+              removeItem={(item: AListItem) => {
+                setSelectedItem(item);
+                setConfirmationModalVisible(true);
+              }}
+              editItem={(item: AListItem) => {
+                setSelectedItem(item);
+                setModalVisible(true);
+              }}
+            ></AListItem>
+          )}
+          keyExtractor={(item, index) => item.name}
+        />
+      ) : (
+        <View style={{ alignContent: "center" }}>
+          <Text style={{ fontSize: 22, textAlign: "center" }}>
+            Tap{" "}
+            <Ionicons
+              name="add-circle"
+              style={(styles.fab, { marginLeft: 10 })}
+              size={22}
+            />{" "}
+            to add a new item
+          </Text>
+        </View>
+      )}
+
       {modalVisible ? (
         <AddItemModal
           item={selectedItem}

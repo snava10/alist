@@ -67,6 +67,7 @@ const globalStyles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+  container: {},
 });
 
 export default globalStyles;
