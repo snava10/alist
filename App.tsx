@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import AListItem from "./component/AListItem";
 import AddItemModal from "./component/AddItemModal";
+import ConfirmationModal from "./component/ConfirmationModal";
 import {
   getAllItems,
   saveItem,
@@ -13,6 +14,8 @@ export default function App() {
   const [alistItems, setAListItems] = useState([] as AListItem[]);
   const [selectedItem, setSelectedItem] = useState(null as AListItem | null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [confirmationModalVisible, setConfirmationModalVisible] =
+    useState(false);
 
   const loadItemsFromLocalStorage = async () => {
     try {
@@ -24,9 +27,11 @@ export default function App() {
     }
   };
 
-  const removeItem = async (item: AListItem) => {
-    await storageRemoveItem(item);
-    loadItemsFromLocalStorage();
+  const removeItem = async (item: AListItem | null) => {
+    if (item !== null) {
+      await storageRemoveItem(item);
+      loadItemsFromLocalStorage();
+    }
   };
 
   const hideModal = () => {
@@ -47,7 +52,10 @@ export default function App() {
         renderItem={({ item }) => (
           <AListItem
             item={item}
-            removeItem={removeItem}
+            removeItem={(item: AListItem) => {
+              setSelectedItem(item);
+              setConfirmationModalVisible(true);
+            }}
             editItem={(item: AListItem) => {
               setSelectedItem(item);
               setModalVisible(true);
@@ -75,6 +83,24 @@ export default function App() {
           onPress={() => setModalVisible(true)}
         />
       )}
+      <ConfirmationModal
+        message="Are you sure you wish to delete this item?"
+        visible={confirmationModalVisible}
+        item={selectedItem}
+        acceptCallbackFn={() => {
+          removeItem(selectedItem);
+          setSelectedItem(null);
+          setConfirmationModalVisible(false);
+        }}
+        rejectCallbackFn={() => {
+          setSelectedItem(null);
+          setConfirmationModalVisible(false);
+        }}
+        hideModalFn={() => {
+          setSelectedItem(null);
+          setConfirmationModalVisible(false);
+        }}
+      ></ConfirmationModal>
     </View>
   );
 }
