@@ -84,7 +84,7 @@ export default function App() {
         />
       )}
       <ConfirmationModal
-        message="Are you sure you wish to delete this item?"
+        message={"Are you sure you wish to delete " + selectedItem?.name}
         visible={confirmationModalVisible}
         item={selectedItem}
         acceptCallbackFn={() => {
