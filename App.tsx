@@ -9,7 +9,6 @@ import {
   removeItem as storageRemoveItem,
 } from "./component/Storage";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import globalStyles from "./component/GlobalStyles";
 
 export default function App() {
   const [alistItems, setAListItems] = useState([] as AListItem[]);
@@ -73,7 +72,8 @@ export default function App() {
             <Ionicons
               name="add-circle"
               style={(styles.fab, { marginLeft: 10 })}
-              size={22}
+              size={25}
+              onPress={() => setModalVisible(true)}
             />{" "}
             to add a new item
           </Text>
