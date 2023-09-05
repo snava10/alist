@@ -22,7 +22,11 @@
     "preview3": {
       "developmentClient": true
     },
-    "production": {}
+    "production": {
+      "android": {
+        "autoIncrement": "versionCode"
+      }
+    }
   },
   "submit": {
     "production": {
