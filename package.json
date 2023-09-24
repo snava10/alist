@@ -21,7 +21,8 @@
     "react-native-fbsdk-next": "^12.1.0",
     "react-native-modal": "^13.0.1",
     "react-native-vector-icons": "^10.0.0",
-    "react-native-web": "~0.18.10"
+    "react-native-web": "~0.18.10",
+    "expo-dev-client": "~2.2.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
