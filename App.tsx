@@ -4,7 +4,8 @@ import AListItem from "./component/AListItem";
 import AddItemModal from "./component/AddItemModal";
 import ConfirmationModal from "./component/ConfirmationModal";
 import {
-  getAllItems,
+  getItems,
+  getItemsCount,
   saveItem,
   removeItem as storageRemoveItem,
 } from "./component/Storage";
@@ -13,16 +14,20 @@ import globalStyles from "./component/GlobalStyles";
 
 export default function App() {
   const [alistItems, setAListItems] = useState([] as AListItem[]);
+  const [itemsCount, setItemsCount] = useState(0);
   const [selectedItem, setSelectedItem] = useState(null as AListItem | null);
   const [modalVisible, setModalVisible] = useState(false);
   const [confirmationModalVisible, setConfirmationModalVisible] =
     useState(false);
   const [searchText, setSearchText] = useState("");
 
-  const loadItemsFromLocalStorage = async () => {
+  const loadItemsFromLocalStorage = async (st: string) => {
     try {
-      getAllItems().then((items) => {
+      getItems(st).then((items) => {
         setAListItems(items);
+      });
+      getItemsCount().then((itemsCount) => {
+        setItemsCount(itemsCount);
       });
     } catch (e) {
       console.log(e);
@@ -32,7 +37,7 @@ export default function App() {
   const removeItem = async (item: AListItem | null) => {
     if (item !== null) {
       await storageRemoveItem(item);
-      loadItemsFromLocalStorage();
+      loadItemsFromLocalStorage(searchText);
     }
   };
 
@@ -44,16 +49,21 @@ export default function App() {
 
   const onSearchTextInput = (text: string) => {
     setSearchText(text);
-    console.log(text);
+    loadItemsFromLocalStorage(text);
+  };
+
+  const clearSearchFn = () => {
+    setSearchText("");
+    loadItemsFromLocalStorage("");
   };
 
   useEffect(() => {
-    loadItemsFromLocalStorage();
+    loadItemsFromLocalStorage(searchText);
   }, []);
 
   return (
     <View style={styles.container}>
-      {alistItems.length > 0 ? (
+      {itemsCount > 0 ? (
         <View style={{ alignSelf: "stretch", flex: 0.8, marginBottom: 20 }}>
           <View style={{ paddingLeft: 16, paddingRight: 16 }}>
             <View style={[globalStyles.searchContainer]}>
@@ -68,6 +78,14 @@ export default function App() {
                 onChangeText={onSearchTextInput}
                 value={searchText}
               />
+              {searchText && (
+                <Ionicons
+                  style={globalStyles.searchIcon}
+                  name="backspace-outline"
+                  size={20}
+                  onPress={clearSearchFn}
+                />
+              )}
             </View>
           </View>
           <FlatList
@@ -108,7 +126,7 @@ export default function App() {
           item={selectedItem}
           saveItem={async (item: AListItem) => {
             await saveItem(item);
-            await loadItemsFromLocalStorage();
+            await loadItemsFromLocalStorage(searchText);
           }}
           hideModal={hideModal}
           showModal={showModal}
