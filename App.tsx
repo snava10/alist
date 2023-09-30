@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FlatList, StyleSheet, View, Text } from "react-native";
+import { FlatList, StyleSheet, View, Text, TextInput } from "react-native";
 import AListItem from "./component/AListItem";
 import AddItemModal from "./component/AddItemModal";
 import ConfirmationModal from "./component/ConfirmationModal";
@@ -9,6 +9,7 @@ import {
   removeItem as storageRemoveItem,
 } from "./component/Storage";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import globalStyles from "./component/GlobalStyles";
 
 export default function App() {
   const [alistItems, setAListItems] = useState([] as AListItem[]);
@@ -16,6 +17,7 @@ export default function App() {
   const [modalVisible, setModalVisible] = useState(false);
   const [confirmationModalVisible, setConfirmationModalVisible] =
     useState(false);
+  const [searchText, setSearchText] = useState("");
 
   const loadItemsFromLocalStorage = async () => {
     try {
@@ -40,6 +42,11 @@ export default function App() {
   };
   const showModal = () => setModalVisible(true);
 
+  const onSearchTextInput = (text: string) => {
+    setSearchText(text);
+    console.log(text);
+  };
+
   useEffect(() => {
     loadItemsFromLocalStorage();
   }, []);
@@ -47,24 +54,40 @@ export default function App() {
   return (
     <View style={styles.container}>
       {alistItems.length > 0 ? (
-        <FlatList
-          style={{ alignSelf: "stretch", flex: 0.8, marginBottom: 20 }}
-          data={alistItems}
-          renderItem={({ item }) => (
-            <AListItem
-              item={item}
-              removeItem={(item: AListItem) => {
-                setSelectedItem(item);
-                setConfirmationModalVisible(true);
-              }}
-              editItem={(item: AListItem) => {
-                setSelectedItem(item);
-                setModalVisible(true);
-              }}
-            ></AListItem>
-          )}
-          keyExtractor={(item, index) => item.name}
-        />
+        <View style={{ alignSelf: "stretch", flex: 0.8, marginBottom: 20 }}>
+          <View style={{ paddingLeft: 16, paddingRight: 16 }}>
+            <View style={[globalStyles.searchContainer]}>
+              <Ionicons
+                style={globalStyles.searchIcon}
+                name="search-outline"
+                size={20}
+              />
+              <TextInput
+                style={globalStyles.searchInput}
+                placeholder="Search..."
+                onChangeText={onSearchTextInput}
+                value={searchText}
+              />
+            </View>
+          </View>
+          <FlatList
+            data={alistItems}
+            renderItem={({ item }) => (
+              <AListItem
+                item={item}
+                removeItem={(item: AListItem) => {
+                  setSelectedItem(item);
+                  setConfirmationModalVisible(true);
+                }}
+                editItem={(item: AListItem) => {
+                  setSelectedItem(item);
+                  setModalVisible(true);
+                }}
+              ></AListItem>
+            )}
+            keyExtractor={(item, index) => item.name}
+          />
+        </View>
       ) : (
         <View style={{ alignContent: "center" }}>
           <Text style={{ fontSize: 22, textAlign: "center" }}>

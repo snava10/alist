@@ -68,6 +68,24 @@ const globalStyles = StyleSheet.create({
     elevation: 5,
   },
   container: {},
+  searchInput: {
+    flex: 1,
+    height: 40,
+    paddingVertical: 0,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    borderColor: "gray",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+  },
+  searchIcon: {
+    marginRight: 8,
+    color: "gray",
+  },
 });
 
 export default globalStyles;
