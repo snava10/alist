@@ -33,7 +33,11 @@ export async function getItems(filter: string): Promise<Array<AListItem>> {
   }
   const keys = await AsyncStorage.getAllKeys();
   const kvp = await AsyncStorage.multiGet(
-    keys.filter((k) => k.startsWith("_ali_") && k.substring(5).includes(filter))
+    keys.filter(
+      (k) =>
+        k.startsWith("_ali_") &&
+        k.substring(5).toLowerCase().includes(filter.toLowerCase())
+    )
   );
   return kvp
     .filter((kvp) => kvp[1] !== null)

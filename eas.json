@@ -34,6 +34,12 @@
         "serviceAccountKeyPath": "./pc-api-9058583074469096499-576-79a2369c84f6.json",
         "track": "production"
       }
+    },
+    "closed-testing": {
+      "android": {
+        "serviceAccountKeyPath": "./pc-api-9058583074469096499-576-79a2369c84f6.json",
+        "track": "internal"
+      }
     }
   }
 }
