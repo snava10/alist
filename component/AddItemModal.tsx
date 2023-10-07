@@ -47,12 +47,14 @@ const AddItemModal = (props: {
             onChangeText={(text) => setName(text)}
             style={styles.input}
             placeholder="Name"
+            placeholderTextColor="#6e6e6e"
           />
           <TextInput
             value={value}
             onChangeText={(text) => setValue(text)}
             style={styles.input}
             placeholder="Value"
+            placeholderTextColor="#6e6e6e"
           />
           <View style={{ flexDirection: "row" }}>
             <Pressable
@@ -103,6 +105,11 @@ const styles = StyleSheet.create({
   input: {
     marginBottom: 10,
     alignSelf: "stretch",
+    height: 48,
+    borderWidth: 1,
+    paddingLeft: 7,
+    borderRadius: 5,
+    fontSize: 18,
   },
   column: {
     marginHorizontal: 8,
