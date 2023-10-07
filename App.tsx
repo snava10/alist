@@ -11,6 +11,7 @@ import {
 } from "./component/Storage";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import globalStyles from "./component/GlobalStyles";
+import analytics from "@react-native-firebase/analytics";
 
 export default function App() {
   const [alistItems, setAListItems] = useState([] as AListItem[]);
@@ -107,7 +108,14 @@ export default function App() {
           />
         </View>
       ) : (
-        <View style={{ alignContent: "center" }}>
+        <View
+          style={{
+            flex: 1,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           <Text style={{ fontSize: 22, textAlign: "center" }}>
             Tap{" "}
             <Ionicons
@@ -125,6 +133,9 @@ export default function App() {
         <AddItemModal
           item={selectedItem}
           saveItem={async (item: AListItem) => {
+            await analytics().logEvent("add_item", {
+              name: item.name,
+            });
             await saveItem(item);
             await loadItemsFromLocalStorage(searchText);
           }}

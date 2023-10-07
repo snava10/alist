@@ -2,7 +2,7 @@
   "expo": {
     "name": "Alist",
     "slug": "alist",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/android-icon-48x48.png",
     "userInterfaceStyle": "light",
@@ -25,7 +25,8 @@
           "autoLogAppEventsEnabled": true,
           "isAutoInitEnabled": true
         }
-      ]
+      ],
+      "@react-native-firebase/app"
     ],
     "ios": {
       "supportsTablet": true,
@@ -36,7 +37,8 @@
         "foregroundImage": "./assets/android-icon-192x192.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.acorn.alist"
+      "package": "com.acorn.alist",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.ico"
