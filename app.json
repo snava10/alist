@@ -2,7 +2,7 @@
   "expo": {
     "name": "Alist",
     "slug": "alist",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/android-icon-48x48.png",
     "userInterfaceStyle": "light",
