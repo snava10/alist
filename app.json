@@ -25,7 +25,8 @@
           "autoLogAppEventsEnabled": true,
           "isAutoInitEnabled": true
         }
-      ]
+      ],
+      "@react-native-firebase/app"
     ],
     "ios": {
       "supportsTablet": true,
@@ -36,7 +37,8 @@
         "foregroundImage": "./assets/android-icon-192x192.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.acorn.alist"
+      "package": "com.acorn.alist",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.ico"
