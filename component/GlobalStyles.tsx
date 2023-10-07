@@ -72,6 +72,7 @@ const globalStyles = StyleSheet.create({
     flex: 1,
     height: 40,
     paddingVertical: 0,
+    fontSize: 18,
   },
   searchContainer: {
     flexDirection: "row",
