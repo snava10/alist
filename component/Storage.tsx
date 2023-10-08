@@ -48,8 +48,14 @@ export async function saveItem(item: AListItem) {
   await AsyncStorage.setItem("_ali_" + item.name, JSON.stringify(item));
 }
 
+export async function replaceItem(old: AListItem, newItem: AListItem) {
+  await Promise.all([removeItem(old), saveItem(newItem)]);
+}
+
 export async function removeItem(item: AListItem) {
-  await AsyncStorage.removeItem("_ali_" + item.name);
+  if (item) {
+    await AsyncStorage.removeItem("_ali_" + item.name);
+  }
 }
 
 export async function getItemsCount(): Promise<number> {
