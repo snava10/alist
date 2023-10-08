@@ -6,7 +6,7 @@ import ConfirmationModal from "./component/ConfirmationModal";
 import {
   getItems,
   getItemsCount,
-  saveItem,
+  replaceItem,
   removeItem as storageRemoveItem,
 } from "./component/Storage";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -132,11 +132,17 @@ export default function App() {
       {modalVisible ? (
         <AddItemModal
           item={selectedItem}
-          saveItem={async (item: AListItem) => {
-            await analytics().logEvent("add_item", {
-              name: item.name,
-            });
-            await saveItem(item);
+          saveItem={async (old: AListItem, item: AListItem) => {
+            if (old.name) {
+              await analytics().logEvent("edit_item", {
+                name: item.name,
+              });
+            } else {
+              await analytics().logEvent("add_item", {
+                name: item.name,
+              });
+            }
+            await replaceItem(old, item);
             await loadItemsFromLocalStorage(searchText);
           }}
           hideModal={hideModal}

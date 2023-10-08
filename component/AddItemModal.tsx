@@ -21,10 +21,16 @@ const AddItemModal = (props: {
   const [value, setValue] = useState(
     props.item !== null ? props.item?.value : ""
   );
+  const [oldName] = useState(props.item !== null ? props.item?.name : null);
+  const [oldValue] = useState(props.item !== null ? props.item?.value : null);
 
   const handleSave = () => {
+    const oldItem = oldName === null ? null : { oldName, oldValue };
     if (name && value) {
-      props.saveItem({ name, value } as AListItem);
+      props.saveItem({ name: oldItem?.oldName, value: oldItem?.oldValue }, {
+        name,
+        value,
+      } as AListItem);
       setName("");
       setValue("");
       props.hideModal();
