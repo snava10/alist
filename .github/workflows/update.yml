@@ -28,7 +28,9 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Replace Tokens
-        run: sed -i 's/FB_SDK_CLIENT_TOKEN/${{ secrets.FB_SDK_CLIENT_TOKEN }}/' app.json;
+        run: |
+          sed -i 's/FB_SDK_CLIENT_TOKEN/${{ secrets.FB_SDK_CLIENT_TOKEN }}/' app.json;
+          cat app.json
 
       - name: Install dependencies
         run: npm install
