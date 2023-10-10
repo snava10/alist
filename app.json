@@ -18,7 +18,7 @@
 [
         "react-native-fbsdk-next", {
           "appID": "256292256803627",
-          "clientToken": "",
+          "clientToken": "FB_SDK_CLIENT_TOKEN",
           "displayName": "Alist",
           "scheme": "fb256292256803627",
           "advertiserIDCollectionEnabled": false,
