@@ -2,13 +2,6 @@ name: update
 on: push
 
 jobs:
-  pre_build:
-    name: Pre Build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Replace Secrets
-        run: ls;
-
   update:
     name: EAS Update
     runs-on: ubuntu-latest
@@ -26,8 +19,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: 18.x
-          cache: yarn
+          node-version: 19.x
 
       - name: Setup EAS
         uses: expo/expo-github-action@v8
@@ -36,7 +28,10 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
-        run: yarn install
+        run: npm install
+
+      - name: Replace Tokens
+        run: ls;
 
       - name: Publish update
         run: eas update --auto
