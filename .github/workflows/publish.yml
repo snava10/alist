@@ -33,10 +33,14 @@ jobs:
           cat app.json;
           sed -i 's/GOOGLE_PLAY_CURRENT_KEY/${{ secrets.GOOGLE_PLAY_CURRENT_KEY }}/' google-services.json;
           cat google-services.json;
-          sed -i 's/GOOGLE_PLAY_PRIVATE_KEY_ID/${{ secrets.GOOGLE_PLAY_PRIVATE_KEY_ID }}/' pc-api-9058583074469096499-576-79a2369c84f6.json;
           sed -i 's/GOOGLE_PLAY_PRIVATE_KEY/${{ secrets.GOOGLE_PLAY_PRIVATE_KEY }}/' pc-api-9058583074469096499-576-79a2369c84f6.json;
           sed -i 's/GOOGLE_PLAY_CLIENT_ID/${{ secrets.GOOGLE_PLAY_CLIENT_ID }}/' pc-api-9058583074469096499-576-79a2369c84f6.json;
           cat pc-api-9058583074469096499-576-79a2369c84f6.json;
+
+      - name: Replace Google Play Private Key
+        run: |
+          sed -i 's/GOOGLE_PLAY_PRIVATE_KEY_ID/${{ secrets.GOOGLE_PLAY_PRIVATE_KEY_ID }}/' pc-api-9058583074469096499-576-79a2369c84f6.json;
+          at pc-api-9058583074469096499-576-79a2369c84f6.json;
 
       - name: Install dependencies
         run: npm install
