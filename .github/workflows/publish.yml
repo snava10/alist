@@ -33,7 +33,9 @@ jobs:
       - name: Replace Tokens
         run: |
           sed -i 's/FB_SDK_CLIENT_TOKEN/${{ secrets.FB_SDK_CLIENT_TOKEN }}/' app.json;
-          cat app.json
+          cat app.json;
+          sed -i 's/GOOGLE_PLAY_CURRENT_KEY/${{ secrets.GOOGLE_PLAY_CURRENT_KEY }}/' google-services.json;
+          cat google-services.json;
 
       - name: Install dependencies
         run: npm install
