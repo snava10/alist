@@ -16,5 +16,4 @@ web-build/
 # Temporary files created by Metro to check the health of the file watcher
 .metro-health-check*
 android
-pc-api-9058583074469096499-576-79a2369c84f6.json
 *.aab
