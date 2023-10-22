@@ -40,8 +40,5 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # - name: build
-      #   run: eas build --profile production --platform android --non-interactive
-
-      - name: publish to play store
-        run: eas submit -p android --latest
+      - name: build and submit
+        run: eas build --profile production --platform android --non-interactive --auto-submit
