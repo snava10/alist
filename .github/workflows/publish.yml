@@ -35,7 +35,7 @@ jobs:
           cat google-services.json;
 
       - name: Google Play Config file
-        run: printf ${{ secrets.GOOGLE_PLAY_CONFIG }} >> pc-api-9058583074469096499-576-79a2369c84f6.json
+        run: echo '${{ secrets.GOOGLE_PLAY_CONFIG }}' >> pc-api-9058583074469096499-576-79a2369c84f6.json
 
       - name: Install dependencies
         run: npm install
