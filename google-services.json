@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "183439267259",
+    "project_id": "alist-397309",
+    "storage_bucket": "alist-397309.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:183439267259:android:83a341f2fb6858fafda09e",
+        "android_client_info": {
+          "package_name": "com.acorn.alist"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "GOOGLE_PLAY_CURRENT_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
