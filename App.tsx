@@ -15,11 +15,15 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
 
-  function onAuthStateChanged(user: any) {
-    const { _auth, ...rest } = user;
-    console.log(rest);
-    setUser(rest._user);
-    if (initializing) setInitializing(false);
+  function onAuthStateChanged(u: any) {
+    if (u) {
+      const { _auth, ...rest } = u;
+      console.log(rest);
+      setUser(rest._user);
+      if (initializing) setInitializing(false);
+    } else {
+      setUser(null);
+    }
   }
 
   useEffect(() => {
