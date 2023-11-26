@@ -14,7 +14,15 @@
       },
       "oauth_client": [
         {
-          "client_id": "183439267259-p9qhbu1car0jvpjr74getcebhhorbh1j.apps.googleusercontent.com",
+          "client_id": "183439267259-3fdekennuneoalsccieeaj44v781r3b4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.acorn.alist",
+            "certificate_hash": "f740d66e1303b3ac568e66ba83162d4af2a92277"
+          }
+        },
+        {
+          "client_id": "183439267259-4h0561svmr0ab771gq0nlgpj4640g459.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.acorn.alist",
@@ -22,8 +30,20 @@
           }
         },
         {
-          "client_id": "183439267259-vg572m5utfv2ssjo59a35pb89qak6ufp.apps.googleusercontent.com",
-          "client_type": 3
+          "client_id": "183439267259-lte4rjvdj437i3r8904ck1vsflf7k7dv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.acorn.alist",
+            "certificate_hash": "27f9138f3c889c35400639259c684f729ea3f7dd"
+          }
+        },
+        {
+          "client_id": "183439267259-12mtdreenqc4shhl3ab9ddnbhb00auu0.apps.googleusercontent.com",
+          "client_type": 3,
+          "android_info": {
+            "package_name": "com.acorn.alist",
+            "certificate_hash": "27f9138f3c889c35400639259c684f729ea3f7dd"
+          }
         }
       ],
       "api_key": [
@@ -35,7 +55,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "183439267259-vg572m5utfv2ssjo59a35pb89qak6ufp.apps.googleusercontent.com",
+              "client_id": "183439267259-12mtdreenqc4shhl3ab9ddnbhb00auu0.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
