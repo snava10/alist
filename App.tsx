@@ -9,6 +9,7 @@ import LoginScreen, {
   LoginScreenProperties,
 } from "./component/Login/LoginScreen";
 import auth from "@react-native-firebase/auth";
+import AuthenticationComponent from "./component/Login/AuthenticationComponent";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
