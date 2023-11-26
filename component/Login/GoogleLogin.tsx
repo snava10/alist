@@ -15,25 +15,16 @@ GoogleSignin.configure({
 });
 
 async function onGoogleButtonPress() {
-  try {
-    // Check if your device supports Google Play
-    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-    // Get the users ID token
-    const { idToken } = await GoogleSignin.signIn();
-    console.log(idToken);
+  // Check if your device supports Google Play
+  await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+  // Get the users ID token
+  const { idToken } = await GoogleSignin.signIn();
 
-    // Create a Google credential with the token
-    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-    console.log(googleCredential);
+  // Create a Google credential with the token
+  const googleCredential = auth.GoogleAuthProvider.credential(idToken);
 
-    // Sign-in the user with the credential
-    return auth().signInWithCredential(googleCredential);
-  } catch (e: any) {
-    console.log("Error signing in with google" + e);
-    console.log(e.code);
-    console.log(e.message);
-    throw e;
-  }
+  // Sign-in the user with the credential
+  return auth().signInWithCredential(googleCredential);
 }
 
 export default function GoogleLogin() {
@@ -45,7 +36,7 @@ export default function GoogleLogin() {
         onPress={() =>
           onGoogleButtonPress()
             .then(() => console.log("Signed in with Google!"))
-            .catch((error) => console.log(error))
+            .catch((error) => console.log("Error " + error))
         }
         // disabled={isInProgress}
       />
