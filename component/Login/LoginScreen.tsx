@@ -1,8 +1,19 @@
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Text, Pressable } from "react-native";
 import FacebookLogin from "./FacebookLogin";
 import GoogleLogin from "./GoogleLogin";
+import globalStyles from "../GlobalStyles";
 
-export default function LoginScreen() {
+export type LoginScreenProperties = {
+  loginWithFacebook: boolean;
+  loginWithGoogle: boolean;
+  continueAnonymous: boolean;
+  emailAndPassword: boolean;
+};
+
+export default function LoginScreen({ route }: any) {
+  const loginScreenProperties = route.params
+    .loginScreenProperties as LoginScreenProperties;
+  const anonymousCallbackFun = route.params.anonymousCallbackFun;
   return (
     <View style={styles.container}>
       <View
@@ -16,8 +27,33 @@ export default function LoginScreen() {
           alignContent: "center",
         }}
       >
-        <FacebookLogin></FacebookLogin>
-        <GoogleLogin></GoogleLogin>
+        {loginScreenProperties.loginWithFacebook ? (
+          <FacebookLogin></FacebookLogin>
+        ) : (
+          <></>
+        )}
+        {loginScreenProperties.loginWithGoogle ? (
+          <GoogleLogin></GoogleLogin>
+        ) : (
+          <></>
+        )}
+        {loginScreenProperties.continueAnonymous ? (
+          <View>
+            <Pressable
+              style={[globalStyles.button, globalStyles.button.primary.main]}
+              onPress={() => {
+                console.log("Press");
+                anonymousCallbackFun();
+              }}
+            >
+              <Text style={globalStyles.button.text.defaut}>
+                Continue anonymously
+              </Text>
+            </Pressable>
+          </View>
+        ) : (
+          <></>
+        )}
       </View>
     </View>
   );

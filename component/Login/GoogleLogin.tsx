@@ -27,7 +27,7 @@ async function onGoogleButtonPress() {
   return auth().signInWithCredential(googleCredential);
 }
 
-export default function GoogleLogin() {
+export default function GoogleLogin({ callbackFn }: any) {
   return (
     <View>
       <GoogleSigninButton
@@ -35,7 +35,10 @@ export default function GoogleLogin() {
         color={GoogleSigninButton.Color.Dark}
         onPress={() =>
           onGoogleButtonPress()
-            .then(() => console.log("Signed in with Google!"))
+            .then(() => {
+              console.log("Signed in with Google!");
+              callbackFn();
+            })
             .catch((error) => console.log("Error " + error))
         }
         // disabled={isInProgress}

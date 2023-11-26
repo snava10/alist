@@ -1,13 +1,22 @@
-import { View, StyleSheet, Text, Button } from "react-native";
+import { View, StyleSheet, Text, Button, Pressable } from "react-native";
 import React, { useEffect, useState } from "react";
 import { GraphRequest, GraphRequestManager } from "react-native-fbsdk-next";
 import auth from "@react-native-firebase/auth";
+import LoginScreen from "./Login/LoginScreen";
+import globalStyles from "./GlobalStyles";
+import FacebookLogin from "./Login/FacebookLogin";
+import GoogleLogin from "./Login/GoogleLogin";
 
 export default function ProfileScreen({ route }: any) {
-  const [user] = useState(route.params.user.route.params);
+  const [user, setUser] = useState(route.params.route.params.user);
+  const [anonymous, setAnonymous] = useState(
+    route.params.route.params.continueAnonymous
+  );
 
   useEffect(() => {
-    console.log("Profile Screen ", route.params.user.route.params);
+    console.log("Profile Screen ", route.params.route.params);
+    // console.log(route.params.user.route.params);
+    // console.log("User " + JSON.stringify(user));
   });
 
   const getUserInfo = (token: string) => {
@@ -29,7 +38,7 @@ export default function ProfileScreen({ route }: any) {
     new GraphRequestManager().addRequest(infoRequest).start();
   };
 
-  return user ? (
+  return user && user.displayName ? (
     <View style={styles.container}>
       <View style={{ flex: 1 }}>
         <View>
@@ -41,12 +50,26 @@ export default function ProfileScreen({ route }: any) {
           title="Log Out"
           onPress={() => {
             auth().signOut();
+            setUser(null);
           }}
         />
       </View>
     </View>
   ) : (
-    <View style={styles.container}></View>
+    <View
+      style={{
+        flex: 1,
+        width: 100,
+        height: 100,
+        justifyContent: "center",
+        alignItems: "center",
+        alignSelf: "center",
+        alignContent: "center",
+      }}
+    >
+      <FacebookLogin></FacebookLogin>
+      <GoogleLogin callbackFn={() => setUser(auth().currentUser)}></GoogleLogin>
+    </View>
   );
 }
 

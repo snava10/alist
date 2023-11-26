@@ -5,7 +5,9 @@ import ProfileScreen from "./component/ProfileScreen";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import LoginScreen from "./component/Login/LoginScreen";
+import LoginScreen, {
+  LoginScreenProperties,
+} from "./component/Login/LoginScreen";
 import auth from "@react-native-firebase/auth";
 
 const Tab = createBottomTabNavigator();
@@ -14,6 +16,14 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
+  const [continueAnonymous, setContinueAnonymous] = useState(false);
+
+  const loginScreenProperties = {
+    loginWithFacebook: false,
+    loginWithGoogle: true,
+    continueAnonymous: true,
+    emailAndPassword: true,
+  } as LoginScreenProperties;
 
   function onAuthStateChanged(u: any) {
     if (u) {
@@ -26,6 +36,10 @@ export default function App() {
     }
   }
 
+  function continueAnonymousFunction(): void {
+    setContinueAnonymous(true);
+  }
+
   useEffect(() => {
     const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
     return subscriber; // unsubscribe on unmount
@@ -34,17 +48,24 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={({ route }) => ({ headerShown: false })}>
-        {user ? (
+        {user || continueAnonymous ? (
           <>
             <Stack.Screen
               name="Home Tab"
               component={HomeTabScreen}
-              initialParams={user}
+              initialParams={{ user: user, continueAnonymous }}
             />
           </>
         ) : (
           <>
-            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen
+              name="Login"
+              component={LoginScreen}
+              initialParams={{
+                loginScreenProperties,
+                anonymousCallbackFun: continueAnonymousFunction,
+              }}
+            />
           </>
         )}
       </Stack.Navigator>
@@ -52,7 +73,7 @@ export default function App() {
   );
 }
 
-function HomeTabScreen(user: any) {
+function HomeTabScreen(props: any) {
   return (
     <Tab.Navigator screenOptions={({ route }) => ({ headerShown: false })}>
       <Tab.Screen
@@ -68,7 +89,7 @@ function HomeTabScreen(user: any) {
       <Tab.Screen
         name="Settings"
         component={ProfileScreen}
-        initialParams={{ user }}
+        initialParams={props}
         options={{
           tabBarLabel: "Profile",
           tabBarIcon: ({ color, size }) => (
