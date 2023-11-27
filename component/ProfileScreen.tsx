@@ -23,6 +23,7 @@ export default function ProfileScreen({ route }: any) {
       }}
       authProviders={{
         google: true,
+        allowAnonymous: false,
       }}
     ></AuthenticationComponent>
   );

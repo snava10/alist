@@ -9,7 +9,6 @@ import LoginScreen, {
   LoginScreenProperties,
 } from "./component/Login/LoginScreen";
 import auth from "@react-native-firebase/auth";
-import AuthenticationComponent from "./component/Login/AuthenticationComponent";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -17,7 +16,8 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
-  const [continueAnonymous, setContinueAnonymous] = useState(false);
+  const [anonymous, setAnonymous] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const loginScreenProperties = {
     loginWithFacebook: false,
@@ -32,13 +32,16 @@ export default function App() {
       console.log(rest);
       setUser(rest._user);
       if (initializing) setInitializing(false);
+      setIsLoggedIn(true);
     } else {
       setUser(null);
+      setIsLoggedIn(false);
     }
   }
 
   function continueAnonymousFunction(): void {
-    setContinueAnonymous(true);
+    console.log("Set anonymous");
+    setAnonymous(true);
   }
 
   useEffect(() => {
@@ -49,12 +52,12 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={({ route }) => ({ headerShown: false })}>
-        {user || continueAnonymous ? (
+        {isLoggedIn || anonymous ? (
           <>
             <Stack.Screen
               name="Home Tab"
               component={HomeTabScreen}
-              initialParams={{ user: user, continueAnonymous }}
+              initialParams={{ user: user, anonymous }}
             />
           </>
         ) : (
@@ -64,7 +67,7 @@ export default function App() {
               component={LoginScreen}
               initialParams={{
                 loginScreenProperties,
-                anonymousCallbackFun: continueAnonymousFunction,
+                anonymousCallbackFn: continueAnonymousFunction,
               }}
             />
           </>

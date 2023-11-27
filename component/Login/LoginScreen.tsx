@@ -3,6 +3,7 @@ import FacebookLogin from "./FacebookLogin";
 import GoogleLogin from "./GoogleLogin";
 import globalStyles from "../GlobalStyles";
 import AuthenticationComponent from "./AuthenticationComponent";
+import { useEffect } from "react";
 
 export type LoginScreenProperties = {
   loginWithFacebook: boolean;
@@ -12,8 +13,12 @@ export type LoginScreenProperties = {
 };
 
 export default function LoginScreen({ route }: any) {
+  useEffect(() => {
+    console.log("Login");
+    console.log(route.params.anonymousCallbackFn);
+  });
   return (
-    <View>
+    <View style={styles.container}>
       <AuthenticationComponent
         isLoggedIn={false}
         successCallbackFn={() => {
@@ -26,6 +31,7 @@ export default function LoginScreen({ route }: any) {
           google: true,
           allowAnonymous: true,
         }}
+        continueAnonymousCallbackFn={route.params.anonymousCallbackFn}
       ></AuthenticationComponent>
     </View>
   );
