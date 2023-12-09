@@ -39,7 +39,7 @@ const globalStyles = StyleSheet.create({
       },
     }),
     text: StyleSheet.create({
-      defaut: {
+      default: {
         fontSize: 16,
         lineHeight: 21,
         letterSpacing: 0.25,

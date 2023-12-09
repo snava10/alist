@@ -1,7 +1,5 @@
 import { View, StyleSheet, Text, Button, Pressable } from "react-native";
 import React, { useEffect, useState } from "react";
-import { GraphRequest, GraphRequestManager } from "react-native-fbsdk-next";
-import auth from "@react-native-firebase/auth";
 import FacebookLogin from "./FacebookLogin";
 import GoogleLogin from "./GoogleLogin";
 import globalStyles from "../GlobalStyles";
@@ -35,13 +33,13 @@ export default function AuthenticationComponent({
   });
 
   return _isLoggedIn ? (
-    <View>
+    <View style={{ flex: 1 }}>
       <View style={styles.child_view}>
         <Button title="Log Out" onPress={logOutFn} />
       </View>
     </View>
   ) : (
-    <View>
+    <View style={{ flex: 1 }}>
       <View style={styles.child_view}>
         {authProviders.facebook ? <FacebookLogin></FacebookLogin> : <></>}
         {authProviders.google ? (
@@ -55,6 +53,7 @@ export default function AuthenticationComponent({
               style={{
                 flexDirection: "row",
                 alignItems: "center",
+                paddingHorizontal: 50,
                 paddingVertical: 10,
               }}
             >
@@ -87,7 +86,7 @@ export default function AuthenticationComponent({
                 }
               }}
             >
-              <Text style={globalStyles.button.text.defaut}>
+              <Text style={globalStyles.button.text.default}>
                 Continue offline
               </Text>
             </Pressable>
@@ -103,7 +102,6 @@ export default function AuthenticationComponent({
 const styles = StyleSheet.create({
   child_view: {
     flex: 1,
-    height: 100,
     justifyContent: "center",
     alignSelf: "center",
   },
