@@ -14,8 +14,6 @@ export default function FacebookLogin() {
           } else {
             const data = await AccessToken.getCurrentAccessToken();
             console.log("Login Success");
-            console.log(result);
-            console.log(data);
             if (data) {
               const facebookCredential = auth.FacebookAuthProvider.credential(
                 data.accessToken

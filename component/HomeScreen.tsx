@@ -13,7 +13,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import globalStyles from "./GlobalStyles";
 import analytics from "@react-native-firebase/analytics";
 
-export default function HomeScreen({ user }: any) {
+export default function HomeScreen({ user }: any | null) {
   const [alistItems, setAListItems] = useState([] as AListItem[]);
   const [itemsCount, setItemsCount] = useState(0);
   const [selectedItem, setSelectedItem] = useState(null as AListItem | null);

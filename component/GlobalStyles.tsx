@@ -32,6 +32,9 @@ const globalStyles = StyleSheet.create({
       main: {
         backgroundColor: theme.palette.primary.main,
       },
+      light: {
+        backgroundColor: theme.palette.primary.light,
+      },
     }),
     error: StyleSheet.create({
       main: {
@@ -39,7 +42,7 @@ const globalStyles = StyleSheet.create({
       },
     }),
     text: StyleSheet.create({
-      defaut: {
+      default: {
         fontSize: 16,
         lineHeight: 21,
         letterSpacing: 0.25,
@@ -67,7 +70,11 @@ const globalStyles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  container: {},
+  container: {
+    paddingTop: 10,
+    flexDirection: "column",
+    alignItems: "center",
+  },
   searchInput: {
     flex: 1,
     height: 40,
@@ -87,6 +94,7 @@ const globalStyles = StyleSheet.create({
     marginRight: 8,
     color: "gray",
   },
+  profileTextBanner: {},
 });
 
 export default globalStyles;

@@ -1,58 +1,50 @@
-import { View, StyleSheet, Text, Button } from "react-native";
 import React, { useEffect, useState } from "react";
-import { GraphRequest, GraphRequestManager } from "react-native-fbsdk-next";
 import auth from "@react-native-firebase/auth";
+import AuthenticationComponent from "./Login/AuthenticationComponent";
+import { View, Text } from "react-native";
+import globalStyles from "./GlobalStyles";
 
 export default function ProfileScreen({ route }: any) {
-  const [user] = useState(route.params.user.route.params);
+  const [user, setUser] = useState(route.params.route.params.user);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    console.log("Profile Screen ", route.params.user.route.params);
+    setIsLoggedIn(user && user.displayName);
   });
 
-  const getUserInfo = (token: string) => {
-    const infoRequest = new GraphRequest(
-      "/me",
-      {
-        accessToken: token,
-        parameters: { fields: { string: "id,name,email" } },
-      },
-      (error, result) => {
-        if (error) {
-          console.error("Error fetching user info:", error);
-        } else {
-          console.log(result?.email);
-          console.log("User Info:", result);
-        }
-      }
-    );
-    new GraphRequestManager().addRequest(infoRequest).start();
-  };
-
-  return user ? (
-    <View style={styles.container}>
+  return (
+    <View style={{ flex: 1 }}>
+      {isLoggedIn && user ? (
+        <>
+          <View style={[globalStyles.container, { flex: 3 }]}>
+            <View style={{ justifyContent: "flex-start", marginTop: 10 }}>
+              <Text style={{ fontWeight: "bold", fontSize: 20 }}>
+                {user.displayName}
+              </Text>
+            </View>
+          </View>
+          <View></View>
+        </>
+      ) : (
+        <></>
+      )}
       <View style={{ flex: 1 }}>
-        <View>
-          <Text>Welcome to AList {user.displayName}</Text>
-        </View>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Button
-          title="Log Out"
-          onPress={() => {
-            auth().signOut();
+        <AuthenticationComponent
+          isLoggedIn={isLoggedIn}
+          successCallbackFn={() => {
+            setUser(auth().currentUser);
           }}
-        />
+          logOutFn={() => {
+            setIsLoggedIn(false);
+            auth().signOut();
+            setUser(null);
+          }}
+          authProviders={{
+            google: true,
+            allowAnonymous: false,
+          }}
+        ></AuthenticationComponent>
       </View>
     </View>
-  ) : (
-    <View style={styles.container}></View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 10,
-  },
-});
