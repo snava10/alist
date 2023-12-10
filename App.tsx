@@ -29,10 +29,11 @@ export default function App() {
   function onAuthStateChanged(u: any) {
     if (u) {
       const { _auth, ...rest } = u;
-      console.log(rest);
+      // console.log(rest);
       setUser(rest._user);
       if (initializing) setInitializing(false);
       setIsLoggedIn(true);
+      setAnonymous(false);
     } else {
       setUser(null);
       setIsLoggedIn(false);
@@ -57,7 +58,10 @@ export default function App() {
             <Stack.Screen
               name="Home Tab"
               component={HomeTabScreen}
-              initialParams={{ user: user, anonymous }}
+              initialParams={{
+                user: user,
+                anonymous,
+              }}
             />
           </>
         ) : (
