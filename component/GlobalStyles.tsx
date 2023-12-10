@@ -74,7 +74,6 @@ const globalStyles = StyleSheet.create({
     paddingTop: 10,
     flexDirection: "column",
     alignItems: "center",
-    justifyContent: "center",
   },
   searchInput: {
     flex: 1,

@@ -14,19 +14,28 @@ export default function ProfileScreen({ route }: any) {
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={[globalStyles.container, { flex: 3 }]}>
-        <Text style={{ fontSize: 20 }}>Welcome</Text>
-        <Text style={{ fontWeight: "bold", fontSize: 20 }}>
-          {user.displayName}
-        </Text>
-      </View>
-      <View style={{ flex: 0.5 }}>
+      {isLoggedIn && user ? (
+        <>
+          <View style={[globalStyles.container, { flex: 3 }]}>
+            <View style={{ justifyContent: "flex-start", marginTop: 10 }}>
+              <Text style={{ fontWeight: "bold", fontSize: 20 }}>
+                {user.displayName}
+              </Text>
+            </View>
+          </View>
+          <View></View>
+        </>
+      ) : (
+        <></>
+      )}
+      <View style={{ flex: 1 }}>
         <AuthenticationComponent
           isLoggedIn={isLoggedIn}
           successCallbackFn={() => {
             setUser(auth().currentUser);
           }}
           logOutFn={() => {
+            setIsLoggedIn(false);
             auth().signOut();
             setUser(null);
           }}

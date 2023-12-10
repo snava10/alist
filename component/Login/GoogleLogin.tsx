@@ -36,7 +36,6 @@ export default function GoogleLogin({ callbackFn }: any) {
         onPress={() =>
           onGoogleButtonPress()
             .then(() => {
-              console.log("Signed in with Google!");
               callbackFn();
             })
             .catch((error) => console.log("Error " + error))
