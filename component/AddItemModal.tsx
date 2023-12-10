@@ -67,7 +67,7 @@ const AddItemModal = (props: {
               style={[globalStyles.button, globalStyles.button.primary.main]}
               onPress={handleSave}
             >
-              <Text style={globalStyles.button.text.defaut}>Save</Text>
+              <Text style={globalStyles.button.text.default}>Save</Text>
               {/* <Button title="Save" onPress={handleSave} /> */}
             </Pressable>
             <Pressable
@@ -78,7 +78,7 @@ const AddItemModal = (props: {
                 props.hideModal();
               }}
             >
-              <Text style={globalStyles.button.text.defaut}>Cancel</Text>
+              <Text style={globalStyles.button.text.default}>Cancel</Text>
             </Pressable>
           </View>
         </View>

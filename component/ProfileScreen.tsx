@@ -7,7 +7,6 @@ export default function ProfileScreen({ route }: any) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    console.log("Profile Screen ", route.params.route.params);
     setIsLoggedIn(user && user.displayName);
   });
 

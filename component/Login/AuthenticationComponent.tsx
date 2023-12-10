@@ -28,14 +28,18 @@ export default function AuthenticationComponent({
 }: AuthenticationComponentProps) {
   const [_isLoggedIn, setIsLoggedIn] = useState(isLoggedIn);
   useEffect(() => {
-    console.log(continueAnonymousCallbackFn);
     setIsLoggedIn(isLoggedIn);
   });
 
   return _isLoggedIn ? (
     <View style={{ flex: 1 }}>
       <View style={styles.child_view}>
-        <Button title="Log Out" onPress={logOutFn} />
+        <Pressable
+          style={[globalStyles.button, globalStyles.button.primary.light]}
+          onPress={logOutFn}
+        >
+          <Text style={globalStyles.button.text.default}>Log Out</Text>
+        </Pressable>
       </View>
     </View>
   ) : (
