@@ -1,4 +1,4 @@
-import { View, StyleSheet, Text, Button, Pressable } from "react-native";
+import { View, StyleSheet, Text, Pressable } from "react-native";
 import React, { useEffect, useState } from "react";
 import FacebookLogin from "./FacebookLogin";
 import GoogleLogin from "./GoogleLogin";

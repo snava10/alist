@@ -70,7 +70,12 @@ const globalStyles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  container: {},
+  container: {
+    paddingTop: 10,
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   searchInput: {
     flex: 1,
     height: 40,
@@ -90,6 +95,7 @@ const globalStyles = StyleSheet.create({
     marginRight: 8,
     color: "gray",
   },
+  profileTextBanner: {},
 });
 
 export default globalStyles;
