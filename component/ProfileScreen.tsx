@@ -5,11 +5,11 @@ import { View, Text } from "react-native";
 import globalStyles from "./GlobalStyles";
 
 export default function ProfileScreen({ route }: any) {
-  const [user, setUser] = useState(route.params.route.params.user);
+  const [user, setUser] = useState(route.params.user);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    setIsLoggedIn(user && user.displayName);
+        setIsLoggedIn(user && user.displayName);
   });
 
   return (

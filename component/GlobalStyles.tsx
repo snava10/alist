@@ -35,6 +35,9 @@ const globalStyles = StyleSheet.create({
       light: {
         backgroundColor: theme.palette.primary.light,
       },
+      dark: {
+        backgroundColor: theme.palette.primary.dark,
+      },
     }),
     error: StyleSheet.create({
       main: {

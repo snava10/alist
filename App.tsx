@@ -29,20 +29,13 @@ export default function App() {
   function onAuthStateChanged(u: any) {
     if (u) {
       const { _auth, ...rest } = u;
-      // console.log(rest);
       setUser(rest._user);
       if (initializing) setInitializing(false);
       setIsLoggedIn(true);
-      setAnonymous(false);
     } else {
       setUser(null);
       setIsLoggedIn(false);
     }
-  }
-
-  function continueAnonymousFunction(): void {
-    console.log("Set anonymous");
-    setAnonymous(true);
   }
 
   useEffect(() => {
@@ -53,7 +46,7 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={({ route }) => ({ headerShown: false })}>
-        {isLoggedIn || anonymous ? (
+        {isLoggedIn ? (
           <>
             <Stack.Screen
               name="Home Tab"
@@ -71,7 +64,6 @@ export default function App() {
               component={LoginScreen}
               initialParams={{
                 loginScreenProperties,
-                anonymousCallbackFn: continueAnonymousFunction,
               }}
             />
           </>
@@ -97,7 +89,7 @@ function HomeTabScreen(props: any) {
       <Tab.Screen
         name="Settings"
         component={ProfileScreen}
-        initialParams={props}
+        initialParams={props.route.params}
         options={{
           tabBarLabel: "Profile",
           tabBarIcon: ({ color, size }) => (

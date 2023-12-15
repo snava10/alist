@@ -32,17 +32,18 @@ export default function AuthenticationComponent({
   });
 
   return _isLoggedIn ? (
-    <View style={{ flex: 1 }}>
-      <View style={styles.child_view}>
-        <Pressable
-          style={[globalStyles.button, globalStyles.button.primary.light]}
-          onPress={logOutFn}
-        >
-          <Text style={globalStyles.button.text.default}>Log Out</Text>
-        </Pressable>
-      </View>
-    </View>
+    <></>
   ) : (
+    // <View style={{ flex: 1 }}>
+    //   <View style={styles.child_view}>
+    //     <Pressable
+    //       style={[globalStyles.button, globalStyles.button.primary.main]}
+    //       onPress={logOutFn}
+    //     >
+    //       <Text style={globalStyles.button.text.default}>Log Out</Text>
+    //     </Pressable>
+    //   </View>
+    // </View>
     <View style={{ flex: 1 }}>
       <View style={styles.child_view}>
         {authProviders.facebook ? <FacebookLogin></FacebookLogin> : <></>}
@@ -82,7 +83,12 @@ export default function AuthenticationComponent({
               />
             </View>
             <Pressable
-              style={[globalStyles.button, globalStyles.button.primary.main]}
+              style={({ pressed }) => [
+                globalStyles.button,
+                pressed
+                  ? globalStyles.button.primary.dark
+                  : globalStyles.button.primary.main,
+              ]}
               onPress={() => {
                 setIsLoggedIn(true);
                 if (continueAnonymousCallbackFn) {
@@ -91,7 +97,7 @@ export default function AuthenticationComponent({
               }}
             >
               <Text style={globalStyles.button.text.default}>
-                Continue offline
+                Continue anonymous
               </Text>
             </Pressable>
           </>
