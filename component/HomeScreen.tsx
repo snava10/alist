@@ -60,7 +60,6 @@ export default function HomeScreen({ user }: any | null) {
 
   useEffect(() => {
     loadItemsFromLocalStorage(searchText);
-    console.log(JSON.stringify(user));
   }, []);
 
   return (

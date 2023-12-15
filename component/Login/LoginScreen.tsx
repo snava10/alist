@@ -1,5 +1,6 @@
 import { View, StyleSheet } from "react-native";
 import AuthenticationComponent from "./AuthenticationComponent";
+import auth from "@react-native-firebase/auth";
 
 export type LoginScreenProperties = {
   loginWithFacebook: boolean;
@@ -8,7 +9,7 @@ export type LoginScreenProperties = {
   emailAndPassword: boolean;
 };
 
-export default function LoginScreen({ route }: any) {
+export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <AuthenticationComponent
@@ -23,7 +24,7 @@ export default function LoginScreen({ route }: any) {
           google: true,
           allowAnonymous: true,
         }}
-        continueAnonymousCallbackFn={route.params.anonymousCallbackFn}
+        continueAnonymousCallbackFn={() => auth().signInAnonymously()}
       ></AuthenticationComponent>
     </View>
   );
