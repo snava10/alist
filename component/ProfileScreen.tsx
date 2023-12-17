@@ -1,16 +1,22 @@
 import React, { useEffect, useState } from "react";
 import auth from "@react-native-firebase/auth";
 import AuthenticationComponent from "./Login/AuthenticationComponent";
-import { View, Text } from "react-native";
-import globalStyles from "./GlobalStyles";
+import { View, Text, Switch } from "react-native";
+import globalStyles from "./Core/GlobalStyles";
+import { isEnabled } from "react-native/Libraries/Performance/Systrace";
 
 export default function ProfileScreen({ route }: any) {
   const [user, setUser] = useState(route.params.user);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(false);
 
   useEffect(() => {
-        setIsLoggedIn(user && user.displayName);
+    setIsLoggedIn(user && user.displayName);
   });
+
+  function toggleSwitch() {
+    setIsEnabled(!isEnabled);
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -23,7 +29,15 @@ export default function ProfileScreen({ route }: any) {
               </Text>
             </View>
           </View>
-          <View></View>
+          <View>
+            <Switch
+              trackColor={{ false: "#767577", true: "#81b0ff" }}
+              thumbColor={isEnabled ? "#f5dd4b" : "#f4f3f4"}
+              ios_backgroundColor="#3e3e3e"
+              onValueChange={toggleSwitch}
+              value={isEnabled}
+            />
+          </View>
         </>
       ) : (
         <></>

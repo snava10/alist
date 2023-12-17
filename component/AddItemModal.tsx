@@ -8,7 +8,7 @@ import {
   Text,
 } from "react-native";
 import AListItem from "./AListItem";
-import globalStyles from "./GlobalStyles";
+import globalStyles from "./Core/GlobalStyles";
 
 const AddItemModal = (props: {
   item?: AListItem | null;

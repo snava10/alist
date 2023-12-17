@@ -2,7 +2,7 @@ import { View, StyleSheet, Text, Pressable } from "react-native";
 import React, { useEffect, useState } from "react";
 import FacebookLogin from "./FacebookLogin";
 import GoogleLogin from "./GoogleLogin";
-import globalStyles from "../GlobalStyles";
+import globalStyles from "../Core/GlobalStyles";
 
 export type AuthenticationComponentProps = {
   isLoggedIn: boolean;
@@ -32,18 +32,17 @@ export default function AuthenticationComponent({
   });
 
   return _isLoggedIn ? (
-    <></>
+    <View style={{ flex: 1 }}>
+      <View style={styles.child_view}>
+        <Pressable
+          style={[globalStyles.button, globalStyles.button.primary.main]}
+          onPress={logOutFn}
+        >
+          <Text style={globalStyles.button.text.default}>Log Out</Text>
+        </Pressable>
+      </View>
+    </View>
   ) : (
-    // <View style={{ flex: 1 }}>
-    //   <View style={styles.child_view}>
-    //     <Pressable
-    //       style={[globalStyles.button, globalStyles.button.primary.main]}
-    //       onPress={logOutFn}
-    //     >
-    //       <Text style={globalStyles.button.text.default}>Log Out</Text>
-    //     </Pressable>
-    //   </View>
-    // </View>
     <View style={{ flex: 1 }}>
       <View style={styles.child_view}>
         {authProviders.facebook ? <FacebookLogin></FacebookLogin> : <></>}

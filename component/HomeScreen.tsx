@@ -8,9 +8,9 @@ import {
   getItemsCount,
   replaceItem,
   removeItem as storageRemoveItem,
-} from "./Storage";
+} from "./Core/Storage";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import globalStyles from "./GlobalStyles";
+import globalStyles from "./Core/GlobalStyles";
 import analytics from "@react-native-firebase/analytics";
 
 export default function HomeScreen({ user }: any | null) {

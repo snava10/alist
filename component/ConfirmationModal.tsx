@@ -1,5 +1,5 @@
 import { Modal, View, Text, Pressable } from "react-native";
-import globalStyles from "./GlobalStyles";
+import globalStyles from "./Core/GlobalStyles";
 import AListItem from "./AListItem";
 
 const ConfirmationModal = (props: {

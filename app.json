@@ -11,12 +11,11 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "plugins": [
       [
-        "react-native-fbsdk-next", {
+        "react-native-fbsdk-next",
+        {
           "appID": "256292256803627",
           "clientToken": "FB_SDK_CLIENT_TOKEN",
           "displayName": "Alist",
@@ -39,7 +38,6 @@
       },
       "package": "com.acorn.alist",
       "googleServicesFile": "./google-services.json"
-      
     },
     "web": {
       "favicon": "./assets/favicon.ico"

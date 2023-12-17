@@ -5,6 +5,7 @@ import {
   GoogleSignin,
 } from "@react-native-google-signin/google-signin";
 import auth from "@react-native-firebase/auth";
+import { createUserSettings, getUserSettings } from "../Core/Storage";
 
 GoogleSignin.configure({
   webClientId:
@@ -35,7 +36,12 @@ export default function GoogleLogin({ callbackFn }: any) {
         color={GoogleSigninButton.Color.Dark}
         onPress={() =>
           onGoogleButtonPress()
-            .then(() => {
+            .then(async (userCredentials) => {
+              console.log(JSON.stringify(userCredentials));
+              const userSettings = await getUserSettings(
+                userCredentials.user.uid
+              );
+              console.log(JSON.stringify(userSettings));
               callbackFn();
             })
             .catch((error) => console.log("Error " + error))
