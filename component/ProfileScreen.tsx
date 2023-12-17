@@ -3,12 +3,23 @@ import auth from "@react-native-firebase/auth";
 import AuthenticationComponent from "./Login/AuthenticationComponent";
 import { View, Text, Switch } from "react-native";
 import globalStyles from "./Core/GlobalStyles";
-import { isEnabled } from "react-native/Libraries/Performance/Systrace";
+import { BackupCadence } from "./Core/DataModel";
+import { StyleSheet } from "react-native";
+import DropDownPicker from "react-native-dropdown-picker";
 
 export default function ProfileScreen({ route }: any) {
+  const [open, setOpen] = useState(false);
   const [user, setUser] = useState(route.params.user);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
+  const [backupCadence, setBackupCadence] = useState(BackupCadence.DAILY);
+
+  const items = Object.values(BackupCadence).map((i) => {
+    if (i === BackupCadence.INSTANT) {
+      return { label: i, value: i, disabled: true };
+    }
+    return { label: i, value: i };
+  });
 
   useEffect(() => {
     setIsLoggedIn(user && user.displayName);
@@ -30,12 +41,17 @@ export default function ProfileScreen({ route }: any) {
             </View>
           </View>
           <View>
-            <Switch
-              trackColor={{ false: "#767577", true: "#81b0ff" }}
-              thumbColor={isEnabled ? "#f5dd4b" : "#f4f3f4"}
-              ios_backgroundColor="#3e3e3e"
-              onValueChange={toggleSwitch}
-              value={isEnabled}
+            <DropDownPicker
+              open={open}
+              setOpen={setOpen}
+              value={backupCadence}
+              items={items}
+              setValue={setBackupCadence}
+              setItems={() =>
+                Object.values(BackupCadence).map((i) => {
+                  return { label: i, value: i };
+                })
+              }
             />
           </View>
         </>
@@ -62,3 +78,43 @@ export default function ProfileScreen({ route }: any) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: "white",
+    padding: 16,
+  },
+  dropdown: {
+    height: 50,
+    borderColor: "gray",
+    borderWidth: 0.5,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+  },
+  icon: {
+    marginRight: 5,
+  },
+  label: {
+    position: "absolute",
+    backgroundColor: "white",
+    left: 22,
+    top: 8,
+    zIndex: 999,
+    paddingHorizontal: 8,
+    fontSize: 14,
+  },
+  placeholderStyle: {
+    fontSize: 16,
+  },
+  selectedTextStyle: {
+    fontSize: 16,
+  },
+  iconStyle: {
+    width: 20,
+    height: 20,
+  },
+  inputSearchStyle: {
+    height: 40,
+    fontSize: 16,
+  },
+});

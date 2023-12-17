@@ -1,6 +1,6 @@
 import AListItem from "../AListItem";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { UserSettings } from "./DataModel";
+import { BackupCadence, MembershipType, UserSettings } from "./DataModel";
 import firestore from "@react-native-firebase/firestore";
 
 const userSettings = firestore().collection("UserSettings");
@@ -67,23 +67,31 @@ export async function getItemsCount(): Promise<number> {
   return keys.length;
 }
 
-export async function getUserSettings(userId?: string): Promise<any> {
-  return (
-    firestore()
-      .collection("UserSettings")
-      // Filter results
-      .where("userId", "==", userId)
-      .get()
-      .then((querySnapshot) => {
-        if (querySnapshot.empty) return null;
-        return querySnapshot.docs[0].data();
-      })
-  );
+export async function getUserSettings(
+  userId?: string
+): Promise<UserSettings | null> {
+  return firestore()
+    .collection("UserSettings")
+    .where("userId", "==", userId)
+    .get()
+    .then((querySnapshot) => {
+      if (querySnapshot.empty) return null;
+      return querySnapshot.docs[0].data() as UserSettings;
+    });
 }
 
 export async function createUserSettings(
   userId: string
 ): Promise<UserSettings> {
   const userSettings = await getUserSettings(userId);
-  return new Promise((resolve, reject) => {});
+  if (userSettings) return userSettings;
+  const defaultSettings = {
+    userId,
+    backup: BackupCadence.DAILY,
+    membership: MembershipType.FREE,
+  } as UserSettings;
+  return firestore()
+    .collection("UserSettings")
+    .add(defaultSettings)
+    .then(() => defaultSettings);
 }

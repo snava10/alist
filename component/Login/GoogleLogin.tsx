@@ -37,8 +37,7 @@ export default function GoogleLogin({ callbackFn }: any) {
         onPress={() =>
           onGoogleButtonPress()
             .then(async (userCredentials) => {
-              console.log(JSON.stringify(userCredentials));
-              const userSettings = await getUserSettings(
+              const userSettings = await createUserSettings(
                 userCredentials.user.uid
               );
               console.log(JSON.stringify(userSettings));
