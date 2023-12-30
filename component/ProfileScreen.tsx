@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import auth from "@react-native-firebase/auth";
 import AuthenticationComponent from "./Login/AuthenticationComponent";
-import { View, Text, Switch } from "react-native";
+import { View, Text } from "react-native";
 import globalStyles from "./Core/GlobalStyles";
 import { BackupCadence } from "./Core/DataModel";
 import { StyleSheet } from "react-native";
@@ -25,56 +25,95 @@ export default function ProfileScreen({ route }: any) {
     setIsLoggedIn(user && user.displayName);
   });
 
-  function toggleSwitch() {
-    setIsEnabled(!isEnabled);
-  }
-
   return (
-    <View style={{ flex: 1 }}>
+    <View
+      style={[
+        globalStyles.container,
+        { paddingHorizontal: 10, alignItems: "center" },
+      ]}
+    >
       {isLoggedIn && user ? (
         <>
-          <View style={[globalStyles.container, { flex: 3 }]}>
-            <View style={{ justifyContent: "flex-start", marginTop: 10 }}>
-              <Text style={{ fontWeight: "bold", fontSize: 20 }}>
-                {user.displayName}
-              </Text>
+          <View
+            style={
+              (globalStyles.profileBannerContainer,
+              [{ flex: 0.2, justifyContent: "center", alignItems: "center" }])
+            }
+          >
+            <Text style={{ fontWeight: "bold", fontSize: 20 }}>
+              {user.displayName}
+            </Text>
+          </View>
+          <View
+            style={{
+              flex: 0.8,
+              flexDirection: "row",
+              justifyContent: "center",
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                backgroundColor: "#f0f0f0",
+                width: 350,
+                borderRadius: 8,
+                padding: 10,
+                height: 70,
+                alignContent: "space-between",
+              }}
+            >
+              <View style={{ flex: 0.5, justifyContent: "center" }}>
+                <Text style={globalStyles.profileTextLabel}>Backup</Text>
+              </View>
+              <View style={{ flex: 0.5, justifyContent: "center" }}>
+                <DropDownPicker
+                  open={open}
+                  setOpen={setOpen}
+                  value={backupCadence}
+                  items={items}
+                  setValue={setBackupCadence}
+                />
+              </View>
             </View>
           </View>
-          <View>
-            <DropDownPicker
-              open={open}
-              setOpen={setOpen}
-              value={backupCadence}
-              items={items}
-              setValue={setBackupCadence}
-              setItems={() =>
-                Object.values(BackupCadence).map((i) => {
-                  return { label: i, value: i };
-                })
-              }
-            />
-          </View>
+
+          {/* <View style={{ flex: 0.2 }}>
+            <AuthenticationComponent
+              isLoggedIn={isLoggedIn}
+              successCallbackFn={() => {
+                setUser(auth().currentUser);
+              }}
+              logOutFn={() => {
+                setIsLoggedIn(false);
+                auth().signOut();
+                setUser(null);
+              }}
+              authProviders={{
+                google: true,
+                allowAnonymous: false,
+              }}
+            ></AuthenticationComponent>
+          </View> */}
         </>
       ) : (
-        <></>
+        <View style={{ flex: 1 }}>
+          <AuthenticationComponent
+            isLoggedIn={isLoggedIn}
+            successCallbackFn={() => {
+              setUser(auth().currentUser);
+            }}
+            logOutFn={() => {
+              setIsLoggedIn(false);
+              auth().signOut();
+              setUser(null);
+            }}
+            authProviders={{
+              google: true,
+              allowAnonymous: false,
+            }}
+          ></AuthenticationComponent>
+        </View>
       )}
-      <View style={{ flex: 1 }}>
-        <AuthenticationComponent
-          isLoggedIn={isLoggedIn}
-          successCallbackFn={() => {
-            setUser(auth().currentUser);
-          }}
-          logOutFn={() => {
-            setIsLoggedIn(false);
-            auth().signOut();
-            setUser(null);
-          }}
-          authProviders={{
-            google: true,
-            allowAnonymous: false,
-          }}
-        ></AuthenticationComponent>
-      </View>
     </View>
   );
 }

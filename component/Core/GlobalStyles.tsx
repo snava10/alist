@@ -74,6 +74,11 @@ const globalStyles = StyleSheet.create({
     elevation: 5,
   },
   container: {
+    backgroundColor: "#fff",
+    flex: 1,
+  },
+  profileBannerContainer: {
+    backgroundColor: "#fff",
     paddingTop: 10,
     flexDirection: "column",
     alignItems: "center",
@@ -98,6 +103,11 @@ const globalStyles = StyleSheet.create({
     color: "gray",
   },
   profileTextBanner: {},
+  profileTextLabel: {
+    fontSize: 20,
+    // marginHorizontal: 5,
+    // marginVertical: 5,
+  },
 });
 
 export default globalStyles;
