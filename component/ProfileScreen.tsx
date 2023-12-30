@@ -6,6 +6,7 @@ import globalStyles from "./Core/GlobalStyles";
 import { BackupCadence } from "./Core/DataModel";
 import { StyleSheet } from "react-native";
 import DropDownPicker from "react-native-dropdown-picker";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 export default function ProfileScreen({ route }: any) {
   const [open, setOpen] = useState(false);
@@ -16,7 +17,12 @@ export default function ProfileScreen({ route }: any) {
 
   const items = Object.values(BackupCadence).map((i) => {
     if (i === BackupCadence.INSTANT) {
-      return { label: i, value: i, disabled: true };
+      return {
+        label: i,
+        value: i,
+        disabled: true,
+        icon: () => <Ionicons name="ribbon" />,
+      };
     }
     return { label: i, value: i };
   });
@@ -72,6 +78,9 @@ export default function ProfileScreen({ route }: any) {
                   value={backupCadence}
                   items={items}
                   setValue={setBackupCadence}
+                  disabledItemContainerStyle={{
+                    backgroundColor: "#f0f0f0",
+                  }}
                 />
               </View>
             </View>
