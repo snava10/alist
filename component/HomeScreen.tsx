@@ -4,6 +4,7 @@ import AListItem from "./AListItem";
 import AddItemModal from "./AddItemModal";
 import ConfirmationModal from "./ConfirmationModal";
 import {
+  addTimestampToItems,
   getItems,
   getItemsCount,
   replaceItem,
@@ -24,7 +25,9 @@ export default function HomeScreen({ user }: any | null) {
 
   const loadItemsFromLocalStorage = async (st: string) => {
     try {
-      getItems(st).then((items) => {
+      getItems(st).then(async (items) => {
+        console.log(JSON.stringify(items));
+        await addTimestampToItems(items);
         setAListItems(items);
       });
       getItemsCount().then((itemsCount) => {

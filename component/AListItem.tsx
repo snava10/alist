@@ -6,6 +6,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 type AListItem = {
   name: string;
   value: string;
+  timestamp: number;
 };
 
 const AListItem = (props: {

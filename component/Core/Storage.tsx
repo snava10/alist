@@ -4,11 +4,15 @@ import { BackupCadence, MembershipType, UserSettings } from "./DataModel";
 import firestore from "@react-native-firebase/firestore";
 
 const userSettings = firestore().collection("UserSettings");
+const decode = (str: string): string =>
+  Buffer.from(str, "base64").toString("binary");
+const encode = (str: string): string =>
+  Buffer.from(str, "binary").toString("base64");
 
-export async function getItem(key: string): Promise<AListItem> {
-  const value = await AsyncStorage.getItem(key);
+export async function getItem(id: string): Promise<AListItem | null> {
+  const value = await AsyncStorage.getItem(id);
   if (value === null) {
-    return new Promise(() => null);
+    return null;
   }
   var res: AListItem | null = null;
   try {
@@ -16,9 +20,22 @@ export async function getItem(key: string): Promise<AListItem> {
   } catch (e) {
     console.log(e);
   }
-  return new Promise(() => {
-    return res;
-  });
+  return res;
+}
+
+export async function addTimestampToItems(
+  items: Array<AListItem>
+): Promise<void[]> {
+  console.log("Add timestamp to items");
+  return Promise.all(
+    items.map((item) => {
+      return replaceItem(item, {
+        name: item.name,
+        value: item.value,
+        timestamp: Date.now(),
+      });
+    })
+  );
 }
 
 export async function getAllItems(): Promise<Array<AListItem>> {
@@ -52,8 +69,16 @@ export async function saveItem(item: AListItem) {
   await AsyncStorage.setItem("_ali_" + item.name, JSON.stringify(item));
 }
 
-export async function replaceItem(old: AListItem, newItem: AListItem) {
-  await Promise.all([removeItem(old), saveItem(newItem)]);
+export async function replaceItem(
+  old: AListItem,
+  newItem: AListItem,
+  timestamp: boolean = true
+) {
+  await removeItem(old);
+  if (timestamp) {
+    newItem.timestamp = Date.now();
+  }
+  await saveItem(newItem);
 }
 
 export async function removeItem(item: AListItem) {
@@ -95,3 +120,5 @@ export async function createUserSettings(
     .add(defaultSettings)
     .then(() => defaultSettings);
 }
+
+export async function syncData(): Promise<void> {}
