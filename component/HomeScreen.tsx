@@ -78,7 +78,7 @@ export default function HomeScreen({ route }: any) {
       syncData(user.uid)
         .then((items) => {
           console.log("Data sync completed ", JSON.stringify(items));
-          if (items) {
+          if (items.length > 0) {
             setAListItems(items);
           }
         })
