@@ -5,6 +5,7 @@ import AddItemModal from "./AddItemModal";
 import ConfirmationModal from "./ConfirmationModal";
 import {
   addTimestampToItems,
+  createUserSettings,
   getItems,
   getItemsCount,
   pullItem,
@@ -18,6 +19,7 @@ import globalStyles from "./Core/GlobalStyles";
 import analytics from "@react-native-firebase/analytics";
 
 export default function HomeScreen({ route }: any) {
+  const [oneOffCorrections, setOneOffCorrections] = useState(false);
   const [user, setUser] = useState(route.params.user);
   const [alistItems, setAListItems] = useState([] as AListItem[]);
   const [itemsCount, setItemsCount] = useState(0);
@@ -30,13 +32,6 @@ export default function HomeScreen({ route }: any) {
   const loadItemsFromLocalStorage = async (st: string) => {
     try {
       getItems(st).then(async (items) => {
-        console.log(JSON.stringify(items));
-        await addTimestampToItems(items);
-        if (user && !user.isAnonymous) {
-          console.log(JSON.stringify(user));
-          syncData(user.uid);
-        }
-
         setAListItems(items);
       });
       getItemsCount().then((itemsCount) => {
@@ -72,6 +67,20 @@ export default function HomeScreen({ route }: any) {
 
   useEffect(() => {
     loadItemsFromLocalStorage(searchText);
+    if (user && !user.isAnonymous) {
+      syncData(user.uid).then(() => console.log("Data sync completed"));
+    }
+    if (!oneOffCorrections) {
+      if (user && !user.isAnonymous) {
+        createUserSettings(user.uid).then(() =>
+          console.log("User settings created")
+        );
+      }
+      addTimestampToItems().then(() => {
+        console.log("Add timestamps executed");
+        setOneOffCorrections(true);
+      });
+    }
   }, []);
 
   return (

@@ -23,18 +23,18 @@ export async function getItem(id: string): Promise<AListItem | null> {
   return res;
 }
 
-export async function addTimestampToItems(
-  items: Array<AListItem>
-): Promise<void[]> {
+export async function addTimestampToItems(): Promise<void[]> {
   console.log("Add timestamp to items");
   return Promise.all(
-    items.map((item) => {
-      return replaceItem(item, {
-        name: item.name,
-        value: item.value,
-        timestamp: Date.now(),
-      });
-    })
+    (await getAllItems())
+      .filter((item) => !item.timestamp)
+      .map((item) => {
+        return replaceItem(item, {
+          name: item.name,
+          value: item.value,
+          timestamp: Date.now(),
+        });
+      })
   );
 }
 
@@ -97,11 +97,10 @@ export async function getUserSettings(
 ): Promise<UserSettings | null> {
   return firestore()
     .collection("UserSettings")
-    .where("userId", "==", userId)
+    .doc(userId)
     .get()
-    .then((querySnapshot) => {
-      if (querySnapshot.empty) return null;
-      return querySnapshot.docs[0].data() as UserSettings;
+    .then((doc) => {
+      return doc.data() as UserSettings;
     });
 }
 
@@ -117,7 +116,8 @@ export async function createUserSettings(
   } as UserSettings;
   return firestore()
     .collection("UserSettings")
-    .add(defaultSettings)
+    .doc(userId)
+    .set(defaultSettings)
     .then(() => defaultSettings);
 }
 
@@ -126,7 +126,6 @@ const compareItems = (a: AListItem, b: AListItem) =>
 
 export async function syncData(userId: string): Promise<void> {
   const lastSync = parseInt((await AsyncStorage.getItem("lastSync")) ?? "0");
-  console.log("Last sync ", lastSync);
   const twentyFourHoursInMillis = 24 * 60 * 60 * 1000;
   if (Date.now() - lastSync < twentyFourHoursInMillis) {
     return;
@@ -164,7 +163,6 @@ export async function syncData(userId: string): Promise<void> {
     }
   }
 
-  console.log("Merge Items ", JSON.stringify(mergedItems));
   return Promise.all(
     mergedItems.map(async (item) => {
       await replaceItem(item, item);

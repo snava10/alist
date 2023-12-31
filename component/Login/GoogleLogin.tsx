@@ -5,7 +5,7 @@ import {
   GoogleSignin,
 } from "@react-native-google-signin/google-signin";
 import auth from "@react-native-firebase/auth";
-import { createUserSettings, getUserSettings } from "../Core/Storage";
+import { createUserSettings } from "../Core/Storage";
 
 GoogleSignin.configure({
   webClientId:
