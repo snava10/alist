@@ -62,23 +62,27 @@ export default function HomeScreen({ route }: any) {
   useEffect(() => {
     loadItemsFromLocalStorage(searchText);
     if (user && !user.isAnonymous) {
-      syncData(user.uid).then((items) => {
-        console.log("Data sync completed ", JSON.stringify(items));
-        if (items) {
-          setAListItems(items);
-        }
-      });
+      syncData(user.uid)
+        .then((items) => {
+          console.log("Data sync completed ", JSON.stringify(items));
+          if (items) {
+            setAListItems(items);
+          }
+        })
+        .catch((error) => console.log("Data sync", error));
     }
     if (!oneOffCorrections) {
       if (user && !user.isAnonymous) {
-        createUserSettings(user.uid).then(() =>
-          console.log("User settings created")
-        );
+        createUserSettings(user.uid)
+          .then(() => console.log("User settings created"))
+          .catch((error) => console.log("User settings ", error));
       }
-      addTimestampToItems().then(() => {
-        console.log("Add timestamps executed");
-        setOneOffCorrections(true);
-      });
+      addTimestampToItems()
+        .then(() => {
+          console.log("Add timestamps executed");
+          setOneOffCorrections(true);
+        })
+        .catch((error) => console.log("Add timestamps ", error));
     }
   }, []);
 

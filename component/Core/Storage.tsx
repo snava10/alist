@@ -2,12 +2,7 @@ import AListItem from "../AListItem";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BackupCadence, MembershipType, UserSettings } from "./DataModel";
 import firestore from "@react-native-firebase/firestore";
-
-const userSettings = firestore().collection("UserSettings");
-const decode = (str: string): string =>
-  Buffer.from(str, "base64").toString("binary");
-const encode = (str: string): string =>
-  Buffer.from(str, "binary").toString("base64");
+import base64 from "react-native-base64";
 
 export async function getItem(id: string): Promise<AListItem | null> {
   const value = await AsyncStorage.getItem(id);
@@ -129,7 +124,7 @@ const compareItems = (a: AListItem, b: AListItem) =>
 export async function syncData(userId: string): Promise<Array<AListItem>> {
   const lastSync = parseInt((await AsyncStorage.getItem("lastSync")) ?? "0");
   const twentyFourHoursInMillis = 24 * 60 * 60 * 1000;
-  if (Date.now() - lastSync < twentyFourHoursInMillis) {
+  if (Date.now() - lastSync < 1) {
     return [];
   }
 
@@ -177,11 +172,11 @@ export async function syncData(userId: string): Promise<Array<AListItem>> {
 }
 
 export async function pushItem(item: AListItem, userId: string) {
-  // item.value = encode(item.value);
+  const encodedValue = base64.encode(item.value);
   firestore()
     .collection("Items")
     .doc(`${userId}_${item.name}`)
-    .set({ ...item, userId })
+    .set({ ...item, userId, value: encodedValue })
     .then(() => console.log("Item saved to firebase ", JSON.stringify(item)));
 }
 
@@ -192,7 +187,11 @@ export async function pullItems(userId: string): Promise<Array<AListItem>> {
     .get()
     .then((querySnapshot) => {
       if (querySnapshot.empty) return [];
-      return querySnapshot.docs.map((d) => d.data() as AListItem);
+      return querySnapshot.docs.map((d) => {
+        const item = d.data() as AListItem;
+        item.value = base64.decode(item.value);
+        return item;
+      });
     });
 }
 
