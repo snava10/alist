@@ -8,11 +8,11 @@ import {
   Text,
 } from "react-native";
 import AListItem from "./AListItem";
-import globalStyles from "./GlobalStyles";
+import globalStyles from "./Core/GlobalStyles";
 
 const AddItemModal = (props: {
   item?: AListItem | null;
-  saveItem: any;
+  saveItem: (oldItem: AListItem, newItem: AListItem) => void;
   hideModal: any;
   showModal: any;
   visible: boolean;
@@ -21,13 +21,15 @@ const AddItemModal = (props: {
   const [value, setValue] = useState(
     props.item !== null ? props.item?.value : ""
   );
-  const [oldName] = useState(props.item !== null ? props.item?.name : null);
-  const [oldValue] = useState(props.item !== null ? props.item?.value : null);
+  const oldItem = props.item ?? {
+    name: "",
+    value: "",
+    timestamp: Date.now(),
+  };
 
   const handleSave = () => {
-    const oldItem = oldName === null ? null : { oldName, oldValue };
     if (name && value) {
-      props.saveItem({ name: oldItem?.oldName, value: oldItem?.oldValue }, {
+      props.saveItem(oldItem, {
         name,
         value,
       } as AListItem);

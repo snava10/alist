@@ -4,18 +4,22 @@ import AListItem from "./AListItem";
 import AddItemModal from "./AddItemModal";
 import ConfirmationModal from "./ConfirmationModal";
 import {
+  addTimestampToItems,
+  createUserSettings,
   getItems,
   getItemsCount,
   replaceItem,
   removeItem as storageRemoveItem,
-} from "./Storage";
+  syncData,
+} from "./Core/Storage";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import globalStyles from "./GlobalStyles";
+import globalStyles from "./Core/GlobalStyles";
 import analytics from "@react-native-firebase/analytics";
 
-export default function HomeScreen({ user }: any | null) {
+export default function HomeScreen({ route }: any) {
+  const [oneOffCorrections, setOneOffCorrections] = useState(false);
+  const [user, setUser] = useState(route.params.user);
   const [alistItems, setAListItems] = useState([] as AListItem[]);
-  const [itemsCount, setItemsCount] = useState(0);
   const [selectedItem, setSelectedItem] = useState(null as AListItem | null);
   const [modalVisible, setModalVisible] = useState(false);
   const [confirmationModalVisible, setConfirmationModalVisible] =
@@ -24,11 +28,8 @@ export default function HomeScreen({ user }: any | null) {
 
   const loadItemsFromLocalStorage = async (st: string) => {
     try {
-      getItems(st).then((items) => {
+      getItems(st).then(async (items) => {
         setAListItems(items);
-      });
-      getItemsCount().then((itemsCount) => {
-        setItemsCount(itemsCount);
       });
     } catch (e) {
       console.log(e);
@@ -60,11 +61,34 @@ export default function HomeScreen({ user }: any | null) {
 
   useEffect(() => {
     loadItemsFromLocalStorage(searchText);
+    if (!oneOffCorrections) {
+      if (user && !user.isAnonymous) {
+        createUserSettings(user.uid)
+          .then(() => console.log("User settings created"))
+          .catch((error) => console.log("User settings ", error));
+      }
+      addTimestampToItems()
+        .then(() => {
+          console.log("Add timestamps executed");
+          setOneOffCorrections(true);
+        })
+        .catch((error) => console.log("Add timestamps ", error));
+    }
+    if (user && !user.isAnonymous) {
+      syncData(user.uid)
+        .then((items) => {
+          console.log("Data sync completed ", JSON.stringify(items));
+          if (items.length > 0) {
+            setAListItems(items);
+          }
+        })
+        .catch((error) => console.log("Data sync", error));
+    }
   }, []);
 
   return (
     <View style={styles.container}>
-      {itemsCount > 0 ? (
+      {alistItems.length > 0 ? (
         <View style={{ alignSelf: "stretch", flex: 0.8, marginBottom: 20 }}>
           <View style={{ paddingLeft: 16, paddingRight: 16 }}>
             <View style={[globalStyles.searchContainer]}>
