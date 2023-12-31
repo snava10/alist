@@ -7,14 +7,18 @@ import {
   addTimestampToItems,
   getItems,
   getItemsCount,
+  pullItem,
+  pushItem,
   replaceItem,
   removeItem as storageRemoveItem,
+  syncData,
 } from "./Core/Storage";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import globalStyles from "./Core/GlobalStyles";
 import analytics from "@react-native-firebase/analytics";
 
-export default function HomeScreen({ user }: any | null) {
+export default function HomeScreen({ route }: any) {
+  const [user, setUser] = useState(route.params.user);
   const [alistItems, setAListItems] = useState([] as AListItem[]);
   const [itemsCount, setItemsCount] = useState(0);
   const [selectedItem, setSelectedItem] = useState(null as AListItem | null);
@@ -28,6 +32,11 @@ export default function HomeScreen({ user }: any | null) {
       getItems(st).then(async (items) => {
         console.log(JSON.stringify(items));
         await addTimestampToItems(items);
+        if (user && !user.isAnonymous) {
+          console.log(JSON.stringify(user));
+          syncData(user.uid);
+        }
+
         setAListItems(items);
       });
       getItemsCount().then((itemsCount) => {

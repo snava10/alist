@@ -7,6 +7,7 @@ type AListItem = {
   name: string;
   value: string;
   timestamp: number;
+  userId?: string;
 };
 
 const AListItem = (props: {

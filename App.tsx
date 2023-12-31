@@ -79,6 +79,7 @@ function HomeTabScreen(props: any) {
       <Tab.Screen
         name="Home"
         component={HomeScreen}
+        initialParams={props.route.params}
         options={{
           tabBarLabel: "Home",
           tabBarIcon: ({ color, size }) => (

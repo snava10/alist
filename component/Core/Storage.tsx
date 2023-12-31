@@ -121,4 +121,91 @@ export async function createUserSettings(
     .then(() => defaultSettings);
 }
 
-export async function syncData(): Promise<void> {}
+const compareItems = (a: AListItem, b: AListItem) =>
+  a.name.localeCompare(b.name);
+
+export async function syncData(userId: string): Promise<void> {
+  const lastSync = parseInt((await AsyncStorage.getItem("lastSync")) ?? "0");
+  console.log("Last sync ", lastSync);
+  const twentyFourHoursInMillis = 24 * 60 * 60 * 1000;
+  if (Date.now() - lastSync < twentyFourHoursInMillis) {
+    return;
+  }
+
+  const localItems = (await getAllItems()).sort(compareItems);
+  const remoteItems = (await pullItems(userId)).sort(compareItems);
+  const mergedItems: Array<AListItem> = [];
+
+  while (localItems.length > 0 || remoteItems.length > 0) {
+    const local = localItems.shift();
+    const remote = remoteItems.shift();
+    if (!local) {
+      mergedItems.push(remote as AListItem);
+      continue;
+    }
+    if (!remote) {
+      mergedItems.push(local as AListItem);
+      continue;
+    }
+
+    if (compareItems(local, remote) < 0) {
+      mergedItems.push(local);
+      remoteItems.unshift(remote);
+    } else if (compareItems(local, remote) > 0) {
+      mergedItems.push(remote);
+      localItems.unshift(local);
+    } else {
+      // The same item. Compare timestamps
+      if (local.timestamp > remote.timestamp) {
+        mergedItems.push(local);
+      } else {
+        mergedItems.push(remote);
+      }
+    }
+  }
+
+  console.log("Merge Items ", JSON.stringify(mergedItems));
+  return Promise.all(
+    mergedItems.map(async (item) => {
+      await replaceItem(item, item);
+      await pushItem(item, userId);
+    })
+  ).then(() => {
+    AsyncStorage.setItem("lastSync", Date.now().toString());
+  });
+}
+
+export async function pushItem(item: AListItem, userId: string) {
+  firestore()
+    .collection("Items")
+    .doc(`${userId}_${item.name}`)
+    .set({ ...item, userId })
+    .then(() => console.log("Item saved to firebase ", JSON.stringify(item)));
+}
+
+export async function pullItems(userId: string): Promise<Array<AListItem>> {
+  return firestore()
+    .collection("Items")
+    .where("userId", "==", userId)
+    .get()
+    .then((querySnapshot) => {
+      if (querySnapshot.empty) return [];
+      return querySnapshot.docs.map((d) => d.data() as AListItem);
+    });
+}
+
+export async function pullItem(
+  item: AListItem,
+  userId: string
+): Promise<AListItem> {
+  const doc = await firestore()
+    .collection("Items")
+    .doc(`${userId}_${item.name}`)
+    .get();
+  return doc.data() as AListItem;
+}
+
+export async function syncItem(item: AListItem, userSettings: UserSettings) {
+  // Get the item from firestore
+  const incoming = firestore().collection("Items").doc();
+}
