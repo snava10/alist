@@ -8,8 +8,6 @@ import {
   createUserSettings,
   getItems,
   getItemsCount,
-  pullItem,
-  pushItem,
   replaceItem,
   removeItem as storageRemoveItem,
   syncData,
@@ -22,7 +20,6 @@ export default function HomeScreen({ route }: any) {
   const [oneOffCorrections, setOneOffCorrections] = useState(false);
   const [user, setUser] = useState(route.params.user);
   const [alistItems, setAListItems] = useState([] as AListItem[]);
-  const [itemsCount, setItemsCount] = useState(0);
   const [selectedItem, setSelectedItem] = useState(null as AListItem | null);
   const [modalVisible, setModalVisible] = useState(false);
   const [confirmationModalVisible, setConfirmationModalVisible] =
@@ -33,9 +30,6 @@ export default function HomeScreen({ route }: any) {
     try {
       getItems(st).then(async (items) => {
         setAListItems(items);
-      });
-      getItemsCount().then((itemsCount) => {
-        setItemsCount(itemsCount);
       });
     } catch (e) {
       console.log(e);
@@ -68,7 +62,12 @@ export default function HomeScreen({ route }: any) {
   useEffect(() => {
     loadItemsFromLocalStorage(searchText);
     if (user && !user.isAnonymous) {
-      syncData(user.uid).then(() => console.log("Data sync completed"));
+      syncData(user.uid).then((items) => {
+        console.log("Data sync completed ", JSON.stringify(items));
+        if (items) {
+          setAListItems(items);
+        }
+      });
     }
     if (!oneOffCorrections) {
       if (user && !user.isAnonymous) {
@@ -85,7 +84,7 @@ export default function HomeScreen({ route }: any) {
 
   return (
     <View style={styles.container}>
-      {itemsCount > 0 ? (
+      {alistItems.length > 0 ? (
         <View style={{ alignSelf: "stretch", flex: 0.8, marginBottom: 20 }}>
           <View style={{ paddingLeft: 16, paddingRight: 16 }}>
             <View style={[globalStyles.searchContainer]}>

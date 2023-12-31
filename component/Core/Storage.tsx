@@ -88,7 +88,9 @@ export async function removeItem(item: AListItem) {
 }
 
 export async function getItemsCount(): Promise<number> {
-  const keys = await AsyncStorage.getAllKeys();
+  const keys = (await AsyncStorage.getAllKeys()).filter((k) =>
+    k.startsWith("_ali_")
+  );
   return keys.length;
 }
 
@@ -124,11 +126,11 @@ export async function createUserSettings(
 const compareItems = (a: AListItem, b: AListItem) =>
   a.name.localeCompare(b.name);
 
-export async function syncData(userId: string): Promise<void> {
+export async function syncData(userId: string): Promise<Array<AListItem>> {
   const lastSync = parseInt((await AsyncStorage.getItem("lastSync")) ?? "0");
   const twentyFourHoursInMillis = 24 * 60 * 60 * 1000;
   if (Date.now() - lastSync < twentyFourHoursInMillis) {
-    return;
+    return [];
   }
 
   const localItems = (await getAllItems()).sort(compareItems);
@@ -170,10 +172,12 @@ export async function syncData(userId: string): Promise<void> {
     })
   ).then(() => {
     AsyncStorage.setItem("lastSync", Date.now().toString());
+    return mergedItems;
   });
 }
 
 export async function pushItem(item: AListItem, userId: string) {
+  // item.value = encode(item.value);
   firestore()
     .collection("Items")
     .doc(`${userId}_${item.name}`)
