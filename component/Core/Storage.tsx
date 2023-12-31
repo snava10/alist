@@ -19,7 +19,6 @@ export async function getItem(id: string): Promise<AListItem | null> {
 }
 
 export async function addTimestampToItems(): Promise<void[]> {
-  console.log("Add timestamp to items");
   return Promise.all(
     (await getAllItems())
       .filter((item) => !item.timestamp)
