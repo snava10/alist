@@ -123,8 +123,16 @@ const compareItems = (a: AListItem, b: AListItem) =>
 
 export async function syncData(userId: string): Promise<Array<AListItem>> {
   const lastSync = parseInt((await AsyncStorage.getItem("lastSync")) ?? "0");
-  const twentyFourHoursInMillis = 24 * 60 * 60 * 1000;
-  if (Date.now() - lastSync < twentyFourHoursInMillis) {
+  const userSettings = await getUserSettings(userId);
+  let intervalInMillis = 24 * 60 * 60 * 1000;
+
+  if (userSettings?.backup === BackupCadence.NONE) {
+    return [];
+  } else if (userSettings?.backup === BackupCadence.INSTANT) {
+    intervalInMillis = 0;
+  }
+
+  if (Date.now() - lastSync < intervalInMillis) {
     return [];
   }
 
