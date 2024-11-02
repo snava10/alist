@@ -2,7 +2,7 @@
   "expo": {
     "name": "Agus List",
     "slug": "alist",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "orientation": "portrait",
     "icon": "./assets/android-icon-48x48.png",
     "userInterfaceStyle": "light",
