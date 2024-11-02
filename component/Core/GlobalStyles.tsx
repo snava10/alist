@@ -73,10 +73,6 @@ const globalStyles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  container: {
-    backgroundColor: "#fff",
-    flex: 1,
-  },
   profileBannerContainer: {
     backgroundColor: "#fff",
     paddingTop: 10,

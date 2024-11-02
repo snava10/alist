@@ -9,6 +9,9 @@ import LoginScreen, {
   LoginScreenProperties,
 } from "./component/Login/LoginScreen";
 import auth from "@react-native-firebase/auth";
+import {
+  SafeAreaProvider,
+} from 'react-native-safe-area-context';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -44,6 +47,7 @@ export default function App() {
   }, []);
 
   return (
+    <SafeAreaProvider>
     <NavigationContainer>
       <Stack.Navigator screenOptions={({ route }) => ({ headerShown: false })}>
         {isLoggedIn ? (
@@ -70,6 +74,7 @@ export default function App() {
         )}
       </Stack.Navigator>
     </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
 

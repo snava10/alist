@@ -7,6 +7,7 @@ import { BackupCadence } from "./Core/DataModel";
 import { StyleSheet } from "react-native";
 import DropDownPicker from "react-native-dropdown-picker";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ProfileScreen({ route }: any) {
   const [open, setOpen] = useState(false);
@@ -27,6 +28,8 @@ export default function ProfileScreen({ route }: any) {
     return { label: i, value: i };
   });
 
+  const insets = useSafeAreaInsets();
+
   useEffect(() => {
     setIsLoggedIn(user && user.displayName);
   });
@@ -34,8 +37,14 @@ export default function ProfileScreen({ route }: any) {
   return (
     <View
       style={[
-        globalStyles.container,
-        { paddingHorizontal: 10, alignItems: "center" },
+        { paddingHorizontal: 10, alignItems: "center",
+          flex: 1,
+          backgroundColor: "#fff",
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+          paddingLeft: insets.left,
+          paddingRight: insets.right
+        },
       ]}
     >
       {isLoggedIn && user ? (

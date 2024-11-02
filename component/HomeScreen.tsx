@@ -7,7 +7,6 @@ import {
   addTimestampToItems,
   createUserSettings,
   getItems,
-  getItemsCount,
   replaceItem,
   removeItem as storageRemoveItem,
   syncData,
@@ -15,6 +14,11 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import globalStyles from "./Core/GlobalStyles";
 import analytics from "@react-native-firebase/analytics";
+import {
+  EdgeInsets,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
+
 
 export default function HomeScreen({ route }: any) {
   const [oneOffCorrections, setOneOffCorrections] = useState(false);
@@ -59,6 +63,8 @@ export default function HomeScreen({ route }: any) {
     loadItemsFromLocalStorage("");
   };
 
+  const insets = useSafeAreaInsets();
+
   useEffect(() => {
     loadItemsFromLocalStorage(searchText);
     if (!oneOffCorrections) {
@@ -85,6 +91,8 @@ export default function HomeScreen({ route }: any) {
         .catch((error) => console.log("Data sync", error));
     }
   }, []);
+
+  const styles = getStyles(insets);
 
   return (
     <View style={styles.container}>
@@ -203,10 +211,14 @@ export default function HomeScreen({ route }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (insets: EdgeInsets) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+    paddingTop: insets.top,
+    paddingBottom: insets.bottom,
+    paddingLeft: insets.left,
+    paddingRight: insets.right
   },
   item: {
     padding: 10,
