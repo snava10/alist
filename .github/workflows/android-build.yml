@@ -1,27 +1,36 @@
 name: Build React Native App
 
-on:
-  push:
-    branches:
-      - master
-      - main
-  pull_request:
-    branches:
-      - master
-      - main
+
 
 jobs:
   android-build:
+    on:
+      push:
+        branches:
+          - master
+          - main
+      pull_request:
+        branches:
+          - master
+          - main
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+
+    - name: Java Setup
+    - uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin' # See 'Supported distributions' for available options
+        java-version: '17'
 
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
         node-version: '20'
+
+
 
     - name: Setup EAS
       uses: expo/expo-github-action@v8
