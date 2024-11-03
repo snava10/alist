@@ -1,9 +1,9 @@
 name: update
+on:
+  release
 
 jobs:
   android-publish:
-    on:
-      release
     name: Android build and publish
     runs-on: ubuntu-latest
     steps:

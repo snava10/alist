@@ -1,18 +1,18 @@
 name: Build React Native App
 
-
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    branches:
+      - master
+      - main
 
 jobs:
   android-build:
-    on:
-      push:
-        branches:
-          - master
-          - main
-      pull_request:
-        branches:
-          - master
-          - main
+
     runs-on: ubuntu-latest
 
     steps:
@@ -29,8 +29,6 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: '20'
-
-
 
     - name: Setup EAS
       uses: expo/expo-github-action@v8
