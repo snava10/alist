@@ -19,3 +19,4 @@ android
 *.aab
 update.yml
 ios
+*.apk
