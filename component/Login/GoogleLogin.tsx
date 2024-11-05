@@ -3,6 +3,7 @@ import { View } from "react-native";
 import {
   GoogleSigninButton,
   GoogleSignin,
+  SignInSuccessResponse,
 } from "@react-native-google-signin/google-signin";
 import auth from "@react-native-firebase/auth";
 import { createUserSettings } from "../Core/Storage";
@@ -19,13 +20,15 @@ async function onGoogleButtonPress() {
   // Check if your device supports Google Play
   await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
   // Get the users ID token
-  const { idToken } = await GoogleSignin.signIn();
+  var response = await GoogleSignin.signIn();
+  if (response.type == "success") {
+    // Create a Google credential with the token
+    response = response as SignInSuccessResponse
+    const googleCredential = auth.GoogleAuthProvider.credential(response.data.idToken);
 
-  // Create a Google credential with the token
-  const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-
-  // Sign-in the user with the credential
-  return auth().signInWithCredential(googleCredential);
+    // Sign-in the user with the credential
+    return auth().signInWithCredential(googleCredential);
+  }
 }
 
 export default function GoogleLogin({ callbackFn }: any) {
@@ -37,16 +40,21 @@ export default function GoogleLogin({ callbackFn }: any) {
         onPress={() =>
           onGoogleButtonPress()
             .then(async (userCredentials) => {
-              const userSettings = await createUserSettings(
-                userCredentials.user.uid
-              );
-              console.log(JSON.stringify(userSettings));
-              callbackFn();
+              if (userCredentials) {
+                const userSettings = await createUserSettings(
+                  userCredentials.user.uid
+                );
+                console.log(JSON.stringify(userSettings));
+                callbackFn();
+              } else {
+                console.error("Error: User credentials are null")
+              }
             })
-            .catch((error) => console.log("Error " + error))
+            .catch((error) => console.error("Error " + error))
         }
         // disabled={isInProgress}
       />
     </View>
   );
 }
+     
