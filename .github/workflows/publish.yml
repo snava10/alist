@@ -1,6 +1,7 @@
 name: update
 on:
-  release
+  release:
+    types: [created]
 
 jobs:
   android-publish:
