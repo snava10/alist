@@ -4,8 +4,8 @@ on:
     types: [created]
 
 jobs:
-  android-publish:
-    name: Android build and publish
+  publish:
+    name: Build and publish
     runs-on: ubuntu-latest
     steps:
       - name: Check for EXPO_TOKEN
@@ -42,5 +42,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: build and submit
+      - name: android EAS build and submit
         run: eas build --profile production --platform android --non-interactive --auto-submit
+      
+      - name: ios EAS build and submit
+        run: eas build --profile production --platform ios --non-interactive --auto-submit
