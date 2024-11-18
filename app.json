@@ -49,7 +49,6 @@
       "googleServicesFile": "./google-services.json"
     },
     "web": {
-      "favicon": "./assets/favicon.ico"
     },
     "extra": {
       "eas": {

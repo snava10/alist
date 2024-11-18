@@ -97,7 +97,7 @@ export default function HomeScreen({ route }: any) {
   return (
     <View style={styles.container}>
       {alistItems.length > 0 ? (
-        <View style={{ alignSelf: "stretch", flex: 0.8, marginBottom: 20 }}>
+        <View style={{ alignSelf: "stretch", flex: 1}}>
           <View style={{ paddingLeft: 16, paddingRight: 16 }}>
             <View style={[globalStyles.searchContainer]}>
               <Ionicons
@@ -216,9 +216,8 @@ const getStyles = (insets: EdgeInsets) => StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
     paddingTop: insets.top,
-    paddingBottom: insets.bottom,
     paddingLeft: insets.left,
-    paddingRight: insets.right
+    paddingRight: insets.right,
   },
   item: {
     padding: 10,
@@ -230,7 +229,7 @@ const getStyles = (insets: EdgeInsets) => StyleSheet.create({
     height: 60,
     position: "absolute",
     bottom: 20,
-    right: 20,
+    left: 20,
     borderRadius: 100,
     alignContent: "center",
   },
