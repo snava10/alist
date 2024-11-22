@@ -7,6 +7,7 @@ import {
 } from "@react-native-google-signin/google-signin";
 import auth from "@react-native-firebase/auth";
 import { createUserSettings } from "../Core/Storage";
+import { GoogleSocialButton } from "react-native-social-buttons";
 
 GoogleSignin.configure({
   webClientId:
@@ -34,10 +35,7 @@ async function onGoogleButtonPress() {
 export default function GoogleLogin({ callbackFn }: any) {
   return (
     <View>
-      <GoogleSigninButton
-        size={GoogleSigninButton.Size.Wide}
-        color={GoogleSigninButton.Color.Dark}
-        onPress={() =>
+      <GoogleSocialButton onPress={() =>
           onGoogleButtonPress()
             .then(async (userCredentials) => {
               if (userCredentials) {
@@ -45,15 +43,13 @@ export default function GoogleLogin({ callbackFn }: any) {
                   userCredentials.user.uid
                 );
                 console.log(JSON.stringify(userSettings));
+                console.log(JSON.stringify(userCredentials))
                 callbackFn();
               } else {
                 console.error("Error: User credentials are null")
               }
             })
-            .catch((error) => console.error("Error " + error))
-        }
-        // disabled={isInProgress}
-      />
+            .catch((error) => console.error("Error " + error))} />
     </View>
   );
 }

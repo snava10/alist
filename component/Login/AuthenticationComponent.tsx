@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import FacebookLogin from "./FacebookLogin";
 import GoogleLogin from "./GoogleLogin";
 import globalStyles from "../Core/GlobalStyles";
+import AppleLogin from "./AppleLogin";
 
 export type AuthenticationComponentProps = {
   isLoggedIn: boolean;
@@ -12,6 +13,7 @@ export type AuthenticationComponentProps = {
   authProviders: {
     google?: boolean;
     facebook?: boolean;
+    apple?: boolean;
     twitter?: boolean;
     microsoft?: boolean;
     emailAndPassword?: boolean;
@@ -51,6 +53,7 @@ export default function AuthenticationComponent({
         ) : (
           <></>
         )}
+        {authProviders.apple ? (<AppleLogin callbackFn={successCallbackFn}></AppleLogin>) : (<></>)}
         {authProviders.allowAnonymous ? (
           <>
             <View

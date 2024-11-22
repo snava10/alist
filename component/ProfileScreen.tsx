@@ -31,8 +31,24 @@ export default function ProfileScreen({ route }: any) {
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    setIsLoggedIn(user && user.displayName);
+    setIsLoggedIn(user && user.uid);
   });
+
+  const displayNameComponent = () => {
+    if(user.displayName) {
+    return (    
+      <View
+        style={
+          (globalStyles.profileBannerContainer,
+          [{ flex: 0.2, justifyContent: "center", alignItems: "center" }])
+        }
+      >
+        <Text style={{ fontWeight: "bold", fontSize: 20 }}>
+          {user.displayName ?? ""}
+        </Text>
+      </View>);
+    }
+  }
 
   return (
     <View
@@ -49,16 +65,7 @@ export default function ProfileScreen({ route }: any) {
     >
       {isLoggedIn && user ? (
         <>
-          <View
-            style={
-              (globalStyles.profileBannerContainer,
-              [{ flex: 0.2, justifyContent: "center", alignItems: "center" }])
-            }
-          >
-            <Text style={{ fontWeight: "bold", fontSize: 20 }}>
-              {user.displayName}
-            </Text>
-          </View>
+          {displayNameComponent()}
           <View
             style={{
               flex: 0.8,
@@ -95,7 +102,7 @@ export default function ProfileScreen({ route }: any) {
             </View>
           </View>
 
-          {/* <View style={{ flex: 0.2 }}>
+          <View style={{ flex: 0.2 }}>
             <AuthenticationComponent
               isLoggedIn={isLoggedIn}
               successCallbackFn={() => {
@@ -108,16 +115,18 @@ export default function ProfileScreen({ route }: any) {
               }}
               authProviders={{
                 google: true,
+                apple: true,
                 allowAnonymous: false,
               }}
             ></AuthenticationComponent>
-          </View> */}
+          </View>
         </>
       ) : (
         <View style={{ flex: 1 }}>
           <AuthenticationComponent
             isLoggedIn={isLoggedIn}
             successCallbackFn={() => {
+              console.log("Login success callback", auth().currentUser)
               setUser(auth().currentUser);
             }}
             logOutFn={() => {
@@ -127,6 +136,7 @@ export default function ProfileScreen({ route }: any) {
             }}
             authProviders={{
               google: true,
+              apple: true,
               allowAnonymous: false,
             }}
           ></AuthenticationComponent>
