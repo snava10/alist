@@ -22,6 +22,7 @@ export default function LoginScreen() {
         }}
         authProviders={{
           google: true,
+          apple: true,
           allowAnonymous: true,
         }}
         continueAnonymousCallbackFn={() => auth().signInAnonymously()}

@@ -5,8 +5,12 @@ import {
   GoogleSignin,
   SignInSuccessResponse,
 } from "@react-native-google-signin/google-signin";
-import auth from "@react-native-firebase/auth";
+import auth, {
+  FirebaseAuthTypes,
+  linkWithCredential,
+} from "@react-native-firebase/auth";
 import { createUserSettings } from "../Core/Storage";
+import { GoogleSocialButton } from "react-native-social-buttons";
 
 GoogleSignin.configure({
   webClientId:
@@ -23,9 +27,19 @@ async function onGoogleButtonPress() {
   var response = await GoogleSignin.signIn();
   if (response.type == "success") {
     // Create a Google credential with the token
-    response = response as SignInSuccessResponse
-    const googleCredential = auth.GoogleAuthProvider.credential(response.data.idToken);
+    response = response as SignInSuccessResponse;
+    const googleCredential = auth.GoogleAuthProvider.credential(
+      response.data.idToken
+    );
 
+    if (auth().currentUser) {
+      // await auth().signOut()
+      const user: FirebaseAuthTypes.User = auth()
+        .currentUser as FirebaseAuthTypes.User;
+      return linkWithCredential(user, googleCredential).catch((error) =>
+        auth().signInWithCredential(googleCredential)
+      );
+    }
     // Sign-in the user with the credential
     return auth().signInWithCredential(googleCredential);
   }
@@ -34,9 +48,9 @@ async function onGoogleButtonPress() {
 export default function GoogleLogin({ callbackFn }: any) {
   return (
     <View>
-      <GoogleSigninButton
-        size={GoogleSigninButton.Size.Wide}
-        color={GoogleSigninButton.Color.Dark}
+      <GoogleSocialButton
+        buttonViewStyle={{ backgroundColor: "black" }}
+        textStyle={{ color: "white", fontWeight: "bold" }}
         onPress={() =>
           onGoogleButtonPress()
             .then(async (userCredentials) => {
@@ -45,16 +59,19 @@ export default function GoogleLogin({ callbackFn }: any) {
                   userCredentials.user.uid
                 );
                 console.log(JSON.stringify(userSettings));
+                console.log(JSON.stringify(userCredentials));
                 callbackFn();
               } else {
-                console.error("Error: User credentials are null")
+                console.error("Error: User credentials are null");
+                callbackFn();
               }
             })
-            .catch((error) => console.error("Error " + error))
+            .catch((error) => {
+              console.log("Error " + error);
+              callbackFn();
+            })
         }
-        // disabled={isInProgress}
       />
     </View>
   );
 }
-     

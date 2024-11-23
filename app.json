@@ -2,7 +2,7 @@
   "expo": {
     "name": "Agus List",
     "slug": "alist",
-    "version": "2.1.4",
+    "version": "2.1.5",
     "orientation": "portrait",
     "icon": "./assets/android-icon-48x48.png",
     "userInterfaceStyle": "light",
@@ -38,7 +38,8 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.acorn.alist",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
