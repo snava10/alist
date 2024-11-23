@@ -62,6 +62,9 @@ export default function AppleLogin({ callbackFn }: any) {
     <View>
       {appleAuth.isSupported && (
         <AppleSocialButton
+          buttonViewStyle={{ backgroundColor: "black" }}
+          textStyle={{ color: "white", fontWeight: "bold" }}
+          logoStyle={{ tintColor: "white" }}
           onPress={() =>
             onAppleButtonPress()
               .then(async (userCredentials) => {

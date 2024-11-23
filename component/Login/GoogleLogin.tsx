@@ -49,6 +49,8 @@ export default function GoogleLogin({ callbackFn }: any) {
   return (
     <View>
       <GoogleSocialButton
+        buttonViewStyle={{ backgroundColor: "black" }}
+        textStyle={{ color: "white", fontWeight: "bold" }}
         onPress={() =>
           onGoogleButtonPress()
             .then(async (userCredentials) => {
