@@ -37,6 +37,13 @@
       "android": {
         "serviceAccountKeyPath": "./pc-api-9058583074469096499-576-79a2369c84f6.json",
         "track": "internal"
+      },
+      "ios": {
+        "appleId": "sergionava@acorndigitalsolutions.com",
+        "ascAppId": "75R5Q8RJAT",
+        "appleTeamId": "2PUZ732K47",
+        "sku": "EX1730466178173",
+        "bundleIdentifier": "com.acorn.alist"
       }
     },
     "closed-testing": {
