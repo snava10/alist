@@ -4,7 +4,6 @@ import AuthenticationComponent from "./Login/AuthenticationComponent";
 import { View, Text } from "react-native";
 import globalStyles from "./Core/GlobalStyles";
 import { BackupCadence } from "./Core/DataModel";
-import { StyleSheet } from "react-native";
 import DropDownPicker from "react-native-dropdown-picker";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,29 +30,40 @@ export default function ProfileScreen({ route }: any) {
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    setIsLoggedIn(user && user.uid);
+    setIsLoggedIn(user && !user.isAnonymous);
   });
 
   const displayNameComponent = () => {
-    if(user.displayName) {
-    return (    
+    var displayName = user?.displayName
+    if (!displayName && user?.providerData) {
+      for (const userInfo of user?.providerData) {
+        displayName = userInfo.displayName;
+        if (displayName) {
+          console.log(userInfo.providerId);
+          break;
+        }
+      }
+    }
+
+    return (
       <View
         style={
           (globalStyles.profileBannerContainer,
-          [{ flex: 0.2, justifyContent: "center", alignItems: "center" }])
+            [{ flex: 0.2, justifyContent: "center", alignItems: "center" }])
         }
       >
         <Text style={{ fontWeight: "bold", fontSize: 20 }}>
-          {user.displayName ?? ""}
+          {displayName ?? ""}
         </Text>
       </View>);
-    }
+
   }
 
   return (
     <View
       style={[
-        { paddingHorizontal: 10, alignItems: "center",
+        {
+          paddingHorizontal: 10, alignItems: "center",
           flex: 1,
           backgroundColor: "#fff",
           paddingTop: insets.top,
@@ -63,7 +73,7 @@ export default function ProfileScreen({ route }: any) {
         },
       ]}
     >
-      {isLoggedIn && user ? (
+      {isLoggedIn ? (
         <>
           {displayNameComponent()}
           <View
@@ -127,12 +137,13 @@ export default function ProfileScreen({ route }: any) {
             isLoggedIn={isLoggedIn}
             successCallbackFn={() => {
               console.log("Login success callback", auth().currentUser)
-              setUser(auth().currentUser);
+              setUser(auth().currentUser)
             }}
             logOutFn={() => {
-              setIsLoggedIn(false);
-              auth().signOut();
-              setUser(null);
+              auth().signOut().then(() => {
+                console.log("Signout success");
+                setIsLoggedIn(false);
+              }).catch(reason => console.error(reason));
             }}
             authProviders={{
               google: true,
@@ -146,42 +157,4 @@ export default function ProfileScreen({ route }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "white",
-    padding: 16,
-  },
-  dropdown: {
-    height: 50,
-    borderColor: "gray",
-    borderWidth: 0.5,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-  },
-  icon: {
-    marginRight: 5,
-  },
-  label: {
-    position: "absolute",
-    backgroundColor: "white",
-    left: 22,
-    top: 8,
-    zIndex: 999,
-    paddingHorizontal: 8,
-    fontSize: 14,
-  },
-  placeholderStyle: {
-    fontSize: 16,
-  },
-  selectedTextStyle: {
-    fontSize: 16,
-  },
-  iconStyle: {
-    width: 20,
-    height: 20,
-  },
-  inputSearchStyle: {
-    height: 40,
-    fontSize: 16,
-  },
-});
+

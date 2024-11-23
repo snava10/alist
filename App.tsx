@@ -8,7 +8,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import LoginScreen, {
   LoginScreenProperties,
 } from "./component/Login/LoginScreen";
-import auth from "@react-native-firebase/auth";
+import auth, { CallbackOrObserver, FirebaseAuthTypes } from "@react-native-firebase/auth";
 import {
   SafeAreaProvider,
 } from 'react-native-safe-area-context';
@@ -17,7 +17,7 @@ const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 export default function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [anonymous, setAnonymous] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -29,12 +29,12 @@ export default function App() {
     emailAndPassword: true,
   } as LoginScreenProperties;
 
-  function onAuthStateChanged(u: any) {
-    if (u) {
-      const { _auth, ...rest } = u;
-      setUser(rest._user);
+  function onAuthStateChanged(u: FirebaseAuthTypes.User | null) {
+    if (u) {      
+      setUser(u);      
       if (initializing) setInitializing(false);
       setIsLoggedIn(true);
+      console.log("Display Name", u.displayName)
     } else {
       setUser(null);
       setIsLoggedIn(false);
