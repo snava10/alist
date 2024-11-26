@@ -11,7 +11,7 @@
     "build-production-android": "eas build --profile production --platform android",
     "build-development-android": "eas build --profile development --platform android",
     "build-development-ios": "eas build --profile development --platform ios",
-    "build-production-ios": "eas build --profile production --platform ios --local"
+    "build-production-ios": "eas build --profile production --platform ios"
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.0",
