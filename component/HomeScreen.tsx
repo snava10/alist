@@ -14,11 +14,7 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import globalStyles from "./Core/GlobalStyles";
 import analytics from "@react-native-firebase/analytics";
-import {
-  EdgeInsets,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
-
+import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function HomeScreen({ route }: any) {
   const [oneOffCorrections, setOneOffCorrections] = useState(false);
@@ -97,7 +93,7 @@ export default function HomeScreen({ route }: any) {
   return (
     <View style={styles.container}>
       {alistItems.length > 0 ? (
-        <View style={{ alignSelf: "stretch", flex: 1}}>
+        <View style={{ alignSelf: "stretch", flex: 1 }}>
           <View style={{ paddingLeft: 16, paddingRight: 16 }}>
             <View style={[globalStyles.searchContainer]}>
               <Ionicons
@@ -166,13 +162,19 @@ export default function HomeScreen({ route }: any) {
           item={selectedItem}
           saveItem={async (old: AListItem, item: AListItem) => {
             if (old.name) {
-              await analytics().logEvent("edit_item", {
-                name: item.name,
-              });
+              analytics()
+                .logEvent("edit_item", {
+                  name: item.name,
+                })
+                .then((_) => console.log("item edit logged"))
+                .catch((_) => console.error("Couldn't log edit item event"));
             } else {
-              await analytics().logEvent("add_item", {
-                name: item.name,
-              });
+              analytics()
+                .logEvent("add_item", {
+                  name: item.name,
+                })
+                .then((_) => console.log("add item logged"))
+                .catch((_) => console.log("add item log failed"));
             }
             await replaceItem(old, item);
             await loadItemsFromLocalStorage(searchText);
@@ -211,26 +213,27 @@ export default function HomeScreen({ route }: any) {
   );
 }
 
-const getStyles = (insets: EdgeInsets) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    paddingTop: insets.top,
-    paddingLeft: insets.left,
-    paddingRight: insets.right,
-  },
-  item: {
-    padding: 10,
-    fontSize: 18,
-    height: 44,
-  },
-  fab: {
-    width: 60,
-    height: 60,
-    position: "absolute",
-    bottom: 20,
-    left: 20,
-    borderRadius: 100,
-    alignContent: "center",
-  },
-});
+const getStyles = (insets: EdgeInsets) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: "#fff",
+      paddingTop: insets.top,
+      paddingLeft: insets.left,
+      paddingRight: insets.right,
+    },
+    item: {
+      padding: 10,
+      fontSize: 18,
+      height: 44,
+    },
+    fab: {
+      width: 60,
+      height: 60,
+      position: "absolute",
+      bottom: 20,
+      left: 20,
+      borderRadius: 100,
+      alignContent: "center",
+    },
+  });

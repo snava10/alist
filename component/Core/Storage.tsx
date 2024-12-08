@@ -217,3 +217,25 @@ export async function syncItem(item: AListItem, userSettings: UserSettings) {
   // Get the item from firestore
   const incoming = firestore().collection("Items").doc();
 }
+
+export async function deleteItems(userId: string): Promise<number> {
+  return firestore()
+    .collection("Items")
+    .where("userId", "==", userId)
+    .get()
+    .then((querySnapshot) => {
+      if (querySnapshot.empty) return [];
+      return querySnapshot.docs;
+    })
+    .then((docs) =>
+      Promise.all(
+        docs.map((doc) =>
+          doc.ref
+            .delete()
+            .then(() => 1)
+            .catch(() => 0)
+        )
+      )
+    )
+    .then((result) => result.reduce((a, b) => a + b, 0));
+}

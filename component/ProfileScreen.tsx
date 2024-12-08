@@ -7,6 +7,10 @@ import { BackupCadence } from "./Core/DataModel";
 import DropDownPicker from "react-native-dropdown-picker";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import ConfirmationModal from "./ConfirmationModal";
+import { FirebaseAuthTypes } from "@react-native-firebase/auth";
+import { deleteItems } from "./Core/Storage";
+import analytics from "@react-native-firebase/analytics";
 
 export default function ProfileScreen({ route }: any) {
   const [open, setOpen] = useState(false);
@@ -14,6 +18,10 @@ export default function ProfileScreen({ route }: any) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
   const [backupCadence, setBackupCadence] = useState(BackupCadence.DAILY);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState(
+    "Deleting you account will remove your credentials and all backups. The data will still be available in your phone. Do you wish to proceed?"
+  );
 
   const items = Object.values(BackupCadence).map((i) => {
     if (i === BackupCadence.INSTANT) {
@@ -34,7 +42,7 @@ export default function ProfileScreen({ route }: any) {
   });
 
   const displayNameComponent = () => {
-    var displayName = user?.displayName
+    var displayName = user?.displayName;
     if (!displayName && user?.providerData) {
       for (const userInfo of user?.providerData) {
         displayName = userInfo.displayName;
@@ -49,27 +57,28 @@ export default function ProfileScreen({ route }: any) {
       <View
         style={
           (globalStyles.profileBannerContainer,
-            [{ flex: 0.2, justifyContent: "center", alignItems: "center" }])
+          [{ flex: 0.2, justifyContent: "center", alignItems: "center" }])
         }
       >
         <Text style={{ fontWeight: "bold", fontSize: 20 }}>
           {displayName ?? ""}
         </Text>
-      </View>);
-
-  }
+      </View>
+    );
+  };
 
   return (
     <View
       style={[
         {
-          paddingHorizontal: 10, alignItems: "center",
+          paddingHorizontal: 10,
+          alignItems: "center",
           flex: 1,
           backgroundColor: "#fff",
           paddingTop: insets.top,
           paddingBottom: insets.bottom,
           paddingLeft: insets.left,
-          paddingRight: insets.right
+          paddingRight: insets.right,
         },
       ]}
     >
@@ -111,50 +120,95 @@ export default function ProfileScreen({ route }: any) {
               </View>
             </View>
           </View>
-
-          <View style={{ flex: 0.2 }}>
-            <AuthenticationComponent
-              isLoggedIn={isLoggedIn}
-              successCallbackFn={() => {
-                setUser(auth().currentUser);
-              }}
-              logOutFn={() => {
-                setIsLoggedIn(false);
-                auth().signOut();
-                setUser(null);
-              }}
-              authProviders={{
-                google: true,
-                apple: true,
-                allowAnonymous: false,
-              }}
-            ></AuthenticationComponent>
-          </View>
         </>
       ) : (
-        <View style={{ flex: 1 }}>
-          <AuthenticationComponent
-            isLoggedIn={isLoggedIn}
-            successCallbackFn={() => {
-              console.log("Login success callback", auth().currentUser)
-              setUser(auth().currentUser)
-            }}
-            logOutFn={() => {
-              auth().signOut().then(() => {
-                console.log("Signout success");
-                setIsLoggedIn(false);
-              }).catch(reason => console.error(reason));
-            }}
-            authProviders={{
-              google: true,
-              apple: true,
-              allowAnonymous: false,
-            }}
-          ></AuthenticationComponent>
-        </View>
+        <></>
+      )}
+      <View style={{ flex: 0.2 }}>
+        <AuthenticationComponent
+          isLoggedIn={isLoggedIn}
+          successCallbackFn={() => {
+            setUser(auth().currentUser);
+          }}
+          logOutFn={() => {
+            setIsLoggedIn(false);
+            auth().signOut();
+            setUser(null);
+          }}
+          authProviders={{
+            google: true,
+            apple: true,
+            allowAnonymous: false,
+          }}
+          deleteAccountFn={() => {
+            console.log("deleting account");
+            setShowDeleteModal(true);
+            console.log(showDeleteModal);
+          }}
+        ></AuthenticationComponent>
+      </View>
+      {isLoggedIn && showDeleteModal ? (
+        <ConfirmationModal
+          message={modalMessage}
+          visible={showDeleteModal}
+          acceptCallbackFn={() => {
+            auth()
+              .currentUser?.getIdToken(true)
+              .then((token) => {
+                const currentUser = auth()
+                  .currentUser as FirebaseAuthTypes.User;
+                deleteItems(currentUser.uid).then((deletedCount) => {
+                  console.log(`Deleted ${deletedCount} documents`);
+                  currentUser
+                    .delete()
+                    .then((response) => {
+                      console.log("Response", response);
+                      setShowDeleteModal(false);
+                      setUser(null);
+                      setIsLoggedIn(false);
+                      analytics()
+                        .logEvent("user_delete", {
+                          uid: currentUser.uid,
+                          provider: currentUser.providerId,
+                          displayName: currentUser.displayName,
+                        })
+                        .then((_) => console.log("delete user logged"))
+                        .catch((_) => console.log("delete user log failed"));
+                    })
+                    .catch((reason: Error) => {
+                      if (
+                        reason.message.includes("auth/requires-recent-login")
+                      ) {
+                        analytics()
+                          .logEvent("user_delete_error", {
+                            uid: currentUser.uid,
+                            provider: currentUser.providerId,
+                            displayName: currentUser.displayName,
+                          })
+                          .then((_) => console.log("delete user error logged"))
+                          .catch((_) =>
+                            console.log("delete user error log failed")
+                          );
+                        setModalMessage(
+                          `${reason.message} \n. Please logout, login and try deleting your account again.`
+                        );
+                      }
+                      console.log("Error", reason);
+                    });
+                });
+              });
+          }}
+          rejectCallbackFn={() => {
+            setShowDeleteModal(false);
+          }}
+          hideModalFn={() => {
+            setShowDeleteModal(false);
+          }}
+          item={null}
+        ></ConfirmationModal>
+      ) : (
+        <></>
       )}
     </View>
   );
 }
-
-

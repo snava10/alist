@@ -6,6 +6,7 @@ const theme = {
       light: "#42a5f5", // Adjust the color to your preference
       main: "#1976d2",
       dark: "#1565c0",
+      white: "white",
     },
     secondary: {
       main: "#FF5722", // Adjust the color to your preference
@@ -38,6 +39,11 @@ const globalStyles = StyleSheet.create({
       dark: {
         backgroundColor: theme.palette.primary.dark,
       },
+      outlined: {
+        backgroundColor: theme.palette.primary.white,
+        borderColor: "red",
+        borderWidth: 1,
+      },
     }),
     error: StyleSheet.create({
       main: {
@@ -50,6 +56,18 @@ const globalStyles = StyleSheet.create({
         lineHeight: 21,
         letterSpacing: 0.25,
         color: "white",
+      },
+      danger: {
+        fontSize: 16,
+        lineHeight: 21,
+        letterSpacing: 0.25,
+        color: "red",
+      },
+      dangerSmall: {
+        fontSize: 12,
+        lineHeight: 15,
+        letterSpacing: 0.25,
+        color: "red",
       },
     }),
   },
