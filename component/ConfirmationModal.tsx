@@ -27,13 +27,13 @@ const ConfirmationModal = (props: {
               style={[globalStyles.button, globalStyles.button.primary.main]}
               onPress={props.acceptCallbackFn}
             >
-              <Text style={globalStyles.button.text.defaut}>Yes</Text>
+              <Text style={globalStyles.button.text.default}>Yes</Text>
             </Pressable>
             <Pressable
               style={[globalStyles.button, globalStyles.button.error.main]}
               onPress={props.rejectCallbackFn}
             >
-              <Text style={globalStyles.button.text.defaut}>No</Text>
+              <Text style={globalStyles.button.text.default}>No</Text>
             </Pressable>
           </View>
         </View>

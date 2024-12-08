@@ -1,15 +1,17 @@
-import { View, StyleSheet, Text, Pressable } from "react-native";
+import { View, StyleSheet, Text, Pressable, ViewStyle } from "react-native";
 import React, { useEffect, useState } from "react";
 import FacebookLogin from "./FacebookLogin";
 import GoogleLogin from "./GoogleLogin";
 import globalStyles from "../Core/GlobalStyles";
 import AppleLogin from "./AppleLogin";
+import analytics from "@react-native-firebase/analytics";
 
 export type AuthenticationComponentProps = {
   isLoggedIn: boolean;
   successCallbackFn: Function;
   logOutFn: any;
   continueAnonymousCallbackFn?: Function;
+  deleteAccountFn: any;
   authProviders: {
     google?: boolean;
     facebook?: boolean;
@@ -27,6 +29,7 @@ export default function AuthenticationComponent({
   logOutFn,
   authProviders,
   continueAnonymousCallbackFn,
+  deleteAccountFn,
 }: AuthenticationComponentProps) {
   const [_isLoggedIn, setIsLoggedIn] = useState(isLoggedIn);
   useEffect(() => {
@@ -41,6 +44,16 @@ export default function AuthenticationComponent({
           onPress={logOutFn}
         >
           <Text style={globalStyles.button.text.default}>Log Out</Text>
+        </Pressable>
+      </View>
+      <View style={styles.child_view}>
+        <Pressable
+          style={[globalStyles.button, globalStyles.button.primary.outlined]}
+          onPress={deleteAccountFn}
+        >
+          <Text style={globalStyles.button.text.dangerSmall}>
+            Delete Account
+          </Text>
         </Pressable>
       </View>
     </View>

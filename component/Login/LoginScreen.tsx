@@ -26,6 +26,7 @@ export default function LoginScreen() {
           allowAnonymous: true,
         }}
         continueAnonymousCallbackFn={() => auth().signInAnonymously()}
+        deleteAccountFn={() => {}}
       ></AuthenticationComponent>
     </View>
   );
