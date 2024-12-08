@@ -170,7 +170,7 @@ export default function ProfileScreen({ route }: any) {
                         .logEvent("user_delete", {
                           uid: currentUser.uid,
                           provider: currentUser.providerId,
-                          displayName: currentUser.displayName,
+                          displayName: currentUser.displayName ?? "",
                         })
                         .then((_) => console.log("delete user logged"))
                         .catch((_) => console.log("delete user log failed"));
@@ -183,7 +183,7 @@ export default function ProfileScreen({ route }: any) {
                           .logEvent("user_delete_error", {
                             uid: currentUser.uid,
                             provider: currentUser.providerId,
-                            displayName: currentUser.displayName,
+                            displayName: currentUser.displayName ?? "",
                           })
                           .then((_) => console.log("delete user error logged"))
                           .catch((_) =>
