@@ -26,6 +26,7 @@
       "developmentClient": true
     },
     "production": {
+      "autoIncrement": true,
       "android": {
         "autoIncrement": "versionCode"
       }

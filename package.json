@@ -1,6 +1,6 @@
 {
   "name": "aguslist",
-  "version": "2.1.5",
+  "version": "2.1.6",
   "scripts": {
     "start": "expo start --dev-client",
     "android": "sudo rm -r android; expo run:android",
