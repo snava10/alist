@@ -12,39 +12,58 @@ on:
 
 jobs:
   android-build:
-
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Java Setup
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin" # See 'Supported distributions' for available options
+          java-version: "17"
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Install dependencies
+        run: npm install
+      - name: Build Application
+        run: eas build --profile preview --platform android --non-interactive --local
+      - name: Upload application
+        uses: actions/upload-artifact@v4
+        with:
+          name: app
+          path: build-*.apk
+          retention-days: 3
 
-    - name: Java Setup
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin' # See 'Supported distributions' for available options
-        java-version: '17'
+  ios-build:
+    runs-on: macos-latest
+    env:
+      NODE_OPTIONS: "--max_old_space_size=4096"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '20'
+      - name: Install dependencies
+        run: npm install
 
-    - name: Setup EAS
-      uses: expo/expo-github-action@v8
-      with:
-        eas-version: latest
-        token: ${{ secrets.EXPO_TOKEN }}
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
 
-    - name: Install dependencies
-      run: npm install
+      - name: Build Application
+        run: eas build --profile preview --platform ios --non-interactive --local
 
-    - name: Build Application
-      run: eas build --profile preview --platform android --non-interactive --local
-
-    - name: Upload application
-      uses: actions/upload-artifact@v4
-      with:
-        name: app
-        path: build-*.apk
-        retention-days: 3
+      - name: Upload application
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-ios
+          path: build-*.ipa
+          retention-days: 3
