@@ -13,6 +13,7 @@
     },
     "assetBundlePatterns": ["**/*"],
     "plugins": [
+      ["expo-apple-authentication"],
       [
         "react-native-fbsdk-next",
         {
@@ -40,7 +41,7 @@
       "bundleIdentifier": "com.acorn.alist",
       "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true,
-      "buildNumber": "2" 
+      "buildNumber": "2"
     },
     "android": {
       "adaptiveIcon": {
@@ -50,10 +51,8 @@
       "package": "com.acorn.alist",
       "googleServicesFile": "./google-services.json",
       "versionCode": 2
-
     },
-    "web": {
-    },
+    "web": {},
     "extra": {
       "eas": {
         "projectId": "ab00d1fb-9e8f-4a9f-a854-2eb759490348"
