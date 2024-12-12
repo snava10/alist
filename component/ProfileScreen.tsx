@@ -125,11 +125,18 @@ export default function ProfileScreen({ route }: any) {
         <></>
       )}
       <View
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+        style={
+          isLoggedIn
+            ? {
+                flex: 0.2,
+                flexDirection: "row",
+              }
+            : {
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }
+        }
       >
         <AuthenticationComponent
           isLoggedIn={isLoggedIn}
