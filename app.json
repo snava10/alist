@@ -4,7 +4,7 @@
     "slug": "alist",
     "version": "2.1.6",
     "orientation": "portrait",
-    "icon": "./assets/android-icon-48x48.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
@@ -45,7 +45,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/android-icon-192x192.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.acorn.alist",
