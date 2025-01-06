@@ -92,7 +92,7 @@ export default function HomeScreen({ route }: any) {
 
   return (
     <View style={styles.container}>
-      {alistItems.length > 0 ? (
+      {alistItems.length > 0 || searchText.length > 0 ? (
         <View style={{ alignSelf: "stretch", flex: 1 }}>
           <View style={{ paddingLeft: 16, paddingRight: 16 }}>
             <View style={[globalStyles.searchContainer]}>
