@@ -9,8 +9,10 @@ import auth, {
   FirebaseAuthTypes,
   linkWithCredential,
 } from "@react-native-firebase/auth";
-import { createUserSettings } from "../Core/Storage";
+import Storage from "../Core/Storage";
 import { GoogleSocialButton } from "react-native-social-buttons";
+
+const storage = Storage.getInstance();
 
 GoogleSignin.configure({
   webClientId:

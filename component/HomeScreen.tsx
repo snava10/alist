@@ -3,22 +3,18 @@ import { FlatList, StyleSheet, View, Text, TextInput } from "react-native";
 import AListItem from "./AListItem";
 import AddItemModal from "./AddItemModal";
 import ConfirmationModal from "./ConfirmationModal";
-import {
-  addTimestampToItems,
-  createUserSettings,
-  getItems,
-  replaceItem,
-  removeItem as storageRemoveItem,
-  syncData,
-} from "./Core/Storage";
+import Storage from "./Core/Storage";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import globalStyles from "./Core/GlobalStyles";
 import analytics from "@react-native-firebase/analytics";
 import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
+import { FirebaseAuthTypes } from "@react-native-firebase/auth";
+
+const storage = Storage.getInstance();
 
 export default function HomeScreen({ route }: any) {
   const [oneOffCorrections, setOneOffCorrections] = useState(false);
-  const [user, setUser] = useState(route.params.user);
+  const [user, setUser] = useState(route.params.user as FirebaseAuthTypes.User);
   const [alistItems, setAListItems] = useState([] as AListItem[]);
   const [selectedItem, setSelectedItem] = useState(null as AListItem | null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -28,7 +24,7 @@ export default function HomeScreen({ route }: any) {
 
   const loadItemsFromLocalStorage = async (st: string) => {
     try {
-      getItems(st).then(async (items) => {
+      storage.getItems(st).then(async (items) => {
         setAListItems(items);
       });
     } catch (e) {
@@ -38,7 +34,7 @@ export default function HomeScreen({ route }: any) {
 
   const removeItem = async (item: AListItem | null) => {
     if (item !== null) {
-      await storageRemoveItem(item);
+      await storage.removeItem(item);
       loadItemsFromLocalStorage(searchText);
     }
   };
@@ -65,11 +61,13 @@ export default function HomeScreen({ route }: any) {
     loadItemsFromLocalStorage(searchText);
     if (!oneOffCorrections) {
       if (user && !user.isAnonymous) {
-        createUserSettings(user.uid)
+        storage
+          .createUserSettings(user.uid)
           .then(() => console.log("User settings created"))
           .catch((error) => console.log("User settings ", error));
       }
-      addTimestampToItems()
+      storage
+        .addTimestampToItems()
         .then(() => {
           console.log("Add timestamps executed");
           setOneOffCorrections(true);
@@ -77,7 +75,8 @@ export default function HomeScreen({ route }: any) {
         .catch((error) => console.log("Add timestamps ", error));
     }
     if (user && !user.isAnonymous) {
-      syncData(user.uid)
+      storage
+        .syncData(user.uid)
         .then((items) => {
           console.log("Data sync completed ", JSON.stringify(items));
           if (items.length > 0) {
@@ -176,7 +175,7 @@ export default function HomeScreen({ route }: any) {
                 .then((_) => console.log("add item logged"))
                 .catch((_) => console.log("add item log failed"));
             }
-            await replaceItem(old, item);
+            await storage.replaceItem(old, item, user.uid);
             await loadItemsFromLocalStorage(searchText);
           }}
           hideModal={hideModal}

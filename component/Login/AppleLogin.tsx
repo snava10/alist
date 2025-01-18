@@ -9,8 +9,10 @@ import {
   appleAuth,
   AppleButton,
 } from "@invertase/react-native-apple-authentication";
-import { createUserSettings } from "../Core/Storage";
+import Storage from "../Core/Storage";
 import { AppleSocialButton } from "react-native-social-buttons";
+
+const storage = Storage.getInstance();
 
 export default function AppleLogin({ callbackFn }: any) {
   async function onAppleButtonPress() {
@@ -69,7 +71,7 @@ export default function AppleLogin({ callbackFn }: any) {
             onAppleButtonPress()
               .then(async (userCredentials) => {
                 if (userCredentials) {
-                  const userSettings = await createUserSettings(
+                  const userSettings = await storage.createUserSettings(
                     userCredentials.user.uid
                   );
                   console.log(JSON.stringify(userSettings));

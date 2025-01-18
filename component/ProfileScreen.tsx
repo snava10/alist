@@ -9,8 +9,10 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ConfirmationModal from "./ConfirmationModal";
 import { FirebaseAuthTypes } from "@react-native-firebase/auth";
-import { deleteItems } from "./Core/Storage";
 import analytics from "@react-native-firebase/analytics";
+import Storage from "./Core/Storage";
+
+const storage = Storage.getInstance();
 
 export default function ProfileScreen({ route }: any) {
   const [open, setOpen] = useState(false);
@@ -170,7 +172,7 @@ export default function ProfileScreen({ route }: any) {
               .then((token) => {
                 const currentUser = auth()
                   .currentUser as FirebaseAuthTypes.User;
-                deleteItems(currentUser.uid).then((deletedCount) => {
+                storage.deleteItems(currentUser.uid).then((deletedCount) => {
                   console.log(`Deleted ${deletedCount} documents`);
                   currentUser
                     .delete()
