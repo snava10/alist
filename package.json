@@ -1,6 +1,6 @@
 {
   "name": "aguslist",
-  "version": "2.1.8",
+  "version": "2.2.0",
   "scripts": {
     "start": "expo start --dev-client",
     "start-dev": "NODE_ENV=development npx expo start",
