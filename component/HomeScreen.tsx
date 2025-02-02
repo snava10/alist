@@ -14,7 +14,7 @@ const storage = Storage.getInstance();
 
 export default function HomeScreen({ route }: any) {
   const [oneOffCorrections, setOneOffCorrections] = useState(false);
-  const [user, setUser] = useState(route.params.user as FirebaseAuthTypes.User);
+  const [user] = useState(route.params.user as FirebaseAuthTypes.User);
   const [alistItems, setAListItems] = useState([] as AListItem[]);
   const [selectedItem, setSelectedItem] = useState(null as AListItem | null);
   const [modalVisible, setModalVisible] = useState(false);
