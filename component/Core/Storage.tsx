@@ -70,10 +70,13 @@ export default class Storage {
       kvp
         .filter((kvp) => kvp[1] !== null)
         .map(async (kvp) => {
-          const res = JSON.parse(kvp[1] as string) as AListItem;
-          const decryptedItem = { ...(res as AListItem) };
-          decryptedItem.value = await decrypt(decryptedItem.value);
-          return decryptedItem;
+          var res = JSON.parse(kvp[1] as string) as AListItem;
+          if (!res.encrypted) {
+            console.log("Item not encrypted ", res.name);
+            res = await this.saveItem(res, true);
+          }
+          res.value = await decrypt(res.value);
+          return res;
         })
     );
   }
@@ -95,29 +98,31 @@ export default class Storage {
         .filter((kvp) => kvp[1] !== null)
         .map(async (kvp) => {
           const res = JSON.parse(kvp[1] as string) as AListItem;
-          const decryptedItem = { ...(res as AListItem) };
-          decryptedItem.value = await decrypt(decryptedItem.value);
-          return decryptedItem;
+          if (res.encrypted) {
+            res.value = await decrypt(res.value);
+          }
+          return res;
         })
     );
   }
 
-  public async saveItem(item: AListItem, sync: boolean = false) {
-    const encryptedItem: AListItem = { ...item };
+  private async saveItem(
+    item: AListItem,
+    sync: boolean = false
+  ): Promise<AListItem> {
+    const encryptedItem: AListItem = { ...item, encrypted: true };
     encryptedItem.value = await encrypt(item.value);
     await AsyncStorage.setItem(
       "_ali_" + item.name,
       JSON.stringify(encryptedItem)
     );
     if (auth().currentUser && sync) {
-      this.pushItem(encryptedItem, auth().currentUser?.uid as string).then(() =>
-        console.log(`Item saved: ${item.name}`)
-      );
-      // const userId = auth().currentUser?.uid as string;
-      // this.syncData(userId).then((items) =>
-      //   console.log(`Items synced: ${items.length}`)
-      // );
+      await this.pushItem(
+        encryptedItem,
+        auth().currentUser?.uid as string
+      ).then(() => console.log(`Item saved: ${item.name}`));
     }
+    return encryptedItem;
   }
 
   public async replaceItem(
@@ -212,13 +217,11 @@ export default class Storage {
           mergedItems.push(remote);
         }
       }
-      break;
     }
 
     return Promise.all(
       mergedItems.map(async (item) => {
-        await this.replaceItem(item, item, true, false);
-        await this.pushItem(item, userId);
+        await this.replaceItem(item, item, true, true);
       })
     ).then(() => {
       AsyncStorage.setItem("lastSync", Date.now().toString());
@@ -226,7 +229,7 @@ export default class Storage {
     });
   }
 
-  public async pushItem(item: AListItem, userId: string) {
+  private async pushItem(item: AListItem, userId: string) {
     firestore()
       .collection("Items")
       .doc(`${userId}_${item.name}`)
@@ -244,7 +247,9 @@ export default class Storage {
         return Promise.all(
           querySnapshot.docs.map(async (d) => {
             const item = d.data() as AListItem;
-            item.value = await decrypt(item.value);
+            if (item.encrypted) {
+              item.value = await decrypt(item.value);
+            }
             return item;
           })
         );

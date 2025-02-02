@@ -24,7 +24,7 @@ export default function HomeScreen({ route }: any) {
 
   const loadItemsFromLocalStorage = async (st: string) => {
     try {
-      storage.getItems(st).then(async (items) => {
+      await storage.getItems(st).then(async (items) => {
         setAListItems(items);
       });
     } catch (e) {
