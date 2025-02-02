@@ -2,9 +2,10 @@ import AListItem from "../AListItem";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BackupCadence, MembershipType, UserSettings } from "./DataModel";
 import firestore from "@react-native-firebase/firestore";
-import base64 from "react-native-base64";
 import { Platform } from "react-native";
-import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth";
+import auth from "@react-native-firebase/auth";
+import { encrypt, decrypt } from "./Security";
+import { EXPO_PUBLIC_FIREBASE_EMULATOR } from "@env";
 
 export default class Storage {
   private static storageInstance: Storage;
@@ -16,7 +17,7 @@ export default class Storage {
   }
 
   private constructor() {
-    if (process.env.EXPO_PUBLIC_FIREBASE_EMULATOR === "true") {
+    if (EXPO_PUBLIC_FIREBASE_EMULATOR === "true") {
       console.log("Connecting to firebase emulator");
       if (Platform.OS === "android") {
         console.log("Operating System ", Platform.OS);
@@ -41,7 +42,9 @@ export default class Storage {
     } catch (e) {
       console.log(e);
     }
-    return res;
+    const decryptedItem = { ...(res as AListItem) };
+    decryptedItem.value = await decrypt(decryptedItem.value);
+    return decryptedItem;
   }
 
   public async addTimestampToItems(): Promise<void[]> {
@@ -63,9 +66,16 @@ export default class Storage {
     const kvp = await AsyncStorage.multiGet(
       keys.filter((k) => k.startsWith("_ali_"))
     );
-    return kvp
-      .filter((kvp) => kvp[1] !== null)
-      .map((kvp) => JSON.parse(kvp[1] as string) as AListItem);
+    return Promise.all(
+      kvp
+        .filter((kvp) => kvp[1] !== null)
+        .map(async (kvp) => {
+          const res = JSON.parse(kvp[1] as string) as AListItem;
+          const decryptedItem = { ...(res as AListItem) };
+          decryptedItem.value = await decrypt(decryptedItem.value);
+          return decryptedItem;
+        })
+    );
   }
 
   public async getItems(filter: string): Promise<Array<AListItem>> {
@@ -80,34 +90,57 @@ export default class Storage {
           k.substring(5).toLowerCase().includes(filter.toLowerCase())
       )
     );
-    return kvp
-      .filter((kvp) => kvp[1] !== null)
-      .map((kvp) => JSON.parse(kvp[1] as string) as AListItem);
+    return Promise.all(
+      kvp
+        .filter((kvp) => kvp[1] !== null)
+        .map(async (kvp) => {
+          const res = JSON.parse(kvp[1] as string) as AListItem;
+          const decryptedItem = { ...(res as AListItem) };
+          decryptedItem.value = await decrypt(decryptedItem.value);
+          return decryptedItem;
+        })
+    );
   }
 
-  public async saveItem(item: AListItem, userId: string) {
-    await AsyncStorage.setItem("_ali_" + item.name, JSON.stringify(item));
-    this.syncData(userId).then((items) =>
-      console.log(`Items synced: ${items.length}`)
+  public async saveItem(item: AListItem, sync: boolean = false) {
+    const encryptedItem: AListItem = { ...item };
+    encryptedItem.value = await encrypt(item.value);
+    await AsyncStorage.setItem(
+      "_ali_" + item.name,
+      JSON.stringify(encryptedItem)
     );
+    if (auth().currentUser && sync) {
+      this.pushItem(encryptedItem, auth().currentUser?.uid as string).then(() =>
+        console.log(`Item saved: ${item.name}`)
+      );
+      // const userId = auth().currentUser?.uid as string;
+      // this.syncData(userId).then((items) =>
+      //   console.log(`Items synced: ${items.length}`)
+      // );
+    }
   }
 
   public async replaceItem(
     old: AListItem,
     newItem: AListItem,
-    userId: string,
-    timestamp: boolean = true
+    timestamp: boolean = true,
+    sync: boolean = true
   ) {
-    await this.removeItem(old);
+    await this.removeItem(old, sync);
     if (timestamp) {
       newItem.timestamp = Date.now();
     }
-    await this.saveItem(newItem, userId);
+    await this.saveItem(newItem, sync);
   }
 
-  public async removeItem(item: AListItem) {
+  public async removeItem(item: AListItem, sync: boolean = true) {
     if (item) {
       await AsyncStorage.removeItem("_ali_" + item.name);
+      if (auth().currentUser && sync) {
+        await this.deleteItem(item, auth().currentUser?.uid as string)
+          .then((count) => console.log(`Items deleted: ${count}`))
+          .catch((error) => console.log("Delete item ", error));
+      }
     }
   }
 
@@ -146,7 +179,6 @@ export default class Storage {
   compareItems = (a: AListItem, b: AListItem) => a.name.localeCompare(b.name);
 
   public async syncData(userId: string): Promise<Array<AListItem>> {
-    const lastSync = parseInt((await AsyncStorage.getItem("lastSync")) ?? "0");
     const userSettings = await this.getUserSettings(userId);
     if (userSettings?.backup === BackupCadence.NONE) {
       return [];
@@ -180,11 +212,12 @@ export default class Storage {
           mergedItems.push(remote);
         }
       }
+      break;
     }
 
     return Promise.all(
       mergedItems.map(async (item) => {
-        await this.replaceItem(item, item);
+        await this.replaceItem(item, item, true, false);
         await this.pushItem(item, userId);
       })
     ).then(() => {
@@ -194,11 +227,10 @@ export default class Storage {
   }
 
   public async pushItem(item: AListItem, userId: string) {
-    const encodedValue = base64.encode(item.value);
     firestore()
       .collection("Items")
       .doc(`${userId}_${item.name}`)
-      .set({ ...item, userId, value: encodedValue })
+      .set({ ...item, userId, value: item.value })
       .then(() => console.log("Item saved to firebase ", JSON.stringify(item)));
   }
 
@@ -209,11 +241,13 @@ export default class Storage {
       .get()
       .then((querySnapshot) => {
         if (querySnapshot.empty) return [];
-        return querySnapshot.docs.map((d) => {
-          const item = d.data() as AListItem;
-          item.value = base64.decode(item.value);
-          return item;
-        });
+        return Promise.all(
+          querySnapshot.docs.map(async (d) => {
+            const item = d.data() as AListItem;
+            item.value = await decrypt(item.value);
+            return item;
+          })
+        );
       });
   }
 
@@ -228,6 +262,15 @@ export default class Storage {
   async syncItem(item: AListItem, userSettings: UserSettings) {
     // Get the item from firestore
     const incoming = firestore().collection("Items").doc();
+  }
+
+  async deleteItem(item: AListItem, userId: string): Promise<number> {
+    const doc = firestore().collection("Items").doc(`${userId}_${item.name}`);
+
+    return doc
+      .delete()
+      .then(() => 1)
+      .catch(() => 0);
   }
 
   async deleteItems(userId: string): Promise<number> {

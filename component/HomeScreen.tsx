@@ -74,17 +74,17 @@ export default function HomeScreen({ route }: any) {
         })
         .catch((error) => console.log("Add timestamps ", error));
     }
-    if (user && !user.isAnonymous) {
-      storage
-        .syncData(user.uid)
-        .then((items) => {
-          console.log("Data sync completed ", JSON.stringify(items));
-          if (items.length > 0) {
-            setAListItems(items);
-          }
-        })
-        .catch((error) => console.log("Data sync", error));
-    }
+    // if (user && !user.isAnonymous) {
+    //   storage
+    //     .syncData(user.uid)
+    //     .then((items) => {
+    //       console.log("Data sync completed ", JSON.stringify(items));
+    //       if (items.length > 0) {
+    //         setAListItems(items);
+    //       }
+    //     })
+    //     .catch((error) => console.log("Data sync", error));
+    // }
   }, []);
 
   const styles = getStyles(insets);

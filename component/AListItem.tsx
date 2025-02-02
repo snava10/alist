@@ -4,10 +4,12 @@ import * as Clipboard from "expo-clipboard";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 type AListItem = {
+  id?: string;
   name: string;
   value: string;
   timestamp: number;
   userId?: string;
+  encrypted?: boolean;
 };
 
 const AListItem = (props: {
