@@ -1,5 +1,4 @@
 import { KeyPair, RSA } from "react-native-rsa-native";
-import logger from "../../logger";
 import * as SecureStore from "expo-secure-store";
 
 const RSA_KEY_SIZE = 2048;
@@ -15,8 +14,7 @@ export async function encrypt(value: string): Promise<string> {
       return RSA.encrypt(value, keyPair.public);
     })
     .catch((e) => {
-      console.log(e);
-      logger.debug("Failed to encrypt value");
+      console.error("Failed to encrypt value", e);
       throw "Failed to encrypt value";
     });
 }
@@ -30,7 +28,7 @@ export async function decrypt(hash: string): Promise<string> {
       return RSA.decrypt(hash, keyPair.private);
     })
     .catch((e) => {
-      console.log("Failed to decrypt value ", e);
+      console.error("Failed to decrypt value ", e);
       throw "Failed to decrypt value";
     });
 }
@@ -51,7 +49,7 @@ export async function getRSAKeys(): Promise<KeyPair | null> {
       return keyPair;
     })
     .catch((e) => {
-      logger.debug(`Failed to generate and store RSA keys ${e}`);
+      console.error(`Failed to generate and store RSA keys ${e}`);
       throw "Failed to generate and store RSA keys";
     });
 }

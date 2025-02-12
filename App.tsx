@@ -11,6 +11,8 @@ import LoginScreen, {
 import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Storage from "./component/Core/Storage";
+import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
+import { getRSAKeys } from "./component/Core/Security";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -21,6 +23,7 @@ export default function App() {
   const [initializing, setInitializing] = useState(true);
   const [anonymous, setAnonymous] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [runOnce, setRunOnce] = useState(true);
 
   const loginScreenProperties = {
     loginWithFacebook: false,
@@ -42,6 +45,12 @@ export default function App() {
   }
 
   useEffect(() => {
+    if (runOnce) {
+      getRSAKeys()
+        .then(() => console.debug("Keys generated"))
+        .catch(console.error);
+      setRunOnce(false);
+    }
     const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
     return subscriber; // unsubscribe on unmount
   }, []);

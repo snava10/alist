@@ -28,13 +28,12 @@ export default function HomeScreen({ route }: any) {
         setAListItems(items);
       });
     } catch (e) {
-      console.log(e);
+      console.error(e);
     }
   };
 
   const removeItem = async (item: AListItem | null) => {
     if (item !== null) {
-      console.log("Removing item ", item);
       await storage.removeItem(item);
       loadItemsFromLocalStorage(searchText);
     }
@@ -64,27 +63,16 @@ export default function HomeScreen({ route }: any) {
       if (user && !user.isAnonymous) {
         storage
           .createUserSettings(user.uid)
-          .then(() => console.log("User settings created"))
-          .catch((error) => console.log("User settings ", error));
+          .then(() => console.debug("User settings created"))
+          .catch((error) => console.error("User settings ", error));
       }
       storage
         .addTimestampToItems()
         .then(() => {
-          console.log("Add timestamps executed");
+          console.debug("Add timestamps executed");
           setOneOffCorrections(true);
         })
-        .catch((error) => console.log("Add timestamps ", error));
-    }
-    if (user && !user.isAnonymous) {
-      // storage
-      //   .syncData(user.uid)
-      //   .then((items) => {
-      //     console.log("Data sync completed ", JSON.stringify(items));
-      //     if (items.length > 0) {
-      //       setAListItems(items);
-      //     }
-      //   })
-      //   .catch((error) => console.log("Data sync", error));
+        .catch((error) => console.error("Add timestamps ", error));
     }
   }, []);
 
@@ -166,15 +154,15 @@ export default function HomeScreen({ route }: any) {
                 .logEvent("edit_item", {
                   name: item.name,
                 })
-                .then((_) => console.log("item edit logged"))
+                .then((_) => console.debug("item edit logged"))
                 .catch((_) => console.error("Couldn't log edit item event"));
             } else {
               analytics()
                 .logEvent("add_item", {
                   name: item.name,
                 })
-                .then((_) => console.log("add item logged"))
-                .catch((_) => console.log("add item log failed"));
+                .then((_) => console.debug("add item logged"))
+                .catch((_) => console.error("add item log failed"));
             }
             await storage.replaceItem(old, item);
             await loadItemsFromLocalStorage(searchText);

@@ -1,7 +1,6 @@
 import React from "react";
 import { View } from "react-native";
 import {
-  GoogleSigninButton,
   GoogleSignin,
   SignInSuccessResponse,
 } from "@react-native-google-signin/google-signin";
@@ -57,11 +56,9 @@ export default function GoogleLogin({ callbackFn }: any) {
           onGoogleButtonPress()
             .then(async (userCredentials) => {
               if (userCredentials) {
-                const userSettings = await createUserSettings(
+                const userSettings = await storage.createUserSettings(
                   userCredentials.user.uid
                 );
-                console.log(JSON.stringify(userSettings));
-                console.log(JSON.stringify(userCredentials));
                 callbackFn();
               } else {
                 console.error("Error: User credentials are null");
@@ -69,7 +66,7 @@ export default function GoogleLogin({ callbackFn }: any) {
               }
             })
             .catch((error) => {
-              console.log("Error " + error);
+              console.error("Error " + error);
               callbackFn();
             })
         }

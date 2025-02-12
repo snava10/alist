@@ -74,8 +74,6 @@ export default function AppleLogin({ callbackFn }: any) {
                   const userSettings = await storage.createUserSettings(
                     userCredentials.user.uid
                   );
-                  console.log(JSON.stringify(userSettings));
-                  console.log(JSON.stringify(userCredentials));
                   callbackFn();
                 } else {
                   if (firebase.auth().currentUser?.isAnonymous) {
@@ -89,7 +87,7 @@ export default function AppleLogin({ callbackFn }: any) {
                 }
               })
               .catch((error) => {
-                console.log("Error " + error);
+                console.error("Error " + error);
                 callbackFn();
               })
           }

@@ -49,7 +49,7 @@ export default function ProfileScreen({ route }: any) {
       for (const userInfo of user?.providerData) {
         displayName = userInfo.displayName;
         if (displayName) {
-          console.log(userInfo.providerId);
+          console.debug(userInfo.providerId);
           break;
         }
       }
@@ -156,9 +156,7 @@ export default function ProfileScreen({ route }: any) {
             allowAnonymous: false,
           }}
           deleteAccountFn={() => {
-            console.log("deleting account");
             setShowDeleteModal(true);
-            console.log(showDeleteModal);
           }}
         ></AuthenticationComponent>
       </View>
@@ -173,11 +171,10 @@ export default function ProfileScreen({ route }: any) {
                 const currentUser = auth()
                   .currentUser as FirebaseAuthTypes.User;
                 storage.deleteItems(currentUser.uid).then((deletedCount) => {
-                  console.log(`Deleted ${deletedCount} documents`);
+                  console.debug(`Deleted ${deletedCount} documents`);
                   currentUser
                     .delete()
-                    .then((response) => {
-                      console.log("Response", response);
+                    .then((_) => {
                       setShowDeleteModal(false);
                       setUser(null);
                       setIsLoggedIn(false);
@@ -187,8 +184,8 @@ export default function ProfileScreen({ route }: any) {
                           provider: currentUser.providerId,
                           displayName: currentUser.displayName ?? "",
                         })
-                        .then((_) => console.log("delete user logged"))
-                        .catch((_) => console.log("delete user log failed"));
+                        .then((_) => console.debug("delete user logged"))
+                        .catch((_) => console.error("delete user log failed"));
                     })
                     .catch((reason: Error) => {
                       if (
@@ -200,15 +197,17 @@ export default function ProfileScreen({ route }: any) {
                             provider: currentUser.providerId,
                             displayName: currentUser.displayName ?? "",
                           })
-                          .then((_) => console.log("delete user error logged"))
+                          .then((_) =>
+                            console.debug("delete user error logged")
+                          )
                           .catch((_) =>
-                            console.log("delete user error log failed")
+                            console.error("delete user error log failed")
                           );
                         setModalMessage(
                           `${reason.message} \n. Please logout, login and try deleting your account again.`
                         );
                       }
-                      console.log("Error", reason);
+                      console.error("Error", reason);
                     });
                 });
               });

@@ -13,6 +13,4 @@ export type UserSettings = {
   userId: string;
   backup: BackupCadence;
   membership: MembershipType;
-  publicKey?: string;
-  privateKey?: string;
 };
