@@ -21,6 +21,7 @@ export default function HomeScreen({ route }: any) {
   const [confirmationModalVisible, setConfirmationModalVisible] =
     useState(false);
   const [searchText, setSearchText] = useState("");
+  const [syncOnce, setSyncOnce] = useState(true);
 
   const loadItemsFromLocalStorage = async (st: string) => {
     try {
@@ -58,7 +59,20 @@ export default function HomeScreen({ route }: any) {
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    loadItemsFromLocalStorage(searchText);
+    if (syncOnce) {
+      storage
+        .syncData(user.uid)
+        .then((items) => {
+          console.log("Data sync completed ", JSON.stringify(items));
+        })
+        .catch((error) => console.log("Data sync", error))
+        .finally(() => {
+          setSyncOnce(false);
+          loadItemsFromLocalStorage(searchText);
+        });
+    } else {
+      loadItemsFromLocalStorage(searchText);
+    }
     if (!oneOffCorrections) {
       if (user && !user.isAnonymous) {
         storage

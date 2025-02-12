@@ -124,11 +124,22 @@ export default class Storage {
     return encryptedItem;
   }
 
+  private async saveItemNoEncryption(item: AListItem, sync: boolean = false) {
+    await AsyncStorage.setItem("_ali_" + item.name, JSON.stringify(item));
+    if (auth().currentUser && sync) {
+      await this.pushItem(item, auth().currentUser?.uid as string).then(() =>
+        console.debug(`Item saved: ${item.name}`)
+      );
+    }
+    return item;
+  }
+
   public async replaceItem(
     old: AListItem,
     newItem: AListItem,
     timestamp: boolean = true,
-    sync: boolean = true
+    sync: boolean = true,
+    encrypt: boolean = true
   ) {
     console.debug("Replacing item ", old.name);
     await this.removeItem(old, sync)
@@ -140,7 +151,10 @@ export default class Storage {
         if (timestamp) {
           newItem.timestamp = Date.now();
         }
-        return this.saveItem(newItem, sync);
+        if (encrypt) {
+          return this.saveItem(newItem, sync);
+        }
+        return this.saveItemNoEncryption(newItem, sync);
       });
   }
 
@@ -244,7 +258,7 @@ export default class Storage {
     return Promise.all(
       mergedItems.map(async (item) => {
         console.debug("Syncing item ", item);
-        await this.replaceItem(item, item, true, true);
+        await this.replaceItem(item, item, true, true, false);
       })
     ).then(() => {
       AsyncStorage.setItem("lastSync", Date.now().toString());
