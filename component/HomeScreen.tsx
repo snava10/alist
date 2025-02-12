@@ -64,12 +64,12 @@ export default function HomeScreen({ route }: any) {
         .syncData(user.uid)
         .then((items) => {
           console.log("Data sync completed ", JSON.stringify(items));
-          if (items.length > 0) {
-            loadItemsFromLocalStorage(searchText);
-          }
         })
         .catch((error) => console.log("Data sync", error))
-        .finally(() => setSyncOnce(false));
+        .finally(() => {
+          setSyncOnce(false);
+          loadItemsFromLocalStorage(searchText);
+        });
     } else {
       loadItemsFromLocalStorage(searchText);
     }
