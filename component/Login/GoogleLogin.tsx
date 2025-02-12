@@ -1,7 +1,6 @@
 import React from "react";
 import { View } from "react-native";
 import {
-  GoogleSigninButton,
   GoogleSignin,
   SignInSuccessResponse,
 } from "@react-native-google-signin/google-signin";
@@ -9,8 +8,10 @@ import auth, {
   FirebaseAuthTypes,
   linkWithCredential,
 } from "@react-native-firebase/auth";
-import { createUserSettings } from "../Core/Storage";
+import Storage from "../Core/Storage";
 import { GoogleSocialButton } from "react-native-social-buttons";
+
+const storage = Storage.getInstance();
 
 GoogleSignin.configure({
   webClientId:
@@ -55,11 +56,9 @@ export default function GoogleLogin({ callbackFn }: any) {
           onGoogleButtonPress()
             .then(async (userCredentials) => {
               if (userCredentials) {
-                const userSettings = await createUserSettings(
+                const userSettings = await storage.createUserSettings(
                   userCredentials.user.uid
                 );
-                console.log(JSON.stringify(userSettings));
-                console.log(JSON.stringify(userCredentials));
                 callbackFn();
               } else {
                 console.error("Error: User credentials are null");
@@ -67,7 +66,7 @@ export default function GoogleLogin({ callbackFn }: any) {
               }
             })
             .catch((error) => {
-              console.log("Error " + error);
+              console.error("Error " + error);
               callbackFn();
             })
         }

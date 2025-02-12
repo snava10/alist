@@ -8,12 +8,12 @@ export default function FacebookLogin() {
     <View>
       <LoginButton
         permissions={["public_profile", "email"]}
-        onLoginFinished={async (error, result) => {
+        onLoginFinished={async (error, _) => {
           if (error) {
-            console.log(error);
+            console.error(error);
           } else {
             const data = await AccessToken.getCurrentAccessToken();
-            console.log("Login Success");
+            console.debug("Login Success");
             if (data) {
               const facebookCredential = auth.FacebookAuthProvider.credential(
                 data.accessToken
@@ -25,7 +25,7 @@ export default function FacebookLogin() {
         onLogoutFinished={async () => {
           try {
             auth().signOut();
-            console.log("Logged out from Facebook");
+            console.debug("Logged out from Facebook");
           } catch (error) {
             console.error("Error logging out from Facebook:", error);
           }

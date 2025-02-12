@@ -25,4 +25,5 @@ ios
 database-debug.log
 firebase-debug.log
 firestore-debug.log
+.env.development
 

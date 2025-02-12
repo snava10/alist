@@ -1,6 +1,7 @@
 import { Modal, View, Text, Pressable } from "react-native";
 import globalStyles from "./Core/GlobalStyles";
 import AListItem from "./AListItem";
+import React from "react";
 
 const ConfirmationModal = (props: {
   visible: boolean;
