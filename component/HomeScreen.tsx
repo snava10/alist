@@ -34,6 +34,7 @@ export default function HomeScreen({ route }: any) {
 
   const removeItem = async (item: AListItem | null) => {
     if (item !== null) {
+      console.log("Removing item ", item);
       await storage.removeItem(item);
       loadItemsFromLocalStorage(searchText);
     }
@@ -75,15 +76,15 @@ export default function HomeScreen({ route }: any) {
         .catch((error) => console.log("Add timestamps ", error));
     }
     if (user && !user.isAnonymous) {
-      storage
-        .syncData(user.uid)
-        .then((items) => {
-          console.log("Data sync completed ", JSON.stringify(items));
-          if (items.length > 0) {
-            setAListItems(items);
-          }
-        })
-        .catch((error) => console.log("Data sync", error));
+      // storage
+      //   .syncData(user.uid)
+      //   .then((items) => {
+      //     console.log("Data sync completed ", JSON.stringify(items));
+      //     if (items.length > 0) {
+      //       setAListItems(items);
+      //     }
+      //   })
+      //   .catch((error) => console.log("Data sync", error));
     }
   }, []);
 
@@ -175,7 +176,7 @@ export default function HomeScreen({ route }: any) {
                 .then((_) => console.log("add item logged"))
                 .catch((_) => console.log("add item log failed"));
             }
-            await storage.replaceItem(old, item, user.uid);
+            await storage.replaceItem(old, item);
             await loadItemsFromLocalStorage(searchText);
           }}
           hideModal={hideModal}
