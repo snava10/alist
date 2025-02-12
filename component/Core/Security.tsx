@@ -46,10 +46,14 @@ export async function getRSAKeys(): Promise<KeyPair | null> {
     };
   }
 
-  return generateAndStoreKeys().catch((e) => {
-    logger.debug(`Failed to generate and store RSA keys ${e}`);
-    throw "Failed to generate and store RSA keys";
-  });
+  return generateAndStoreKeys()
+    .then(async (keyPair) => {
+      return keyPair;
+    })
+    .catch((e) => {
+      logger.debug(`Failed to generate and store RSA keys ${e}`);
+      throw "Failed to generate and store RSA keys";
+    });
 }
 
 async function generateAndStoreKeys(): Promise<KeyPair> {

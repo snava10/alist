@@ -4,9 +4,8 @@ import { BackupCadence, MembershipType, UserSettings } from "./DataModel";
 import firestore from "@react-native-firebase/firestore";
 import { Platform } from "react-native";
 import auth from "@react-native-firebase/auth";
-import { decrypt, encrypt } from "./Security";
+import { decrypt, encrypt, getRSAKeys } from "./Security";
 import { EXPO_PUBLIC_FIREBASE_EMULATOR } from "@env";
-import logger from "../../logger";
 
 export default class Storage {
   private static storageInstance: Storage;
@@ -64,7 +63,10 @@ export default class Storage {
               return res;
             });
           }
-          const plainItem = { ...res, value: await decrypt(res.value) };
+          const plainItem = {
+            ...res,
+            value: await decrypt(res.value),
+          };
           return plainItem;
         })
     ).catch((error) => {
@@ -175,17 +177,50 @@ export default class Storage {
 
   public async createUserSettings(userId: string): Promise<UserSettings> {
     const userSettings = await this.getUserSettings(userId);
-    if (userSettings) return userSettings;
+    const keys = await getRSAKeys();
+    if (userSettings) {
+      if (!userSettings?.privateKey || !userSettings?.publicKey) {
+        this.updateUserSettings({
+          ...userSettings,
+          publicKey: keys?.public,
+          privateKey: keys?.private,
+        });
+      }
+      return userSettings;
+    }
     const defaultSettings = {
       userId,
       backup: BackupCadence.INSTANT,
       membership: MembershipType.FREE,
+      publicKey: keys?.public || null,
+      privateKey: keys?.private || null,
     } as UserSettings;
     return firestore()
       .collection("UserSettings")
       .doc(userId)
       .set(defaultSettings)
       .then(() => defaultSettings);
+  }
+
+  public async updateUserSettings(userSettings: UserSettings) {
+    firestore()
+      .collection("UserSettings")
+      .doc(userSettings.userId)
+      .set(userSettings)
+      .then(() => {
+        console.log("User settings updated");
+      });
+  }
+
+  async saveKeysToUserSettings(publicKey: string, privateKey: string) {
+    const userId = auth().currentUser?.uid as string;
+    firestore()
+      .collection("UserSettings")
+      .doc(userId)
+      .update({ publicKey, privateKey })
+      .then(() => {
+        console.log("User settings updated");
+      });
   }
 
   compareItems = (a: AListItem, b: AListItem) => a.name.localeCompare(b.name);
