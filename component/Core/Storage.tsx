@@ -57,6 +57,7 @@ export default class Storage {
           var res = JSON.parse(kvp[1] as string) as AListItem;
           if (!res.encrypted) {
             console.debug("Item not encrypted ", res);
+            res.value = Buffer.from(res.value, "base64").toString("utf-8");
             res = await this.saveItem(res, true).catch((error) => {
               console.error("Save item ", error);
               return res;
