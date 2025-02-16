@@ -38,6 +38,7 @@ export async function getRSAKeys(): Promise<KeyPair | null> {
   const privateKey = await SecureStore.getItemAsync(PRIVATE_KEY_ALIAS);
 
   if (publicKey && privateKey) {
+    console.debug("RSA keys found in secure store");
     return {
       public: publicKey || "",
       private: privateKey || "",

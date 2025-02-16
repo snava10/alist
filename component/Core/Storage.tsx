@@ -6,7 +6,7 @@ import { Platform } from "react-native";
 import auth from "@react-native-firebase/auth";
 import { decrypt, encrypt, getRSAKeys } from "./Security";
 import { EXPO_PUBLIC_FIREBASE_EMULATOR } from "@env";
-import { decode } from "react-native-base64";
+import base64 from "react-native-base64";
 
 export default class Storage {
   private static storageInstance: Storage;
@@ -289,7 +289,7 @@ export default class Storage {
           querySnapshot.docs.map((d) => {
             const res = d.data() as AListItem;
             if (!res.encrypted) {
-              res.value = decode(res.value);
+              res.value = base64.decode(res.value);
             }
             return res;
           })
@@ -305,7 +305,7 @@ export default class Storage {
     const res = doc.data() as AListItem;
     if (!res.encrypted) {
       // means the data is base64 encoded
-      res.value = decode(res.value);
+      res.value = base64.decode(res.value);
     }
     return res;
   }
