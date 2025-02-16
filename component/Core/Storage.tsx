@@ -18,6 +18,7 @@ export default class Storage {
   }
 
   private constructor() {
+    console.debug(EXPO_PUBLIC_FIREBASE_EMULATOR);
     if (EXPO_PUBLIC_FIREBASE_EMULATOR === "true") {
       console.debug("Connecting to firebase emulator");
       if (Platform.OS === "android") {
