@@ -6,6 +6,7 @@ import { Platform } from "react-native";
 import auth from "@react-native-firebase/auth";
 import { decrypt, encrypt, getRSAKeys } from "./Security";
 import { EXPO_PUBLIC_FIREBASE_EMULATOR } from "@env";
+import { decode } from "react-native-base64";
 
 export default class Storage {
   private static storageInstance: Storage;
@@ -57,7 +58,6 @@ export default class Storage {
           var res = JSON.parse(kvp[1] as string) as AListItem;
           if (!res.encrypted) {
             console.debug("Item not encrypted ", res);
-            res.value = Buffer.from(res.value, "base64").toString("utf-8");
             res = await this.saveItem(res, true).catch((error) => {
               console.error("Save item ", error);
               return res;
@@ -286,7 +286,13 @@ export default class Storage {
       .then((querySnapshot) => {
         if (querySnapshot.empty) return [];
         return Promise.all(
-          querySnapshot.docs.map((d) => d.data() as AListItem)
+          querySnapshot.docs.map((d) => {
+            const res = d.data() as AListItem;
+            if (!res.encrypted) {
+              res.value = decode(res.value);
+            }
+            return res;
+          })
         );
       });
   }
@@ -296,7 +302,12 @@ export default class Storage {
       .collection("Items")
       .doc(`${userId}_${item.name}`)
       .get();
-    return doc.data() as AListItem;
+    const res = doc.data() as AListItem;
+    if (!res.encrypted) {
+      // means the data is base64 encoded
+      res.value = decode(res.value);
+    }
+    return res;
   }
 
   async syncItem(item: AListItem, userSettings: UserSettings) {
