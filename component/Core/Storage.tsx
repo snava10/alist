@@ -40,11 +40,7 @@ export async function addTimestampToItems(): Promise<void[]> {
     (await getAllItems())
       .filter((item) => !item.timestamp)
       .map((item) => {
-        return replaceItem(item, {
-          name: item.name,
-          value: item.value,
-          timestamp: Date.now(),
-        });
+        return replaceItem(item, { ...item, timestamp: Date.now() });
       })
   );
 }
@@ -57,7 +53,9 @@ export async function getAllItems(): Promise<Array<AListItem>> {
   return Promise.all(
     kvp
       .filter((kvp) => kvp[1] !== null)
-      .map((kvp) => maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem))
+      .map((kvp) => {
+        return maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem);
+      })
   );
 }
 
@@ -76,15 +74,17 @@ export async function getItems(filter: string): Promise<Array<AListItem>> {
   return Promise.all(
     kvp
       .filter((kvp) => kvp[1] !== null)
-      .map((kvp) => maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem))
+      .map((kvp) => {
+        return maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem);
+      })
   );
 }
 
 async function maybeDecrypt(item: AListItem): Promise<AListItem> {
   if (item.encrypted) {
     return decrypt(item.value).then((value) => {
-      item.value = value;
-      return item;
+      const res = { ...item, value: value };
+      return res;
     });
   } else {
     console.debug("Item not encrypted ", JSON.stringify(item));
@@ -99,11 +99,9 @@ async function maybeDecrypt(item: AListItem): Promise<AListItem> {
  * @param item AListItem to save
  */
 export async function saveItem(item: AListItem) {
-  if (EXPO_PUBLIC_ENCRYPTION) {
-    item.value = await encrypt(item.value);
-    item.encrypted = true;
-  }
-  await AsyncStorage.setItem("_ali_" + item.name, JSON.stringify(item));
+  const res = { ...item, encrypted: true };
+  res.value = await encrypt(item.value);
+  await AsyncStorage.setItem("_ali_" + item.name, JSON.stringify(res));
 }
 
 export async function replaceItem(
