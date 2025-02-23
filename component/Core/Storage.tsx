@@ -3,9 +3,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BackupCadence, MembershipType, UserSettings } from "./DataModel";
 import firestore from "@react-native-firebase/firestore";
 import base64 from "react-native-base64";
-import { EXPO_PUBLIC_FIREBASE_EMULATOR } from "@env";
+import { EXPO_PUBLIC_ENCRYPTION, EXPO_PUBLIC_FIREBASE_EMULATOR } from "@env";
 import auth from "@react-native-firebase/auth";
 import { Platform } from "react-native";
+import { decrypt, encrypt, getRSAKeys } from "./Security";
 
 if (EXPO_PUBLIC_FIREBASE_EMULATOR === "true") {
   console.debug("Connecting to firebase emulator");
@@ -27,9 +28,9 @@ export async function getItem(id: string): Promise<AListItem | null> {
   }
   var res: AListItem | null = null;
   try {
-    res = JSON.parse(value) as AListItem;
+    res = await maybeDecrypt(JSON.parse(value) as AListItem);
   } catch (e) {
-    console.log(e);
+    console.error(e);
   }
   return res;
 }
@@ -53,9 +54,11 @@ export async function getAllItems(): Promise<Array<AListItem>> {
   const kvp = await AsyncStorage.multiGet(
     keys.filter((k) => k.startsWith("_ali_"))
   );
-  return kvp
-    .filter((kvp) => kvp[1] !== null)
-    .map((kvp) => JSON.parse(kvp[1] as string) as AListItem);
+  return Promise.all(
+    kvp
+      .filter((kvp) => kvp[1] !== null)
+      .map((kvp) => maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem))
+  );
 }
 
 export async function getItems(filter: string): Promise<Array<AListItem>> {
@@ -70,12 +73,36 @@ export async function getItems(filter: string): Promise<Array<AListItem>> {
         k.substring(5).toLowerCase().includes(filter.toLowerCase())
     )
   );
-  return kvp
-    .filter((kvp) => kvp[1] !== null)
-    .map((kvp) => JSON.parse(kvp[1] as string) as AListItem);
+  return Promise.all(
+    kvp
+      .filter((kvp) => kvp[1] !== null)
+      .map((kvp) => maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem))
+  );
 }
 
+async function maybeDecrypt(item: AListItem): Promise<AListItem> {
+  if (item.encrypted) {
+    return decrypt(item.value).then((value) => {
+      item.value = value;
+      return item;
+    });
+  } else {
+    console.debug("Item not encrypted ", JSON.stringify(item));
+    saveItem(item);
+  }
+  return item;
+}
+
+/**
+ * Saves an item to the local storage. The item should be encrypted,
+ * this function will encrypt it before saving it.
+ * @param item AListItem to save
+ */
 export async function saveItem(item: AListItem) {
+  if (EXPO_PUBLIC_ENCRYPTION) {
+    item.value = await encrypt(item.value);
+    item.encrypted = true;
+  }
   await AsyncStorage.setItem("_ali_" + item.name, JSON.stringify(item));
 }
 
