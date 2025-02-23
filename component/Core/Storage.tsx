@@ -99,10 +99,8 @@ async function maybeDecrypt(item: AListItem): Promise<AListItem> {
  * @param item AListItem to save
  */
 export async function saveItem(item: AListItem) {
-  if (EXPO_PUBLIC_ENCRYPTION) {
-    item.value = await encrypt(item.value);
-    item.encrypted = true;
-  }
+  item.value = await encrypt(item.value);
+  item.encrypted = true;
   await AsyncStorage.setItem("_ali_" + item.name, JSON.stringify(item));
 }
 
