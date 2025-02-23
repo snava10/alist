@@ -26,3 +26,6 @@ database-debug.log
 firebase-debug.log
 firestore-debug.log
 
+alist-397309-firebase-adminsdk.json
+*.ipa
+Items_backup.json
