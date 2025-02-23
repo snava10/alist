@@ -28,6 +28,7 @@ export async function getItem(id: string): Promise<AListItem | null> {
   }
   var res: AListItem | null = null;
   try {
+    console.debug("getItem ", value);
     res = await maybeDecrypt(JSON.parse(value) as AListItem);
   } catch (e) {
     console.error(e);
@@ -57,7 +58,10 @@ export async function getAllItems(): Promise<Array<AListItem>> {
   return Promise.all(
     kvp
       .filter((kvp) => kvp[1] !== null)
-      .map((kvp) => maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem))
+      .map((kvp) => {
+        console.debug("getAllItems ", kvp[1]);
+        return maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem);
+      })
   );
 }
 
@@ -76,7 +80,10 @@ export async function getItems(filter: string): Promise<Array<AListItem>> {
   return Promise.all(
     kvp
       .filter((kvp) => kvp[1] !== null)
-      .map((kvp) => maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem))
+      .map((kvp) => {
+        console.debug("getItems ", kvp[1]);
+        return maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem);
+      })
   );
 }
 
@@ -101,6 +108,7 @@ async function maybeDecrypt(item: AListItem): Promise<AListItem> {
 export async function saveItem(item: AListItem) {
   item.value = await encrypt(item.value);
   item.encrypted = true;
+  console.debug("Saving item ", JSON.stringify(item));
   await AsyncStorage.setItem("_ali_" + item.name, JSON.stringify(item));
 }
 
