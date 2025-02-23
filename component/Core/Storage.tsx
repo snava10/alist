@@ -3,6 +3,22 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BackupCadence, MembershipType, UserSettings } from "./DataModel";
 import firestore from "@react-native-firebase/firestore";
 import base64 from "react-native-base64";
+import { EXPO_PUBLIC_FIREBASE_EMULATOR } from "@env";
+import auth from "@react-native-firebase/auth";
+import { Platform } from "react-native";
+
+if (EXPO_PUBLIC_FIREBASE_EMULATOR === "true") {
+  console.debug("Connecting to firebase emulator");
+  if (Platform.OS === "android") {
+    console.debug("Operating System ", Platform.OS);
+    firestore().useEmulator("10.0.2.2", 8080);
+    auth().useEmulator("http://10.0.2.2:9099");
+  } else {
+    console.debug("Operating System ", Platform.OS);
+    firestore().useEmulator("127.0.0.1", 8080);
+    auth().useEmulator("http://127.0.0.1:9099");
+  }
+}
 
 export async function getItem(id: string): Promise<AListItem | null> {
   const value = await AsyncStorage.getItem(id);
