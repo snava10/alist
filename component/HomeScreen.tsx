@@ -77,14 +77,14 @@ export default function HomeScreen({ route }: any) {
         .catch((error) => console.log("Add timestamps ", error));
     }
     if (user && !user.isAnonymous) {
-      syncData(user.uid)
-        .then((items) => {
-          console.log("Data sync completed ", JSON.stringify(items));
-          if (items.length > 0) {
-            setAListItems(items);
-          }
-        })
-        .catch((error) => console.log("Data sync", error));
+      // syncData(user.uid)
+      //   .then((items) => {
+      //     console.log("Data sync completed ", JSON.stringify(items));
+      //     if (items.length > 0) {
+      //       setAListItems(items);
+      //     }
+      //   })
+      //   .catch((error) => console.log("Data sync", error));
     }
   }, []);
 

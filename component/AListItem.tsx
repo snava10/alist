@@ -8,6 +8,7 @@ type AListItem = {
   value: string;
   timestamp: number;
   userId?: string;
+  encrypted?: boolean;
 };
 
 const AListItem = (props: {
