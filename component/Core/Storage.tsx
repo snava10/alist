@@ -28,6 +28,7 @@ export async function getItem(id: string): Promise<AListItem | null> {
   }
   var res: AListItem | null = null;
   try {
+    console.log("Value ", value);
     res = await maybeDecrypt(JSON.parse(value) as AListItem);
   } catch (e) {
     console.error(e);
@@ -54,6 +55,7 @@ export async function getAllItems(): Promise<Array<AListItem>> {
     kvp
       .filter((kvp) => kvp[1] !== null)
       .map((kvp) => {
+        console.log("Item ", kvp[1]);
         return maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem);
       })
   );
@@ -94,7 +96,7 @@ async function maybeDecrypt(item: AListItem): Promise<AListItem> {
 }
 
 /**
- * Saves an item to the local storage. The item should be encrypted,
+ * Saves an item to the local storage. The item should be unencrypted,
  * this function will encrypt it before saving it.
  * @param item AListItem to save
  */
@@ -161,74 +163,17 @@ export async function createUserSettings(
 const compareItems = (a: AListItem, b: AListItem) =>
   a.name.localeCompare(b.name);
 
-export async function syncData(userId: string): Promise<Array<AListItem>> {
-  const lastSync = parseInt((await AsyncStorage.getItem("lastSync")) ?? "0");
-  const userSettings = await getUserSettings(userId);
-  let intervalInMillis = 24 * 60 * 60 * 1000;
-
-  if (userSettings?.backup === BackupCadence.NONE) {
-    return [];
-  } else if (userSettings?.backup === BackupCadence.INSTANT) {
-    intervalInMillis = 0;
-  }
-
-  if (Date.now() - lastSync < intervalInMillis) {
-    return [];
-  }
-
-  const localItems = (await getAllItems()).sort(compareItems);
-  const remoteItems = (await pullItems(userId)).sort(compareItems);
-  const mergedItems: Array<AListItem> = [];
-
-  while (localItems.length > 0 || remoteItems.length > 0) {
-    const local = localItems.shift();
-    const remote = remoteItems.shift();
-    if (!local) {
-      mergedItems.push(remote as AListItem);
-      continue;
-    }
-    if (!remote) {
-      mergedItems.push(local as AListItem);
-      continue;
-    }
-
-    if (compareItems(local, remote) < 0) {
-      mergedItems.push(local);
-      remoteItems.unshift(remote);
-    } else if (compareItems(local, remote) > 0) {
-      mergedItems.push(remote);
-      localItems.unshift(local);
-    } else {
-      // The same item. Compare timestamps
-      if (local.timestamp > remote.timestamp) {
-        mergedItems.push(local);
-      } else {
-        mergedItems.push(remote);
-      }
-    }
-  }
-
-  return Promise.all(
-    mergedItems.map(async (item) => {
-      await replaceItem(item, item);
-      await pushItem(item, userId);
-    })
-  ).then(() => {
-    AsyncStorage.setItem("lastSync", Date.now().toString());
-    return mergedItems;
-  });
-}
-
-export async function pushItem(item: AListItem, userId: string) {
-  const encodedValue = base64.encode(item.value);
-  firestore()
-    .collection("Items")
-    .doc(`${userId}_${item.name}`)
-    .set({ ...item, userId, value: encodedValue })
-    .then(() => console.log("Item saved to firebase ", JSON.stringify(item)));
-}
+// export async function pushItem(item: AListItem, userId: string) {
+//   const encodedValue = base64.encode(item.value);
+//   firestore()
+//     .collection("Items")
+//     .doc(`${userId}_${item.name}`)
+//     .set({ ...item, userId, value: encodedValue })
+//     .then(() => console.log("Item saved to firebase ", JSON.stringify(item)));
+// }
 
 export async function pullItems(userId: string): Promise<Array<AListItem>> {
+  console.log("Pulling items for user ", userId);
   return firestore()
     .collection("Items")
     .where("userId", "==", userId)
@@ -236,27 +181,12 @@ export async function pullItems(userId: string): Promise<Array<AListItem>> {
     .then((querySnapshot) => {
       if (querySnapshot.empty) return [];
       return querySnapshot.docs.map((d) => {
-        const item = d.data() as AListItem;
+        const item = { ...d.data() } as AListItem;
+        console.log("Item pulled from firebase ", JSON.stringify(item));
         item.value = base64.decode(item.value);
         return item;
       });
     });
-}
-
-export async function pullItem(
-  item: AListItem,
-  userId: string
-): Promise<AListItem> {
-  const doc = await firestore()
-    .collection("Items")
-    .doc(`${userId}_${item.name}`)
-    .get();
-  return doc.data() as AListItem;
-}
-
-export async function syncItem(item: AListItem, userSettings: UserSettings) {
-  // Get the item from firestore
-  const incoming = firestore().collection("Items").doc();
 }
 
 export async function deleteItems(userId: string): Promise<number> {
@@ -279,4 +209,21 @@ export async function deleteItems(userId: string): Promise<number> {
       )
     )
     .then((result) => result.reduce((a, b) => a + b, 0));
+}
+
+export async function restoreFromBackup(userId: string) {
+  // Get all items.
+  const items = await pullItems(userId);
+  console.log("Items pulled from firebase ", JSON.stringify(items));
+  await AsyncStorage.clear();
+  items.forEach(async (item) => {
+    console.log("Restoring item ", JSON.stringify(item));
+    if (item.encrypted) {
+      console.log("Item is encrypted");
+      await AsyncStorage.setItem("_ali_" + item.name, JSON.stringify(item));
+    } else {
+      console.log("Item is not encrypted");
+      await saveItem(item);
+    }
+  });
 }

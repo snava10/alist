@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import auth from "@react-native-firebase/auth";
 import AuthenticationComponent from "./Login/AuthenticationComponent";
-import { View, Text } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import globalStyles from "./Core/GlobalStyles";
 import { BackupCadence } from "./Core/DataModel";
 import DropDownPicker from "react-native-dropdown-picker";
@@ -9,8 +9,9 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ConfirmationModal from "./ConfirmationModal";
 import { FirebaseAuthTypes } from "@react-native-firebase/auth";
-import { deleteItems } from "./Core/Storage";
+import { deleteItems, restoreFromBackup } from "./Core/Storage";
 import analytics from "@react-native-firebase/analytics";
+import { useNavigation } from "@react-navigation/native";
 
 export default function ProfileScreen({ route }: any) {
   const [open, setOpen] = useState(false);
@@ -22,6 +23,10 @@ export default function ProfileScreen({ route }: any) {
   const [modalMessage, setModalMessage] = useState(
     "Deleting you account will remove your credentials and all backups. The data will still be available in your phone. Do you wish to proceed?"
   );
+  const [showRestoreFromBackupModal, setShowRestoreFromBackupModal] =
+    useState(false);
+
+  const navigation = useNavigation();
 
   const items = Object.values(BackupCadence).map((i) => {
     if (i === BackupCadence.INSTANT) {
@@ -107,16 +112,19 @@ export default function ProfileScreen({ route }: any) {
                 <Text style={globalStyles.profileTextLabel}>Backup</Text>
               </View>
               <View style={{ flex: 0.5, justifyContent: "center" }}>
-                <DropDownPicker
-                  open={open}
-                  setOpen={setOpen}
-                  value={backupCadence}
-                  items={items}
-                  setValue={setBackupCadence}
-                  disabledItemContainerStyle={{
-                    backgroundColor: "#f0f0f0",
+                <Pressable
+                  style={[
+                    globalStyles.button,
+                    globalStyles.button.primary.main,
+                  ]}
+                  onPress={() => {
+                    setShowRestoreFromBackupModal(true);
                   }}
-                />
+                >
+                  <Text style={globalStyles.button.text.default}>
+                    Backup Restore
+                  </Text>
+                </Pressable>
               </View>
             </View>
           </View>
@@ -218,6 +226,34 @@ export default function ProfileScreen({ route }: any) {
             setShowDeleteModal(false);
           }}
           item={null}
+        ></ConfirmationModal>
+      ) : (
+        <></>
+      )}
+      {isLoggedIn && showRestoreFromBackupModal ? (
+        <ConfirmationModal
+          message="This will replace all your data with your latest backup. Would you like to proceed"
+          item={null}
+          acceptCallbackFn={async () => {
+            console.log("Restoring from backup");
+            await restoreFromBackup(user.uid);
+            setShowRestoreFromBackupModal(false);
+            analytics()
+              .logEvent("backup_restore", {
+                uid: user.uid,
+                provider: user.providerId,
+                displayName: user.displayName ?? "",
+              })
+              .catch((_) => console.log("backup log failed"));
+            navigation.goBack();
+          }}
+          rejectCallbackFn={() => {
+            setShowRestoreFromBackupModal(false);
+          }}
+          hideModalFn={() => {
+            setShowRestoreFromBackupModal(false);
+          }}
+          visible={showRestoreFromBackupModal}
         ></ConfirmationModal>
       ) : (
         <></>

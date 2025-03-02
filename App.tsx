@@ -8,10 +8,11 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import LoginScreen, {
   LoginScreenProperties,
 } from "./component/Login/LoginScreen";
-import auth, { CallbackOrObserver, FirebaseAuthTypes } from "@react-native-firebase/auth";
-import {
-  SafeAreaProvider,
-} from 'react-native-safe-area-context';
+import auth, {
+  CallbackOrObserver,
+  FirebaseAuthTypes,
+} from "@react-native-firebase/auth";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -30,11 +31,11 @@ export default function App() {
   } as LoginScreenProperties;
 
   function onAuthStateChanged(u: FirebaseAuthTypes.User | null) {
-    if (u) {      
-      setUser(u);      
+    if (u) {
+      setUser(u);
       if (initializing) setInitializing(false);
       setIsLoggedIn(true);
-      console.log("Display Name", u.displayName)
+      console.log("Display Name", u.displayName);
     } else {
       setUser(null);
       setIsLoggedIn(false);
@@ -48,32 +49,34 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={({ route }) => ({ headerShown: false })}>
-        {isLoggedIn ? (
-          <>
-            <Stack.Screen
-              name="Home Tab"
-              component={HomeTabScreen}
-              initialParams={{
-                user: user,
-                anonymous,
-              }}
-            />
-          </>
-        ) : (
-          <>
-            <Stack.Screen
-              name="Login"
-              component={LoginScreen}
-              initialParams={{
-                loginScreenProperties,
-              }}
-            />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+      <NavigationContainer>
+        <Stack.Navigator
+          screenOptions={({ route }) => ({ headerShown: false })}
+        >
+          {isLoggedIn ? (
+            <>
+              <Stack.Screen
+                name="Home Tab"
+                component={HomeTabScreen}
+                initialParams={{
+                  user: user,
+                  anonymous,
+                }}
+              />
+            </>
+          ) : (
+            <>
+              <Stack.Screen
+                name="Login"
+                component={LoginScreen}
+                initialParams={{
+                  loginScreenProperties,
+                }}
+              />
+            </>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
     </SafeAreaProvider>
   );
 }
