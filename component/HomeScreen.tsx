@@ -9,12 +9,12 @@ import {
   getItems,
   replaceItem,
   removeItem as storageRemoveItem,
-  syncData,
 } from "./Core/Storage";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import globalStyles from "./Core/GlobalStyles";
 import analytics from "@react-native-firebase/analytics";
 import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 export default function HomeScreen({ route }: any) {
   const [oneOffCorrections, setOneOffCorrections] = useState(false);
@@ -26,7 +26,8 @@ export default function HomeScreen({ route }: any) {
     useState(false);
   const [searchText, setSearchText] = useState("");
 
-  const loadItemsFromLocalStorage = async (st: string) => {
+  const loadItemsFromLocalStorage = (st: string) => {
+    console.log("Loading items from local storage");
     try {
       getItems(st).then(async (items) => {
         setAListItems(items);
