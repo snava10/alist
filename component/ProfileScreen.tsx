@@ -3,15 +3,16 @@ import auth from "@react-native-firebase/auth";
 import AuthenticationComponent from "./Login/AuthenticationComponent";
 import { View, Text, Pressable } from "react-native";
 import globalStyles from "./Core/GlobalStyles";
-import { BackupCadence } from "./Core/DataModel";
-import DropDownPicker from "react-native-dropdown-picker";
+import { BackupCadence, HomeTabParamList } from "./Core/DataModel";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ConfirmationModal from "./ConfirmationModal";
 import { FirebaseAuthTypes } from "@react-native-firebase/auth";
 import { deleteItems, restoreFromBackup } from "./Core/Storage";
 import analytics from "@react-native-firebase/analytics";
-import { useNavigation } from "@react-navigation/native";
+import { NavigationProp, useNavigation } from "@react-navigation/native";
+
+type NavigationType = NavigationProp<HomeTabParamList>;
 
 export default function ProfileScreen({ route }: any) {
   const [open, setOpen] = useState(false);
@@ -26,7 +27,7 @@ export default function ProfileScreen({ route }: any) {
   const [showRestoreFromBackupModal, setShowRestoreFromBackupModal] =
     useState(false);
 
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationType>();
 
   const items = Object.values(BackupCadence).map((i) => {
     if (i === BackupCadence.INSTANT) {
@@ -236,16 +237,22 @@ export default function ProfileScreen({ route }: any) {
           item={null}
           acceptCallbackFn={async () => {
             console.log("Restoring from backup");
-            await restoreFromBackup(user.uid);
-            setShowRestoreFromBackupModal(false);
-            analytics()
-              .logEvent("backup_restore", {
-                uid: user.uid,
-                provider: user.providerId,
-                displayName: user.displayName ?? "",
-              })
-              .catch((_) => console.log("backup log failed"));
-            navigation.goBack();
+            await restoreFromBackup(user.uid).then((x) => {
+              setShowRestoreFromBackupModal(false);
+              analytics()
+                .logEvent("backup_restore", {
+                  uid: user.uid,
+                  provider: user.providerId,
+                  displayName: user.displayName ?? "",
+                })
+                .catch((_) => console.log("backup log failed"));
+              console.info("Restored ", x, " items");
+              // This is needed otherwise the items won't show up on the Home screen.
+              setTimeout(
+                () => navigation.navigate("Home", { itemsReload: x }),
+                1000
+              );
+            });
           }}
           rejectCallbackFn={() => {
             setShowRestoreFromBackupModal(false);

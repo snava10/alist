@@ -211,7 +211,7 @@ export async function deleteItems(userId: string): Promise<number> {
     .then((result) => result.reduce((a, b) => a + b, 0));
 }
 
-export async function restoreFromBackup(userId: string) {
+export async function restoreFromBackup(userId: string): Promise<number> {
   // Get all items.
   const items = await pullItems(userId);
   console.log("Items pulled from firebase ", JSON.stringify(items));
@@ -226,4 +226,5 @@ export async function restoreFromBackup(userId: string) {
       await saveItem(item);
     }
   });
+  return items.length;
 }

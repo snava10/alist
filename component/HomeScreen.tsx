@@ -26,12 +26,13 @@ export default function HomeScreen({ route }: any) {
     useState(false);
   const [searchText, setSearchText] = useState("");
 
-  const loadItemsFromLocalStorage = (st: string) => {
+  const loadItemsFromLocalStorage = async (st: string) => {
     console.log("Loading items from local storage");
     try {
-      getItems(st).then(async (items) => {
-        setAListItems(items);
-      });
+      const items = await getItems(st);
+      console.log("Items ", items);
+      setAListItems(items);
+      route.params.itemsReload = 0;
     } catch (e) {
       console.log(e);
     }
@@ -62,8 +63,14 @@ export default function HomeScreen({ route }: any) {
 
   const insets = useSafeAreaInsets();
 
+  useFocusEffect(
+    React.useCallback(() => {
+      loadItemsFromLocalStorage(searchText);
+    }, [])
+  );
+
   useEffect(() => {
-    loadItemsFromLocalStorage(searchText);
+    console.info("Use Effect Invoked", alistItems);
     if (!oneOffCorrections) {
       if (user && !user.isAnonymous) {
         createUserSettings(user.uid)
@@ -77,17 +84,7 @@ export default function HomeScreen({ route }: any) {
         })
         .catch((error) => console.log("Add timestamps ", error));
     }
-    if (user && !user.isAnonymous) {
-      // syncData(user.uid)
-      //   .then((items) => {
-      //     console.log("Data sync completed ", JSON.stringify(items));
-      //     if (items.length > 0) {
-      //       setAListItems(items);
-      //     }
-      //   })
-      //   .catch((error) => console.log("Data sync", error));
-    }
-  }, []);
+  }, [oneOffCorrections]);
 
   const styles = getStyles(insets);
 

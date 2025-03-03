@@ -14,3 +14,7 @@ export type UserSettings = {
   backup: BackupCadence;
   membership: MembershipType;
 };
+
+export type HomeTabParamList = {
+  Home: { itemsReload?: number }; // Define the Home screen params
+};
