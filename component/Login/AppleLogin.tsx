@@ -10,7 +10,6 @@ import {
   AppleButton,
 } from "@invertase/react-native-apple-authentication";
 import { createUserSettings } from "../Core/Storage";
-import { AppleSocialButton } from "react-native-social-buttons";
 
 export default function AppleLogin({ callbackFn }: any) {
   async function onAppleButtonPress() {
@@ -28,7 +27,7 @@ export default function AppleLogin({ callbackFn }: any) {
         // 3). create a Firebase `AppleAuthProvider` credential
         const appleCredential = firebase.auth.AppleAuthProvider.credential(
           identityToken,
-          nonce
+          nonce,
         );
 
         // 4). use the created `AppleAuthProvider` credential to start a Firebase auth request,
@@ -42,7 +41,7 @@ export default function AppleLogin({ callbackFn }: any) {
             .signInWithCredential(appleCredential)
             .then((credentials) => {
               linkWithCredential(user, appleCredential).catch(
-                (_) => credentials
+                (_) => credentials,
               );
             });
         }
@@ -61,16 +60,17 @@ export default function AppleLogin({ callbackFn }: any) {
   return (
     <View>
       {appleAuth.isSupported && (
-        <AppleSocialButton
-          buttonViewStyle={{ backgroundColor: "black" }}
-          textStyle={{ color: "white", fontWeight: "bold" }}
-          logoStyle={{ tintColor: "white" }}
+        <AppleButton
+          buttonStyle={AppleButton.Style.BLACK}
+          buttonType={AppleButton.Type.SIGN_IN}
+          cornerRadius={6}
+          style={{ height: 44 }}
           onPress={() =>
             onAppleButtonPress()
               .then(async (userCredentials) => {
                 if (userCredentials) {
                   const userSettings = await createUserSettings(
-                    userCredentials.user.uid
+                    userCredentials.user.uid,
                   );
                   console.log(JSON.stringify(userSettings));
                   console.log(JSON.stringify(userCredentials));
@@ -80,7 +80,7 @@ export default function AppleLogin({ callbackFn }: any) {
                     console.error("Error: User credentials are null");
                   } else {
                     console.info(
-                      "Login with Apple Succeded but there was an error merging the account with an anonymous user"
+                      "Login with Apple Succeded but there was an error merging the account with an anonymous user",
                     );
                   }
                   callbackFn();

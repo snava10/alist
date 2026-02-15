@@ -10,7 +10,6 @@ import auth, {
   linkWithCredential,
 } from "@react-native-firebase/auth";
 import { createUserSettings } from "../Core/Storage";
-import { GoogleSocialButton } from "react-native-social-buttons";
 
 GoogleSignin.configure({
   webClientId:
@@ -29,7 +28,7 @@ async function onGoogleButtonPress() {
     // Create a Google credential with the token
     response = response as SignInSuccessResponse;
     const googleCredential = auth.GoogleAuthProvider.credential(
-      response.data.idToken
+      response.data.idToken,
     );
 
     if (auth().currentUser) {
@@ -37,7 +36,7 @@ async function onGoogleButtonPress() {
       const user: FirebaseAuthTypes.User = auth()
         .currentUser as FirebaseAuthTypes.User;
       return linkWithCredential(user, googleCredential).catch((error) =>
-        auth().signInWithCredential(googleCredential)
+        auth().signInWithCredential(googleCredential),
       );
     }
     // Sign-in the user with the credential
@@ -48,15 +47,16 @@ async function onGoogleButtonPress() {
 export default function GoogleLogin({ callbackFn }: any) {
   return (
     <View>
-      <GoogleSocialButton
-        buttonViewStyle={{ backgroundColor: "black" }}
-        textStyle={{ color: "white", fontWeight: "bold" }}
+      <GoogleSigninButton
+        size={GoogleSigninButton.Size.Wide}
+        color={GoogleSigninButton.Color.Dark}
+        style={{ height: 44 }}
         onPress={() =>
           onGoogleButtonPress()
             .then(async (userCredentials) => {
               if (userCredentials) {
                 const userSettings = await createUserSettings(
-                  userCredentials.user.uid
+                  userCredentials.user.uid,
                 );
                 console.log(JSON.stringify(userSettings));
                 console.log(JSON.stringify(userCredentials));
