@@ -10,6 +10,7 @@
     "resizeMode": "contain",
     "backgroundColor": "#ffffff"
   },
+  "scheme": "alist",
   "assetBundlePatterns": ["**/*"],
   "plugins": [
     [
@@ -21,18 +22,6 @@
     ],
     ["expo-apple-authentication"],
     [
-      "react-native-fbsdk-next",
-      {
-        "appID": "256292256803627",
-        "clientToken": "FB_SDK_CLIENT_TOKEN",
-        "displayName": "Agus List",
-        "scheme": "fb256292256803627",
-        "advertiserIDCollectionEnabled": false,
-        "autoLogAppEventsEnabled": true,
-        "isAutoInitEnabled": true
-      }
-    ],
-    [
       "expo-build-properties",
       {
         "ios": {
@@ -41,7 +30,8 @@
         }
       }
     ],
-    "@react-native-firebase/app"
+    "@react-native-firebase/app",
+    "expo-web-browser"
   ],
   "ios": {
     "supportsTablet": true,
