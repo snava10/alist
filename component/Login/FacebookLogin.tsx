@@ -1,36 +1,51 @@
-import React from "react";
-import { View } from "react-native";
-import { LoginButton, AccessToken } from "react-native-fbsdk-next";
+import React, { useEffect } from "react";
+import { View, Pressable, Text } from "react-native";
+import * as Facebook from "expo-auth-session/providers/facebook";
+import * as WebBrowser from "expo-web-browser";
 import auth from "@react-native-firebase/auth";
 
+WebBrowser.maybeCompleteAuthSession();
+
+const FACEBOOK_APP_ID = "256292256803627";
+
 export default function FacebookLogin() {
+  const [request, response, promptAsync] = Facebook.useAuthRequest({
+    clientId: FACEBOOK_APP_ID,
+  });
+
+  useEffect(() => {
+    if (response?.type === "success") {
+      const { access_token } = response.params;
+      const facebookCredential =
+        auth.FacebookAuthProvider.credential(access_token);
+      auth()
+        .signInWithCredential(facebookCredential)
+        .then(() => {
+          console.log("Login Success");
+        })
+        .catch((error) => {
+          console.error("Firebase sign-in error:", error);
+        });
+    }
+  }, [response]);
+
   return (
     <View>
-      <LoginButton
-        permissions={["public_profile", "email"]}
-        onLoginFinished={async (error, result) => {
-          if (error) {
-            console.log(error);
-          } else {
-            const data = await AccessToken.getCurrentAccessToken();
-            console.log("Login Success");
-            if (data) {
-              const facebookCredential = auth.FacebookAuthProvider.credential(
-                data.accessToken
-              );
-              await auth().signInWithCredential(facebookCredential);
-            }
-          }
+      <Pressable
+        disabled={!request}
+        onPress={() => promptAsync()}
+        style={{
+          backgroundColor: "#1877F2",
+          paddingVertical: 12,
+          paddingHorizontal: 20,
+          borderRadius: 6,
+          alignItems: "center",
         }}
-        onLogoutFinished={async () => {
-          try {
-            auth().signOut();
-            console.log("Logged out from Facebook");
-          } catch (error) {
-            console.error("Error logging out from Facebook:", error);
-          }
-        }}
-      />
+      >
+        <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>
+          Continue with Facebook
+        </Text>
+      </Pressable>
     </View>
   );
 }

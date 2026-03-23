@@ -29,3 +29,4 @@ firestore-debug.log
 alist-397309-firebase-adminsdk.json
 *.ipa
 Items_backup.json
+.yarn/install-state.gz

@@ -1,74 +1,63 @@
 {
-  "expo": {
-    "name": "Agus List",
-    "slug": "alist",
-    "version": "2.2.2",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
+  "name": "Agus List",
+  "slug": "alist",
+  "version": "2.2.2",
+  "orientation": "portrait",
+  "icon": "./assets/icon.png",
+  "userInterfaceStyle": "light",
+  "splash": {
+    "image": "./assets/splash.png",
+    "resizeMode": "contain",
+    "backgroundColor": "#ffffff"
+  },
+  "scheme": "alist",
+  "assetBundlePatterns": ["**/*"],
+  "plugins": [
+    [
+      "expo-secure-store",
+      {
+        "configureAndroidBackup": true,
+        "faceIDPermission": "Allow $(PRODUCT_NAME) to access your Face ID biometric data."
+      }
+    ],
+    ["expo-apple-authentication"],
+    [
+      "expo-build-properties",
+      {
+        "ios": {
+          "useFrameworks": "static",
+          "buildReactNativeFromSource": true
+        }
+      }
+    ],
+    "@react-native-firebase/app",
+    "./plugins/withFirebaseConfigure",
+    "expo-web-browser"
+  ],
+  "ios": {
+    "supportsTablet": true,
+    "bundleIdentifier": "com.acorn.alist",
+    "googleServicesFile": "./GoogleService-Info.plist",
+    "usesAppleSignIn": true,
+    "buildNumber": "2",
+    "config": {
+      "usesNonExemptEncryption": false
+    }
+  },
+  "android": {
+    "adaptiveIcon": {
+      "foregroundImage": "./assets/adaptive-icon.png",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
-    "plugins": [
-      [
-        "expo-secure-store",
-        {
-          "configureAndroidBackup": true,
-          "faceIDPermission": "Allow $(PRODUCT_NAME) to access your Face ID biometric data."
-        }
-      ],
-      ["expo-apple-authentication"],
-      [
-        "react-native-fbsdk-next",
-        {
-          "appID": "256292256803627",
-          "clientToken": "FB_SDK_CLIENT_TOKEN",
-          "displayName": "Agus List",
-          "scheme": "fb256292256803627",
-          "advertiserIDCollectionEnabled": false,
-          "autoLogAppEventsEnabled": true,
-          "isAutoInitEnabled": true
-        }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "useFrameworks": "static"
-          }
-        }
-      ],
-      "@react-native-firebase/app"
-    ],
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.acorn.alist",
-      "googleServicesFile": "./GoogleService-Info.plist",
-      "usesAppleSignIn": true,
-      "buildNumber": "2",
-      "config": {
-        "usesNonExemptEncryption": false
-      }
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "package": "com.acorn.alist",
-      "googleServicesFile": "./google-services.json",
-      "versionCode": 2
-    },
-    "web": {},
-    "extra": {
-      "eas": {
-        "projectId": "ab00d1fb-9e8f-4a9f-a854-2eb759490348"
-      }
-    },
-    "owner": "acorn_digital_solutions"
+    "package": "com.acorn.alist",
+    "googleServicesFile": "./google-services.json",
+    "versionCode": 2
   },
-  "name": "aguslist"
+  "web": {},
+  "extra": {
+    "eas": {
+      "projectId": "ab00d1fb-9e8f-4a9f-a854-2eb759490348"
+    }
+  },
+  "owner": "acorn_digital_solutions"
 }
