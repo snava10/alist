@@ -1,452 +1,291 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
-import ProfileScreen from '../ProfileScreen';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-
-jest.mock('@react-native-async-storage/async-storage', () => ({
-  __esModule: true,
-  default: {
-    getItem: jest.fn(),
-    setItem: jest.fn(),
-    removeItem: jest.fn(),
-    clear: jest.fn(),
+// Mock native modules used by login sub-components
+jest.mock('@react-native-google-signin/google-signin', () => ({
+  GoogleSignin: {
+    configure: jest.fn(),
+    hasPlayServices: jest.fn(),
+    signIn: jest.fn(),
   },
+  GoogleSigninButton: () => null,
 }));
 
-jest.mock('@react-native-firebase/firestore', () => ({
-  __esModule: true,
-  default: jest.fn(() => ({
-    collection: jest.fn(),
-  })),
+jest.mock('@invertase/react-native-apple-authentication', () => ({
+  appleAuth: {
+    performRequest: jest.fn(),
+    Operation: { LOGIN: 0 },
+    Scope: { EMAIL: 0, FULL_NAME: 1 },
+  },
+  AppleButton: () => null,
 }));
 
-jest.mock('@react-native-firebase/app', () => ({
-  __esModule: true,
+jest.mock('expo-secure-store', () => ({
+  getItemAsync: jest.fn().mockResolvedValue(null),
+  setItemAsync: jest.fn().mockResolvedValue(undefined),
+  deleteItemAsync: jest.fn().mockResolvedValue(undefined),
 }));
+
+jest.mock('../Login/FacebookLogin', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
+jest.mock('../Login/GoogleLogin', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
+jest.mock('../Login/AppleLogin', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
+import React from 'react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import auth from '@react-native-firebase/auth';
+import { deleteItems, restoreFromBackup } from '../Core/Storage';
+import ProfileScreen from '../ProfileScreen';
 
 jest.mock('../Core/Storage', () => ({
-  deleteItems: jest.fn().mockResolvedValue(5),
-  restoreFromBackup: jest.fn().mockResolvedValue([{ id: '1', name: 'item1' }]),
+  ...jest.requireActual('../Core/Storage'),
+  deleteItems: jest.fn().mockResolvedValue(3),
+  restoreFromBackup: jest.fn().mockResolvedValue(5),
 }));
 
-jest.mock('../Core/GlobalStyles', () => ({
-  profileBannerContainer: {},
-  profileTextLabel: {},
-  button: {
-    primary: { main: {} },
-    text: { default: {} },
-  },
-}));
+const Stack = createNativeStackNavigator();
 
-jest.mock('@expo/vector-icons/Ionicons', () => {
-  return function MockIcon() {
-    return null;
-  };
-});
+const renderProfileScreen = (params: any) =>
+  render(
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <Stack.Navigator>
+          <Stack.Screen name="Profile" component={ProfileScreen} initialParams={params} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
+  );
 
-jest.mock('../Login/AuthenticationComponent', () => {
-  return function MockAuthenticationComponent({
-    isLoggedIn,
-    logOutFn,
-    deleteAccountFn,
-    successCallbackFn,
-  }: any) {
-    return (
-      <button testID="auth-component" onPress={() => {}}>
-        {isLoggedIn ? (
-          <>
-            <button testID="logout-btn" onPress={logOutFn}>
-              Logout
-            </button>
-            <button testID="delete-account-btn" onPress={deleteAccountFn}>
-              Delete Account
-            </button>
-          </>
-        ) : (
-          <button testID="login-btn" onPress={() => successCallbackFn?.()}>
-            Login
-          </button>
-        )}
-      </button>
-    );
-  };
-});
-
-jest.mock('../ConfirmationModal', () => {
-  return function MockConfirmationModal({
-    visible,
-    acceptCallbackFn,
-    rejectCallbackFn,
-    hideModalFn,
-    message,
-  }: any) {
-    if (!visible) return null;
-    return (
-      <button testID="confirm-modal">
-        <button testID={`modal-message-${message?.substring(0, 10)}`}>{message}</button>
-        <button testID="modal-accept-btn" onPress={acceptCallbackFn}>
-          Accept
-        </button>
-        <button testID="modal-reject-btn" onPress={rejectCallbackFn}>
-          Reject
-        </button>
-        <button testID="modal-hide-btn" onPress={hideModalFn}>
-          Hide
-        </button>
-      </button>
-    );
-  };
-});
-
-jest.mock('@react-navigation/native', () => ({
-  ...jest.requireActual('@react-navigation/native'),
-  useNavigation: jest.fn(() => ({
-    navigate: jest.fn(),
-  })),
-}));
-
-jest.mock('@react-native-firebase/analytics', () => ({
-  __esModule: true,
-  default: jest.fn(() => ({
-    logEvent: jest.fn().mockResolvedValue(undefined),
-  })),
-}));
-
-// Mock auth module
-jest.mock('@react-native-firebase/auth', () => ({
-  __esModule: true,
-  default: jest.fn(() => ({
-    signOut: jest.fn().mockResolvedValue(undefined),
-    currentUser: null,
-  })),
-}));
-
-describe('ProfileScreen', () => {
+describe('ProfileScreen - Rendering Tests', () => {
   const mockUser = {
-    uid: 'test-uid-123',
-    displayName: 'Test User',
+    uid: 'test-user-123',
     isAnonymous: false,
-    providerData: [],
-  };
-
-  const mockAnonymousUser = {
-    uid: 'anon-uid',
-    displayName: null,
-    isAnonymous: true,
-    providerData: [],
+    displayName: 'Test User',
+    providerData: [{ displayName: 'Test User', providerId: 'google.com' }],
+    providerId: 'google.com',
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders without crashing with authenticated user', async () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: mockUser } }} />
-      </SafeAreaProvider>
-    );
+  it('renders all expected elements for a logged-in user', async () => {
+    renderProfileScreen({ user: mockUser });
 
     await waitFor(() => {
-      expect(toJSON()).toBeTruthy();
+      expect(screen.getByText('Test User')).toBeTruthy();
+      expect(screen.getByText('Backup')).toBeTruthy();
+      expect(screen.getByText('Backup Restore')).toBeTruthy();
+      expect(screen.getByText('Log Out')).toBeTruthy();
+      expect(screen.getByText('Delete Account')).toBeTruthy();
     });
   });
 
-  it('renders with anonymous user', async () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: mockAnonymousUser } }} />
-      </SafeAreaProvider>
-    );
-
-    await waitFor(() => {
-      expect(toJSON()).toBeTruthy();
-    });
-  });
-
-  it('handles null user gracefully', async () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: null } }} />
-      </SafeAreaProvider>
-    );
-
-    await waitFor(() => {
-      expect(toJSON()).toBeTruthy();
-    });
-  });
-
-  it('processes user with provider data', async () => {
-    const userWithProvider = {
-      uid: 'user-with-provider',
+  it('falls back to providerData displayName when user.displayName is null', async () => {
+    const userWithoutDisplayName = {
+      ...mockUser,
       displayName: null,
-      isAnonymous: false,
-      providerData: [
-        {
-          displayName: 'Google User',
-          providerId: 'google.com',
-        },
-      ],
+      providerData: [{ displayName: 'Provider Name', providerId: 'apple.com' }],
     };
-
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: userWithProvider } }} />
-      </SafeAreaProvider>
-    );
+    renderProfileScreen({ user: userWithoutDisplayName });
 
     await waitFor(() => {
-      expect(toJSON()).toBeTruthy();
+      expect(screen.getByText('Provider Name')).toBeTruthy();
     });
   });
 
-  it('handles user with multiple providers', async () => {
-    const userWithMultipleProviders = {
-      uid: 'multi-provider-user',
-      displayName: null,
-      isAnonymous: false,
-      providerData: [
-        {
-          displayName: 'Apple User',
-          providerId: 'apple.com',
-        },
-        {
-          displayName: 'Google User',
-          providerId: 'google.com',
-        },
-      ],
-    };
-
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: userWithMultipleProviders } }} />
-      </SafeAreaProvider>
-    );
+  it('renders login view for anonymous user', async () => {
+    const anonymousUser = { uid: 'anon-123', isAnonymous: true, displayName: null };
+    renderProfileScreen({ user: anonymousUser });
 
     await waitFor(() => {
-      expect(toJSON()).toBeTruthy();
+      expect(screen.queryByText('Backup')).toBeNull();
+      expect(screen.queryByText('Log Out')).toBeNull();
     });
   });
 
-  it('handles user with displayName and providers', async () => {
-    const userWithBoth = {
-      uid: 'user-both',
-      displayName: 'Display Name',
-      isAnonymous: false,
-      providerData: [
-        {
-          displayName: 'Provider Name',
-          providerId: 'google.com',
-        },
-      ],
-    };
+  it('logs out when Log Out is pressed', async () => {
+    const mockSignOut = jest.fn().mockResolvedValue(undefined);
+    (auth as unknown as jest.Mock).mockReturnValue({
+      currentUser: mockUser,
+      signOut: mockSignOut,
+    });
 
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: userWithBoth } }} />
-      </SafeAreaProvider>
-    );
+    renderProfileScreen({ user: mockUser });
 
     await waitFor(() => {
-      expect(toJSON()).toBeTruthy();
+      expect(screen.getByText('Log Out')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Log Out'));
+    });
+
+    expect(mockSignOut).toHaveBeenCalled();
+  });
+
+  it('shows delete account confirmation modal and accepts', async () => {
+    const mockDelete = jest.fn().mockResolvedValue(undefined);
+    const mockGetIdToken = jest.fn().mockResolvedValue('token');
+    (auth as unknown as jest.Mock).mockReturnValue({
+      currentUser: {
+        ...mockUser,
+        getIdToken: mockGetIdToken,
+        delete: mockDelete,
+      },
+      signOut: jest.fn(),
+    });
+
+    renderProfileScreen({ user: mockUser });
+
+    await waitFor(() => {
+      expect(screen.getByText('Delete Account')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Delete Account'));
+    });
+
+    // Delete modal should appear
+    await waitFor(() => {
+      expect(screen.getByText(/Deleting your account/)).toBeTruthy();
+      expect(screen.getByText('Yes')).toBeTruthy();
+      expect(screen.getByText('No')).toBeTruthy();
+    });
+
+    // Accept deletion
+    await act(async () => {
+      fireEvent.press(screen.getByText('Yes'));
+    });
+
+    await waitFor(() => {
+      expect(deleteItems).toHaveBeenCalledWith(mockUser.uid);
+      expect(mockGetIdToken).toHaveBeenCalledWith(true);
+      expect(mockDelete).toHaveBeenCalled();
     });
   });
 
-  it('renders with empty displayName', async () => {
-    const userNoName = {
-      uid: 'no-name-user',
-      displayName: '',
-      isAnonymous: false,
-      providerData: [],
-    };
-
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: userNoName } }} />
-      </SafeAreaProvider>
+  it('shows error message when delete requires recent login', async () => {
+    const recentLoginError = new Error(
+      '[auth/requires-recent-login] This operation requires recent authentication.'
     );
+    const mockDelete = jest.fn().mockRejectedValue(recentLoginError);
+    const mockGetIdToken = jest.fn().mockResolvedValue('token');
+    (auth as unknown as jest.Mock).mockReturnValue({
+      currentUser: {
+        ...mockUser,
+        getIdToken: mockGetIdToken,
+        delete: mockDelete,
+      },
+      signOut: jest.fn(),
+    });
+
+    renderProfileScreen({ user: mockUser });
 
     await waitFor(() => {
-      expect(toJSON()).toBeTruthy();
+      expect(screen.getByText('Delete Account')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Delete Account'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Yes')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Yes'));
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Please logout, login and try deleting your account again/)
+      ).toBeTruthy();
     });
   });
 
-  it('handles user with undefined displayName', async () => {
-    const userUndefinedName = {
-      uid: 'undefined-name-user',
-      displayName: undefined,
-      isAnonymous: false,
-      providerData: [],
-    };
-
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: userUndefinedName } }} />
-      </SafeAreaProvider>
-    );
+  it('dismisses delete modal when No is pressed', async () => {
+    renderProfileScreen({ user: mockUser });
 
     await waitFor(() => {
-      expect(toJSON()).toBeTruthy();
+      expect(screen.getByText('Delete Account')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Delete Account'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('No')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('No'));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Deleting your account/)).toBeNull();
     });
   });
 
-  it('handles empty provider data array', async () => {
-    const userEmptyProviders = {
-      uid: 'empty-providers-user',
-      displayName: 'User',
-      isAnonymous: false,
-      providerData: [],
-    };
-
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: userEmptyProviders } }} />
-      </SafeAreaProvider>
-    );
+  it('opens restore from backup modal and accepts', async () => {
+    renderProfileScreen({ user: mockUser });
 
     await waitFor(() => {
-      expect(toJSON()).toBeTruthy();
+      expect(screen.getByText('Backup Restore')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Backup Restore'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/replace all your data/)).toBeTruthy();
+      expect(screen.getByText('Yes')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Yes'));
+    });
+
+    await waitFor(() => {
+      expect(restoreFromBackup).toHaveBeenCalledWith(mockUser.uid);
     });
   });
 
-  it('handles provider with undefined displayName', async () => {
-    const userUndefinedProviderName = {
-      uid: 'undefined-provider-name',
-      displayName: null,
-      isAnonymous: false,
-      providerData: [
-        {
-          displayName: undefined,
-          providerId: 'google.com',
-        },
-      ],
-    };
-
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: userUndefinedProviderName } }} />
-      </SafeAreaProvider>
-    );
+  it('dismisses restore from backup modal when No is pressed', async () => {
+    renderProfileScreen({ user: mockUser });
 
     await waitFor(() => {
-      expect(toJSON()).toBeTruthy();
+      expect(screen.getByText('Backup Restore')).toBeTruthy();
     });
-  });
 
-  it('maintains reference to user from route params', async () => {
-    const customUser = {
-      uid: 'custom-uid-456',
-      displayName: 'Custom Name',
-      isAnonymous: false,
-      providerData: [],
-    };
-
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: customUser } }} />
-      </SafeAreaProvider>
-    );
+    await act(async () => {
+      fireEvent.press(screen.getByText('Backup Restore'));
+    });
 
     await waitFor(() => {
-      expect(toJSON()).toBeTruthy();
+      expect(screen.getByText(/replace all your data/)).toBeTruthy();
     });
-  });
 
-  it('renders with SafeAreaProvider context', async () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: mockUser } }} />
-      </SafeAreaProvider>
-    );
+    await act(async () => {
+      fireEvent.press(screen.getByText('No'));
+    });
 
     await waitFor(() => {
-      expect(toJSON()).toBeTruthy();
+      expect(screen.queryByText(/replace all your data/)).toBeNull();
     });
-  });
-
-  it('handles isAnonymous flag correctly for true value', async () => {
-    const anonUser = {
-      uid: 'anon-123',
-      displayName: 'Anonymous',
-      isAnonymous: true,
-      providerData: [],
-    };
-
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: anonUser } }} />
-      </SafeAreaProvider>
-    );
-
-    await waitFor(() => {
-      expect(toJSON()).toBeTruthy();
-    });
-  });
-
-  it('handles isAnonymous flag correctly for false value', async () => {
-    const authUser = {
-      uid: 'auth-123',
-      displayName: 'Authenticated',
-      isAnonymous: false,
-      providerData: [],
-    };
-
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: authUser } }} />
-      </SafeAreaProvider>
-    );
-
-    await waitFor(() => {
-      expect(toJSON()).toBeTruthy();
-    });
-  });
-
-  it('handles undefined user in params', async () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: undefined } }} />
-      </SafeAreaProvider>
-    );
-
-    await waitFor(() => {
-      expect(toJSON()).toBeTruthy();
-    });
-  });
-
-  it('handles provider with null displayName', async () => {
-    const userNullProviderName = {
-      uid: 'null-provider-name',
-      displayName: null,
-      isAnonymous: false,
-      providerData: [
-        {
-          displayName: null,
-          providerId: 'apple.com',
-        },
-      ],
-    };
-
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: userNullProviderName } }} />
-      </SafeAreaProvider>
-    );
-
-    await waitFor(() => {
-      expect(toJSON()).toBeTruthy();
-    });
-  });
-
-  it('renders component structure', () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: mockUser } }} />
-      </SafeAreaProvider>
-    );
-
-    const tree = toJSON();
-    expect(tree).not.toBeNull();
   });
 });
