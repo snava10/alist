@@ -32,6 +32,7 @@ const AddItemModal = (props: {
 
   return (
     <Modal
+      testID="AddItemModal"
       animationType="slide"
       transparent={true}
       visible={props.visible}
