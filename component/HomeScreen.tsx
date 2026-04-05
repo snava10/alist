@@ -12,17 +12,14 @@ import {
 } from './Core/Storage';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import globalStyles from './Core/GlobalStyles';
+import analytics from '@react-native-firebase/analytics';
 import { EdgeInsets, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 
-export default function HomeScreen({
-  route,
-}: {
-  params: { user: FirebaseAuthTypes.User | null; itemsReload?: number };
-}) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default function HomeScreen({ route }: any) {
   const [oneOffCorrections, setOneOffCorrections] = useState(false);
-  const [_user, _setUser] = useState(route.params.user);
+  const [user, _] = useState(route.params.user);
   const [alistItems, setAListItems] = useState([] as AListItem[]);
   const [selectedItem, setSelectedItem] = useState(null as AListItem | null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -129,7 +126,7 @@ export default function HomeScreen({
                 }}
               ></AListItem>
             )}
-            keyExtractor={(item, _index) => item.name}
+            keyExtractor={(item, _) => item.name}
           />
         </View>
       ) : (
