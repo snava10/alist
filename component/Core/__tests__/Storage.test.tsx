@@ -1,5 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getItem, getAllItems, getItems, addTimestampToItems } from '../Storage';
+import {
+  getItem,
+  getAllItems,
+  getItems,
+  addTimestampToItems,
+  replaceItem,
+  getItemsCount,
+  createUserSettings,
+  pullItems,
+  deleteItems,
+  restoreFromBackup,
+} from '../Storage';
+import { decrypt } from '../Security';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn().mockResolvedValue(null),
@@ -7,12 +19,25 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   multiGet: jest.fn().mockResolvedValue([]),
   setItem: jest.fn().mockResolvedValue(undefined),
   removeItem: jest.fn().mockResolvedValue(undefined),
+  clear: jest.fn().mockResolvedValue(undefined),
 }));
+
+const mockDocGet = jest.fn().mockResolvedValue({ exists: false, data: () => undefined });
+const mockDocSet = jest.fn().mockResolvedValue(undefined);
+const mockWhereGet = jest.fn().mockResolvedValue({ empty: true, docs: [] });
 
 jest.mock('@react-native-firebase/firestore', () => ({
   __esModule: true,
   default: jest.fn(() => ({
-    collection: jest.fn(),
+    collection: jest.fn(() => ({
+      doc: jest.fn(() => ({
+        get: mockDocGet,
+        set: mockDocSet,
+      })),
+      where: jest.fn(() => ({
+        get: mockWhereGet,
+      })),
+    })),
     useEmulator: jest.fn(),
   })),
 }));
@@ -42,42 +67,50 @@ jest.mock('../Security', () => ({
 describe('Storage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([]);
+    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([]);
+    mockDocGet.mockResolvedValue({ exists: false, data: () => undefined });
+    mockDocSet.mockResolvedValue(undefined);
+    mockWhereGet.mockResolvedValue({ empty: true, docs: [] });
   });
 
-  it('exports getItem function', () => {
-    expect(typeof getItem).toBe('function');
+  it('getItem parses stored JSON and returns item', async () => {
+    const storedItem = { name: 'test', value: 'hello', timestamp: 1, encrypted: false };
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(storedItem));
+
+    const result = await getItem('_ali_test');
+    expect(result).not.toBeNull();
+    expect(result?.name).toBe('test');
+    // Non-encrypted items trigger saveItem (which encrypts them)
+    expect(AsyncStorage.setItem).toHaveBeenCalled();
   });
 
-  it('exports getAllItems function', () => {
-    expect(typeof getAllItems).toBe('function');
+  it('getItem decrypts encrypted items', async () => {
+    const storedItem = { name: 'secret', value: 'enc-data', timestamp: 1, encrypted: true };
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(storedItem));
+
+    const result = await getItem('_ali_secret');
+    expect(result).not.toBeNull();
+    expect(decrypt).toHaveBeenCalledWith('enc-data');
+    expect(result?.value).toBe('decrypted-value');
   });
 
-  it('exports getItems function', () => {
-    expect(typeof getItems).toBe('function');
+  it('replaceItem removes old and saves new item', async () => {
+    const oldItem = { name: 'old', value: 'v1', timestamp: 1, encrypted: false };
+    const newItem = { name: 'new', value: 'v2', timestamp: 0, encrypted: false };
+
+    await replaceItem(oldItem, newItem);
+
+    expect(AsyncStorage.removeItem).toHaveBeenCalledWith('_ali_old');
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith('_ali_new', expect.any(String));
   });
 
-  it('exports addTimestampToItems function', () => {
-    expect(typeof addTimestampToItems).toBe('function');
-  });
+  it('getItemsCount returns count of ali-prefixed keys', async () => {
+    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_a', '_ali_b', 'other']);
 
-  it('getItem is async function', () => {
-    const result = getItem('test-id');
-    expect(result instanceof Promise).toBe(true);
-  });
-
-  it('getAllItems is async function', () => {
-    const result = getAllItems();
-    expect(result instanceof Promise).toBe(true);
-  });
-
-  it('getItems is async function', () => {
-    const result = getItems('test-filter');
-    expect(result instanceof Promise).toBe(true);
-  });
-
-  it('addTimestampToItems is async function', () => {
-    const result = addTimestampToItems();
-    expect(result instanceof Promise).toBe(true);
+    const count = await getItemsCount();
+    expect(count).toBe(2);
   });
 
   it('uses AsyncStorage for local persistence', async () => {
@@ -96,8 +129,14 @@ describe('Storage', () => {
   });
 
   it('filters items by search term', async () => {
-    const items = await getItems('search-term');
-    expect(Array.isArray(items)).toBe(true);
+    const item1 = { name: 'apple', value: 'v1', timestamp: 1, encrypted: false };
+    const item2 = { name: 'banana', value: 'v2', timestamp: 2, encrypted: false };
+    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_apple', '_ali_banana']);
+    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([['_ali_apple', JSON.stringify(item1)]]);
+
+    const items = await getItems('apple');
+    expect(items).toHaveLength(1);
+    expect(items[0].name).toBe('apple');
   });
 
   it('returns all items for empty filter', async () => {
@@ -108,12 +147,19 @@ describe('Storage', () => {
   });
 
   it('adds timestamps to items without timestamp', async () => {
+    const item = { name: 'notime', value: 'v', encrypted: false };
+    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_notime']);
+    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([['_ali_notime', JSON.stringify(item)]]);
+
     const result = await addTimestampToItems();
-    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(1);
+    // replaceItem calls removeItem then saveItem
+    expect(AsyncStorage.removeItem).toHaveBeenCalledWith('_ali_notime');
+    expect(AsyncStorage.setItem).toHaveBeenCalled();
   });
 
-  it('handles storage operations with mocked AsyncStorage', async () => {
-    // AsyncStorage is mocked globally, verify getItem returns null
+  it('handles storage operations with invalid JSON', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue('not-valid-json');
     const item = await getItem('key');
     expect(item).toBeNull();
   });
@@ -134,22 +180,75 @@ describe('Storage', () => {
     expect(Array.isArray(items)).toBe(true);
   });
 
-  it('handles empty getAllItems result', async () => {
-    jest.spyOn(AsyncStorage, 'getAllKeys').mockResolvedValue([]);
+  it('handles empty results across operations', async () => {
+    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([]);
     const items = await getAllItems();
     expect(items).toBeDefined();
-    expect(Array.isArray(items)).toBe(true);
+    expect(items).toHaveLength(0);
+
+    // Empty firestore results
+    const pulled = await pullItems('no-user');
+    expect(pulled).toHaveLength(0);
+    const deleted = await deleteItems('no-user');
+    expect(deleted).toBe(0);
   });
 
-  it('getItems with null filter returns all items', async () => {
-    const items = await getItems('');
-    expect(Array.isArray(items)).toBe(true);
+  it('createUserSettings creates defaults for new user', async () => {
+    mockDocGet.mockResolvedValue({ data: () => undefined });
+    mockDocSet.mockResolvedValue(undefined);
+
+    const settings = await createUserSettings('user123');
+    expect(settings.userId).toBe('user123');
+    expect(mockDocSet).toHaveBeenCalled();
   });
 
-  it('exports are functions', () => {
-    expect(typeof getItem).toBe('function');
-    expect(typeof getAllItems).toBe('function');
-    expect(typeof getItems).toBe('function');
-    expect(typeof addTimestampToItems).toBe('function');
+  it('createUserSettings returns existing settings', async () => {
+    const existing = { userId: 'user123', backup: 'daily', membership: 'free' };
+    mockDocGet.mockResolvedValue({ data: () => existing });
+
+    const settings = await createUserSettings('user123');
+    expect(settings).toEqual(existing);
+    expect(mockDocSet).not.toHaveBeenCalled();
+  });
+
+  it('pullItems retrieves items from firestore', async () => {
+    mockWhereGet.mockResolvedValue({
+      empty: false,
+      docs: [{ data: () => ({ name: 'item1', value: 'val1', encrypted: false, userId: 'u1' }) }],
+    });
+
+    const items = await pullItems('u1');
+    expect(items).toHaveLength(1);
+    expect(items[0].name).toBe('item1');
+  });
+
+  it('deleteItems removes items from firestore', async () => {
+    const mockRefDelete = jest
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('fail'));
+    mockWhereGet.mockResolvedValue({
+      empty: false,
+      docs: [{ ref: { delete: mockRefDelete } }, { ref: { delete: mockRefDelete } }],
+    });
+
+    const count = await deleteItems('u1');
+    // First succeeds (1), second fails (0)
+    expect(count).toBe(1);
+    expect(mockRefDelete).toHaveBeenCalledTimes(2);
+  });
+
+  it('restoreFromBackup clears storage and restores items', async () => {
+    mockWhereGet.mockResolvedValue({
+      empty: false,
+      docs: [
+        { data: () => ({ name: 'item1', value: 'val1', encrypted: true, userId: 'u1' }) },
+        { data: () => ({ name: 'item2', value: 'val2', encrypted: false, userId: 'u1' }) },
+      ],
+    });
+
+    const count = await restoreFromBackup('u1');
+    expect(count).toBe(2);
+    expect(AsyncStorage.clear).toHaveBeenCalled();
   });
 });
