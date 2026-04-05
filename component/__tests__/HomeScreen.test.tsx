@@ -5,56 +5,6 @@ jest.mock('expo-clipboard', () => ({
   getStringAsync: jest.fn().mockResolvedValue(''),
 }));
 
-jest.mock('@react-native-firebase/analytics', () => ({
-  __esModule: true,
-  default: jest.fn(() => ({
-    logEvent: jest.fn().mockResolvedValue(undefined),
-  })),
-}));
-
-// Mock AsyncStorage instead of Storage module to allow Storage functions to execute
-jest.mock('@react-native-async-storage/async-storage', () => ({
-  __esModule: true,
-  default: {
-    getItem: jest.fn().mockResolvedValue(null),
-    getAllKeys: jest.fn().mockResolvedValue([]),
-    setItem: jest.fn().mockResolvedValue(undefined),
-    removeItem: jest.fn().mockResolvedValue(undefined),
-    multiGet: jest.fn().mockResolvedValue([]),
-    clear: jest.fn().mockResolvedValue(undefined),
-  },
-}));
-
-// Mock Firebase Firestore
-jest.mock('@react-native-firebase/firestore', () => ({
-  __esModule: true,
-  default: jest.fn(() => ({
-    collection: jest.fn(() => ({
-      doc: jest.fn(() => ({
-        get: jest.fn().mockResolvedValue({ exists: false, data: () => ({}) }),
-        set: jest.fn().mockResolvedValue(undefined),
-        update: jest.fn().mockResolvedValue(undefined),
-      })),
-    })),
-    useEmulator: jest.fn(),
-  })),
-}));
-
-// Mock Firebase Auth
-jest.mock('@react-native-firebase/auth', () => ({
-  __esModule: true,
-  default: jest.fn(() => ({
-    currentUser: null,
-    useEmulator: jest.fn(),
-  })),
-}));
-
-// Mock base64
-jest.mock('react-native-base64', () => ({
-  encode: jest.fn((text) => text),
-  decode: jest.fn((text) => text),
-}));
-
 // Mock expo-secure-store (native module used by Security)
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn().mockResolvedValue(null),
