@@ -1,6 +1,7 @@
 {
   "name": "aguslist",
   "version": "2.2.2",
+  "type": "module",
   "scripts": {
     "start": "NODE_ENV=development expo start --dev-client",
     "android": "expo run:android --device",
