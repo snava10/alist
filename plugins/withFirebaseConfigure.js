@@ -1,6 +1,8 @@
-const { withDangerousMod } = require("@expo/config-plugins");
-const fs = require("fs");
-const path = require("path");
+import configPlugins from "@expo/config-plugins";
+import fs from "fs";
+import path from "path";
+
+const { withDangerousMod } = configPlugins;
 
 /**
  * Expo config plugin that injects FirebaseApp.configure() into the Swift AppDelegate.
@@ -47,4 +49,4 @@ const withFirebaseConfigure = (config) => {
   ]);
 };
 
-module.exports = withFirebaseConfigure;
+export default withFirebaseConfigure;
