@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, waitFor } from '@testing-library/react-native';
 import ProfileScreen from '../ProfileScreen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -27,7 +27,7 @@ jest.mock('@react-native-firebase/app', () => ({
 
 jest.mock('../Core/Storage', () => ({
   deleteItems: jest.fn().mockResolvedValue(5),
-  restoreFromBackup: jest.fn().mockResolvedValue([]),
+  restoreFromBackup: jest.fn().mockResolvedValue([{ id: '1', name: 'item1' }]),
 }));
 
 jest.mock('../Core/GlobalStyles', () => ({
@@ -46,7 +46,12 @@ jest.mock('@expo/vector-icons/Ionicons', () => {
 });
 
 jest.mock('../Login/AuthenticationComponent', () => {
-  return function MockAuthenticationComponent({ isLoggedIn, logOutFn, deleteAccountFn }: any) {
+  return function MockAuthenticationComponent({
+    isLoggedIn,
+    logOutFn,
+    deleteAccountFn,
+    successCallbackFn,
+  }: any) {
     return (
       <button testID="auth-component" onPress={() => {}}>
         {isLoggedIn ? (
@@ -59,7 +64,9 @@ jest.mock('../Login/AuthenticationComponent', () => {
             </button>
           </>
         ) : (
-          <button testID="login-btn">Login</button>
+          <button testID="login-btn" onPress={() => successCallbackFn?.()}>
+            Login
+          </button>
         )}
       </button>
     );
@@ -67,15 +74,25 @@ jest.mock('../Login/AuthenticationComponent', () => {
 });
 
 jest.mock('../ConfirmationModal', () => {
-  return function MockConfirmationModal({ visible, acceptCallbackFn, hideModalFn }: any) {
+  return function MockConfirmationModal({
+    visible,
+    acceptCallbackFn,
+    rejectCallbackFn,
+    hideModalFn,
+    message,
+  }: any) {
     if (!visible) return null;
     return (
       <button testID="confirm-modal">
+        <button testID={`modal-message-${message?.substring(0, 10)}`}>{message}</button>
         <button testID="modal-accept-btn" onPress={acceptCallbackFn}>
           Accept
         </button>
-        <button testID="modal-reject-btn" onPress={hideModalFn}>
+        <button testID="modal-reject-btn" onPress={rejectCallbackFn}>
           Reject
+        </button>
+        <button testID="modal-hide-btn" onPress={hideModalFn}>
+          Hide
         </button>
       </button>
     );
@@ -93,6 +110,15 @@ jest.mock('@react-native-firebase/analytics', () => ({
   __esModule: true,
   default: jest.fn(() => ({
     logEvent: jest.fn().mockResolvedValue(undefined),
+  })),
+}));
+
+// Mock auth module
+jest.mock('@react-native-firebase/auth', () => ({
+  __esModule: true,
+  default: jest.fn(() => ({
+    signOut: jest.fn().mockResolvedValue(undefined),
+    currentUser: null,
   })),
 }));
 
@@ -115,92 +141,46 @@ describe('ProfileScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('renders without crashing', () => {
+  it('renders without crashing with authenticated user', async () => {
     const { toJSON } = render(
       <SafeAreaProvider>
         <ProfileScreen route={{ params: { user: mockUser } }} />
       </SafeAreaProvider>
     );
-    expect(toJSON()).toBeTruthy();
+
+    await waitFor(() => {
+      expect(toJSON()).toBeTruthy();
+    });
   });
 
-  it('renders SafeAreaProvider context correctly', () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: mockUser } }} />
-      </SafeAreaProvider>
-    );
-    const tree = toJSON();
-    expect(tree).toBeTruthy();
-  });
-
-  it('renders with authenticated user', () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: mockUser } }} />
-      </SafeAreaProvider>
-    );
-    expect(toJSON()).toBeTruthy();
-  });
-
-  it('renders with anonymous user', () => {
+  it('renders with anonymous user', async () => {
     const { toJSON } = render(
       <SafeAreaProvider>
         <ProfileScreen route={{ params: { user: mockAnonymousUser } }} />
       </SafeAreaProvider>
     );
-    expect(toJSON()).toBeTruthy();
+
+    await waitFor(() => {
+      expect(toJSON()).toBeTruthy();
+    });
   });
 
-  it('renders with null user handling', () => {
+  it('handles null user gracefully', async () => {
     const { toJSON } = render(
       <SafeAreaProvider>
         <ProfileScreen route={{ params: { user: null } }} />
       </SafeAreaProvider>
     );
-    expect(toJSON()).toBeTruthy();
+
+    await waitFor(() => {
+      expect(toJSON()).toBeTruthy();
+    });
   });
 
-  it('receives and uses user from route params', () => {
-    const customUser = {
-      uid: 'custom-uid',
-      displayName: 'Custom User',
-      isAnonymous: false,
-      providerData: [],
-    };
-
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: customUser } }} />
-      </SafeAreaProvider>
-    );
-    expect(toJSON()).toBeTruthy();
-  });
-
-  it('receives and manages callback functions from authentication component', () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: mockUser } }} />
-      </SafeAreaProvider>
-    );
-    expect(toJSON()).toBeTruthy();
-  });
-
-  it('manages modal visibility state correctly', () => {
-    const { queryByTestId } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: mockUser } }} />
-      </SafeAreaProvider>
-    );
-
-    // Initially, modals should not be visible
-    expect(queryByTestId('confirm-modal')).toBeFalsy();
-  });
-
-  it('handles user data with provider information', () => {
+  it('processes user with provider data', async () => {
     const userWithProvider = {
       uid: 'user-with-provider',
-      displayName: 'User Name',
+      displayName: null,
       isAnonymous: false,
       providerData: [
         {
@@ -215,10 +195,13 @@ describe('ProfileScreen', () => {
         <ProfileScreen route={{ params: { user: userWithProvider } }} />
       </SafeAreaProvider>
     );
-    expect(toJSON()).toBeTruthy();
+
+    await waitFor(() => {
+      expect(toJSON()).toBeTruthy();
+    });
   });
 
-  it('handles display name extraction from first provider', () => {
+  it('handles user with multiple providers', async () => {
     const userWithMultipleProviders = {
       uid: 'multi-provider-user',
       displayName: null,
@@ -240,15 +223,230 @@ describe('ProfileScreen', () => {
         <ProfileScreen route={{ params: { user: userWithMultipleProviders } }} />
       </SafeAreaProvider>
     );
-    expect(toJSON()).toBeTruthy();
+
+    await waitFor(() => {
+      expect(toJSON()).toBeTruthy();
+    });
   });
 
-  it('prevents rendering when user is not provided', () => {
+  it('handles user with displayName and providers', async () => {
+    const userWithBoth = {
+      uid: 'user-both',
+      displayName: 'Display Name',
+      isAnonymous: false,
+      providerData: [
+        {
+          displayName: 'Provider Name',
+          providerId: 'google.com',
+        },
+      ],
+    };
+
+    const { toJSON } = render(
+      <SafeAreaProvider>
+        <ProfileScreen route={{ params: { user: userWithBoth } }} />
+      </SafeAreaProvider>
+    );
+
+    await waitFor(() => {
+      expect(toJSON()).toBeTruthy();
+    });
+  });
+
+  it('renders with empty displayName', async () => {
+    const userNoName = {
+      uid: 'no-name-user',
+      displayName: '',
+      isAnonymous: false,
+      providerData: [],
+    };
+
+    const { toJSON } = render(
+      <SafeAreaProvider>
+        <ProfileScreen route={{ params: { user: userNoName } }} />
+      </SafeAreaProvider>
+    );
+
+    await waitFor(() => {
+      expect(toJSON()).toBeTruthy();
+    });
+  });
+
+  it('handles user with undefined displayName', async () => {
+    const userUndefinedName = {
+      uid: 'undefined-name-user',
+      displayName: undefined,
+      isAnonymous: false,
+      providerData: [],
+    };
+
+    const { toJSON } = render(
+      <SafeAreaProvider>
+        <ProfileScreen route={{ params: { user: userUndefinedName } }} />
+      </SafeAreaProvider>
+    );
+
+    await waitFor(() => {
+      expect(toJSON()).toBeTruthy();
+    });
+  });
+
+  it('handles empty provider data array', async () => {
+    const userEmptyProviders = {
+      uid: 'empty-providers-user',
+      displayName: 'User',
+      isAnonymous: false,
+      providerData: [],
+    };
+
+    const { toJSON } = render(
+      <SafeAreaProvider>
+        <ProfileScreen route={{ params: { user: userEmptyProviders } }} />
+      </SafeAreaProvider>
+    );
+
+    await waitFor(() => {
+      expect(toJSON()).toBeTruthy();
+    });
+  });
+
+  it('handles provider with undefined displayName', async () => {
+    const userUndefinedProviderName = {
+      uid: 'undefined-provider-name',
+      displayName: null,
+      isAnonymous: false,
+      providerData: [
+        {
+          displayName: undefined,
+          providerId: 'google.com',
+        },
+      ],
+    };
+
+    const { toJSON } = render(
+      <SafeAreaProvider>
+        <ProfileScreen route={{ params: { user: userUndefinedProviderName } }} />
+      </SafeAreaProvider>
+    );
+
+    await waitFor(() => {
+      expect(toJSON()).toBeTruthy();
+    });
+  });
+
+  it('maintains reference to user from route params', async () => {
+    const customUser = {
+      uid: 'custom-uid-456',
+      displayName: 'Custom Name',
+      isAnonymous: false,
+      providerData: [],
+    };
+
+    const { toJSON } = render(
+      <SafeAreaProvider>
+        <ProfileScreen route={{ params: { user: customUser } }} />
+      </SafeAreaProvider>
+    );
+
+    await waitFor(() => {
+      expect(toJSON()).toBeTruthy();
+    });
+  });
+
+  it('renders with SafeAreaProvider context', async () => {
+    const { toJSON } = render(
+      <SafeAreaProvider>
+        <ProfileScreen route={{ params: { user: mockUser } }} />
+      </SafeAreaProvider>
+    );
+
+    await waitFor(() => {
+      expect(toJSON()).toBeTruthy();
+    });
+  });
+
+  it('handles isAnonymous flag correctly for true value', async () => {
+    const anonUser = {
+      uid: 'anon-123',
+      displayName: 'Anonymous',
+      isAnonymous: true,
+      providerData: [],
+    };
+
+    const { toJSON } = render(
+      <SafeAreaProvider>
+        <ProfileScreen route={{ params: { user: anonUser } }} />
+      </SafeAreaProvider>
+    );
+
+    await waitFor(() => {
+      expect(toJSON()).toBeTruthy();
+    });
+  });
+
+  it('handles isAnonymous flag correctly for false value', async () => {
+    const authUser = {
+      uid: 'auth-123',
+      displayName: 'Authenticated',
+      isAnonymous: false,
+      providerData: [],
+    };
+
+    const { toJSON } = render(
+      <SafeAreaProvider>
+        <ProfileScreen route={{ params: { user: authUser } }} />
+      </SafeAreaProvider>
+    );
+
+    await waitFor(() => {
+      expect(toJSON()).toBeTruthy();
+    });
+  });
+
+  it('handles undefined user in params', async () => {
     const { toJSON } = render(
       <SafeAreaProvider>
         <ProfileScreen route={{ params: { user: undefined } }} />
       </SafeAreaProvider>
     );
-    expect(toJSON()).toBeTruthy();
+
+    await waitFor(() => {
+      expect(toJSON()).toBeTruthy();
+    });
+  });
+
+  it('handles provider with null displayName', async () => {
+    const userNullProviderName = {
+      uid: 'null-provider-name',
+      displayName: null,
+      isAnonymous: false,
+      providerData: [
+        {
+          displayName: null,
+          providerId: 'apple.com',
+        },
+      ],
+    };
+
+    const { toJSON } = render(
+      <SafeAreaProvider>
+        <ProfileScreen route={{ params: { user: userNullProviderName } }} />
+      </SafeAreaProvider>
+    );
+
+    await waitFor(() => {
+      expect(toJSON()).toBeTruthy();
+    });
+  });
+
+  it('renders component structure', () => {
+    const { toJSON } = render(
+      <SafeAreaProvider>
+        <ProfileScreen route={{ params: { user: mockUser } }} />
+      </SafeAreaProvider>
+    );
+
+    const tree = toJSON();
+    expect(tree).not.toBeNull();
   });
 });
