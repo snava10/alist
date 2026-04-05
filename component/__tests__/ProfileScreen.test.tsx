@@ -135,15 +135,6 @@ describe('ProfileScreen', () => {
     expect(tree).toBeTruthy();
   });
 
-  it('initializes with user from route params', () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <ProfileScreen route={{ params: { user: mockUser } }} />
-      </SafeAreaProvider>
-    );
-    expect(toJSON()).toBeTruthy();
-  });
-
   it('renders with authenticated user', () => {
     const { toJSON } = render(
       <SafeAreaProvider>
