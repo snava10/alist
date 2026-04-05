@@ -1,6 +1,8 @@
-const { withDangerousMod } = require("@expo/config-plugins");
-const fs = require("fs");
-const path = require("path");
+import configPlugins from '@expo/config-plugins';
+import fs from 'fs';
+import path from 'path';
+
+const { withDangerousMod } = configPlugins;
 
 /**
  * Expo config plugin that injects FirebaseApp.configure() into the Swift AppDelegate.
@@ -11,34 +13,31 @@ const path = require("path");
  */
 const withFirebaseConfigure = (config) => {
   return withDangerousMod(config, [
-    "ios",
+    'ios',
     async (config) => {
       const appDelegatePath = path.join(
         config.modRequest.projectRoot,
-        "ios",
+        'ios',
         config.modRequest.projectName,
-        "AppDelegate.swift",
+        'AppDelegate.swift'
       );
 
-      let contents = fs.readFileSync(appDelegatePath, "utf-8");
+      let contents = fs.readFileSync(appDelegatePath, 'utf-8');
 
       // Skip if already configured
-      if (contents.includes("FirebaseApp.configure()")) {
+      if (contents.includes('FirebaseApp.configure()')) {
         return config;
       }
 
       // Add import if missing
-      if (!contents.includes("import FirebaseCore")) {
-        contents = contents.replace(
-          /import Expo/,
-          "import Expo\nimport FirebaseCore",
-        );
+      if (!contents.includes('import FirebaseCore')) {
+        contents = contents.replace(/import Expo/, 'import Expo\nimport FirebaseCore');
       }
 
       // Insert FirebaseApp.configure() at the start of didFinishLaunchingWithOptions
       contents = contents.replace(
         /(didFinishLaunchingWithOptions launchOptions:.*\n\s*\) -> Bool \{\n)/,
-        "$1    FirebaseApp.configure()\n\n",
+        '$1    FirebaseApp.configure()\n\n'
       );
 
       fs.writeFileSync(appDelegatePath, contents);
@@ -47,4 +46,4 @@ const withFirebaseConfigure = (config) => {
   ]);
 };
 
-module.exports = withFirebaseConfigure;
+export default withFirebaseConfigure;

@@ -1,17 +1,14 @@
-import React from "react";
-import { View } from "react-native";
-import {
-  firebase,
-  FirebaseAuthTypes,
-  linkWithCredential,
-} from "@react-native-firebase/auth";
-import {
-  appleAuth,
-  AppleButton,
-} from "@invertase/react-native-apple-authentication";
-import { createUserSettings } from "../Core/Storage";
+import React from 'react';
+import { View } from 'react-native';
+import { firebase, FirebaseAuthTypes, linkWithCredential } from '@react-native-firebase/auth';
+import { appleAuth, AppleButton } from '@invertase/react-native-apple-authentication';
+import { createUserSettings } from '../Core/Storage';
 
-export default function AppleLogin({ callbackFn }: any) {
+export default function AppleLogin({
+  callbackFn,
+}: {
+  callbackFn: (user: FirebaseAuthTypes.User | null) => void;
+}) {
   async function onAppleButtonPress() {
     var retryCount = 2;
     while (retryCount > 0) {
@@ -25,10 +22,7 @@ export default function AppleLogin({ callbackFn }: any) {
       // can be null in some scenarios
       if (identityToken) {
         // 3). create a Firebase `AppleAuthProvider` credential
-        const appleCredential = firebase.auth.AppleAuthProvider.credential(
-          identityToken,
-          nonce,
-        );
+        const appleCredential = firebase.auth.AppleAuthProvider.credential(identityToken, nonce);
 
         // 4). use the created `AppleAuthProvider` credential to start a Firebase auth request,
         //     in this example `signInWithCredential` is used, but you could also call `linkWithCredential`
@@ -40,9 +34,7 @@ export default function AppleLogin({ callbackFn }: any) {
             .auth()
             .signInWithCredential(appleCredential)
             .then((credentials) => {
-              linkWithCredential(user, appleCredential).catch(
-                (_) => credentials,
-              );
+              linkWithCredential(user, appleCredential).catch((_) => credentials);
             });
         }
         return firebase.auth().signInWithCredential(appleCredential);
@@ -69,25 +61,23 @@ export default function AppleLogin({ callbackFn }: any) {
             onAppleButtonPress()
               .then(async (userCredentials) => {
                 if (userCredentials) {
-                  const userSettings = await createUserSettings(
-                    userCredentials.user.uid,
-                  );
+                  const userSettings = await createUserSettings(userCredentials.user.uid);
                   console.log(JSON.stringify(userSettings));
                   console.log(JSON.stringify(userCredentials));
                   callbackFn();
                 } else {
                   if (firebase.auth().currentUser?.isAnonymous) {
-                    console.error("Error: User credentials are null");
+                    console.error('Error: User credentials are null');
                   } else {
                     console.info(
-                      "Login with Apple Succeded but there was an error merging the account with an anonymous user",
+                      'Login with Apple Succeded but there was an error merging the account with an anonymous user'
                     );
                   }
                   callbackFn();
                 }
               })
               .catch((error) => {
-                console.log("Error " + error);
+                console.log('Error ' + error);
                 callbackFn();
               })
           }

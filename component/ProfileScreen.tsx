@@ -1,35 +1,32 @@
-import React, { useEffect, useState } from "react";
-import auth from "@react-native-firebase/auth";
-import AuthenticationComponent from "./Login/AuthenticationComponent";
-import { View, Text, Pressable } from "react-native";
-import globalStyles from "./Core/GlobalStyles";
-import { BackupCadence, HomeTabParamList } from "./Core/DataModel";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import ConfirmationModal from "./ConfirmationModal";
-import { FirebaseAuthTypes } from "@react-native-firebase/auth";
-import { deleteItems, restoreFromBackup } from "./Core/Storage";
-import analytics from "@react-native-firebase/analytics";
-import { NavigationProp, useNavigation } from "@react-navigation/native";
+import React, { useEffect, useState } from 'react';
+import auth from '@react-native-firebase/auth';
+import AuthenticationComponent from './Login/AuthenticationComponent';
+import { View, Text, Pressable } from 'react-native';
+import globalStyles from './Core/GlobalStyles';
+import { BackupCadence, HomeTabParamList } from './Core/DataModel';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ConfirmationModal from './ConfirmationModal';
+import { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import { deleteItems, restoreFromBackup } from './Core/Storage';
+import analytics from '@react-native-firebase/analytics';
+import { NavigationProp, useNavigation } from '@react-navigation/native';
 
 type NavigationType = NavigationProp<HomeTabParamList>;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function ProfileScreen({ route }: any) {
-  const [open, setOpen] = useState(false);
   const [user, setUser] = useState(route.params.user);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isEnabled, setIsEnabled] = useState(false);
-  const [backupCadence, setBackupCadence] = useState(BackupCadence.DAILY);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [modalMessage, setModalMessage] = useState(
-    "Deleting you account will remove your credentials and all backups. The data will still be available in your phone. Do you wish to proceed?"
+    'Deleting your account will remove your credentials and all backups. The data will still be available in your phone. Do you wish to proceed?'
   );
-  const [showRestoreFromBackupModal, setShowRestoreFromBackupModal] =
-    useState(false);
+  const [showRestoreFromBackupModal, setShowRestoreFromBackupModal] = useState(false);
 
   const navigation = useNavigation<NavigationType>();
 
-  const items = Object.values(BackupCadence).map((i) => {
+  Object.values(BackupCadence).map((i) => {
     if (i === BackupCadence.INSTANT) {
       return {
         label: i,
@@ -63,12 +60,10 @@ export default function ProfileScreen({ route }: any) {
       <View
         style={
           (globalStyles.profileBannerContainer,
-          [{ flex: 0.2, justifyContent: "center", alignItems: "center" }])
+          [{ flex: 0.2, justifyContent: 'center', alignItems: 'center' }])
         }
       >
-        <Text style={{ fontWeight: "bold", fontSize: 20 }}>
-          {displayName ?? ""}
-        </Text>
+        <Text style={{ fontWeight: 'bold', fontSize: 20 }}>{displayName ?? ''}</Text>
       </View>
     );
   };
@@ -78,9 +73,9 @@ export default function ProfileScreen({ route }: any) {
       style={[
         {
           paddingHorizontal: 10,
-          alignItems: "center",
+          alignItems: 'center',
           flex: 1,
-          backgroundColor: "#fff",
+          backgroundColor: '#fff',
           paddingTop: insets.top,
           paddingBottom: insets.bottom,
           paddingLeft: insets.left,
@@ -94,37 +89,32 @@ export default function ProfileScreen({ route }: any) {
           <View
             style={{
               flex: 0.8,
-              flexDirection: "row",
-              justifyContent: "center",
+              flexDirection: 'row',
+              justifyContent: 'center',
             }}
           >
             <View
               style={{
-                flexDirection: "row",
-                backgroundColor: "#f0f0f0",
+                flexDirection: 'row',
+                backgroundColor: '#f0f0f0',
                 width: 350,
                 borderRadius: 8,
                 padding: 10,
                 height: 70,
-                alignContent: "space-between",
+                alignContent: 'space-between',
               }}
             >
-              <View style={{ flex: 0.5, justifyContent: "center" }}>
+              <View style={{ flex: 0.5, justifyContent: 'center' }}>
                 <Text style={globalStyles.profileTextLabel}>Backup</Text>
               </View>
-              <View style={{ flex: 0.5, justifyContent: "center" }}>
+              <View style={{ flex: 0.5, justifyContent: 'center' }}>
                 <Pressable
-                  style={[
-                    globalStyles.button,
-                    globalStyles.button.primary.main,
-                  ]}
+                  style={[globalStyles.button, globalStyles.button.primary.main]}
                   onPress={() => {
                     setShowRestoreFromBackupModal(true);
                   }}
                 >
-                  <Text style={globalStyles.button.text.default}>
-                    Backup Restore
-                  </Text>
+                  <Text style={globalStyles.button.text.default}>Backup Restore</Text>
                 </Pressable>
               </View>
             </View>
@@ -138,12 +128,12 @@ export default function ProfileScreen({ route }: any) {
           isLoggedIn
             ? {
                 flex: 0.2,
-                flexDirection: "row",
+                flexDirection: 'row',
               }
             : {
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }
         }
       >
@@ -163,7 +153,7 @@ export default function ProfileScreen({ route }: any) {
             allowAnonymous: false,
           }}
           deleteAccountFn={() => {
-            console.log("deleting account");
+            console.log('deleting account');
             setShowDeleteModal(true);
             console.log(showDeleteModal);
           }}
@@ -176,46 +166,41 @@ export default function ProfileScreen({ route }: any) {
           acceptCallbackFn={() => {
             auth()
               .currentUser?.getIdToken(true)
-              .then((token) => {
-                const currentUser = auth()
-                  .currentUser as FirebaseAuthTypes.User;
+              .then(() => {
+                const currentUser = auth().currentUser as FirebaseAuthTypes.User;
                 deleteItems(currentUser.uid).then((deletedCount) => {
                   console.log(`Deleted ${deletedCount} documents`);
                   currentUser
                     .delete()
                     .then((response) => {
-                      console.log("Response", response);
+                      console.log('Response', response);
                       setShowDeleteModal(false);
                       setUser(null);
                       setIsLoggedIn(false);
                       analytics()
-                        .logEvent("user_delete", {
+                        .logEvent('user_delete', {
                           uid: currentUser.uid,
                           provider: currentUser.providerId,
-                          displayName: currentUser.displayName ?? "",
+                          displayName: currentUser.displayName ?? '',
                         })
-                        .then((_) => console.log("delete user logged"))
-                        .catch((_) => console.log("delete user log failed"));
+                        .then((_) => console.log('delete user logged'))
+                        .catch((_) => console.log('delete user log failed'));
                     })
                     .catch((reason: Error) => {
-                      if (
-                        reason.message.includes("auth/requires-recent-login")
-                      ) {
+                      if (reason.message.includes('auth/requires-recent-login')) {
                         analytics()
-                          .logEvent("user_delete_error", {
+                          .logEvent('user_delete_error', {
                             uid: currentUser.uid,
                             provider: currentUser.providerId,
-                            displayName: currentUser.displayName ?? "",
+                            displayName: currentUser.displayName ?? '',
                           })
-                          .then((_) => console.log("delete user error logged"))
-                          .catch((_) =>
-                            console.log("delete user error log failed")
-                          );
+                          .then((_) => console.log('delete user error logged'))
+                          .catch((_) => console.log('delete user error log failed'));
                         setModalMessage(
                           `${reason.message} \n. Please logout, login and try deleting your account again.`
                         );
                       }
-                      console.log("Error", reason);
+                      console.log('Error', reason);
                     });
                 });
               });
@@ -236,22 +221,19 @@ export default function ProfileScreen({ route }: any) {
           message="This will replace all your data with your latest backup. Would you like to proceed"
           item={null}
           acceptCallbackFn={async () => {
-            console.log("Restoring from backup");
+            console.log('Restoring from backup');
             await restoreFromBackup(user.uid).then((x) => {
               setShowRestoreFromBackupModal(false);
               analytics()
-                .logEvent("backup_restore", {
+                .logEvent('backup_restore', {
                   uid: user.uid,
                   provider: user.providerId,
-                  displayName: user.displayName ?? "",
+                  displayName: user.displayName ?? '',
                 })
-                .catch((_) => console.log("backup log failed"));
-              console.info("Restored ", x, " items");
+                .catch((_) => console.log('backup log failed'));
+              console.info('Restored ', x, ' items');
               // This is needed otherwise the items won't show up on the Home screen.
-              setTimeout(
-                () => navigation.navigate("Home", { itemsReload: x }),
-                1000
-              );
+              setTimeout(() => navigation.navigate('Home', { itemsReload: x }), 1000);
             });
           }}
           rejectCallbackFn={() => {

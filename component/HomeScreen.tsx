@@ -1,36 +1,36 @@
-import React, { useEffect, useState } from "react";
-import { FlatList, StyleSheet, View, Text, TextInput } from "react-native";
-import AListItem from "./AListItem";
-import AddItemModal from "./AddItemModal";
-import ConfirmationModal from "./ConfirmationModal";
+import React, { useEffect, useState } from 'react';
+import { FlatList, StyleSheet, View, Text, TextInput } from 'react-native';
+import AListItem from './AListItem';
+import AddItemModal from './AddItemModal';
+import ConfirmationModal from './ConfirmationModal';
 import {
   addTimestampToItems,
   createUserSettings,
   getItems,
   replaceItem,
   removeItem as storageRemoveItem,
-} from "./Core/Storage";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import globalStyles from "./Core/GlobalStyles";
-import analytics from "@react-native-firebase/analytics";
-import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+} from './Core/Storage';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import globalStyles from './Core/GlobalStyles';
+import analytics from '@react-native-firebase/analytics';
+import { EdgeInsets, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function HomeScreen({ route }: any) {
   const [oneOffCorrections, setOneOffCorrections] = useState(false);
-  const [user, setUser] = useState(route.params.user);
+  const [user, _] = useState(route.params.user);
   const [alistItems, setAListItems] = useState([] as AListItem[]);
   const [selectedItem, setSelectedItem] = useState(null as AListItem | null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [confirmationModalVisible, setConfirmationModalVisible] =
-    useState(false);
-  const [searchText, setSearchText] = useState("");
+  const [confirmationModalVisible, setConfirmationModalVisible] = useState(false);
+  const [searchText, setSearchText] = useState('');
 
   const loadItemsFromLocalStorage = async (st: string) => {
-    console.log("Loading items from local storage");
+    console.log('Loading items from local storage');
     try {
       const items = await getItems(st);
-      console.log("Items ", items);
+      console.log('Items ', items);
       setAListItems(items);
       route.params.itemsReload = 0;
     } catch (e) {
@@ -57,8 +57,8 @@ export default function HomeScreen({ route }: any) {
   };
 
   const clearSearchFn = () => {
-    setSearchText("");
-    loadItemsFromLocalStorage("");
+    setSearchText('');
+    loadItemsFromLocalStorage('');
   };
 
   const insets = useSafeAreaInsets();
@@ -70,19 +70,19 @@ export default function HomeScreen({ route }: any) {
   );
 
   useEffect(() => {
-    console.info("Use Effect Invoked", alistItems);
+    console.info('Use Effect Invoked', alistItems);
     if (!oneOffCorrections) {
       if (user && !user.isAnonymous) {
         createUserSettings(user.uid)
-          .then(() => console.log("User settings created"))
-          .catch((error) => console.log("User settings ", error));
+          .then(() => console.log('User settings created'))
+          .catch((error) => console.log('User settings ', error));
       }
       addTimestampToItems()
         .then(() => {
-          console.log("Add timestamps executed");
+          console.log('Add timestamps executed');
           setOneOffCorrections(true);
         })
-        .catch((error) => console.log("Add timestamps ", error));
+        .catch((error) => console.log('Add timestamps ', error));
     }
   }, [oneOffCorrections]);
 
@@ -91,14 +91,10 @@ export default function HomeScreen({ route }: any) {
   return (
     <View style={styles.container}>
       {alistItems.length > 0 || searchText.length > 0 ? (
-        <View style={{ alignSelf: "stretch", flex: 1 }}>
+        <View style={{ alignSelf: 'stretch', flex: 1 }}>
           <View style={{ paddingLeft: 16, paddingRight: 16 }}>
             <View style={[globalStyles.searchContainer]}>
-              <Ionicons
-                style={globalStyles.searchIcon}
-                name="search-outline"
-                size={20}
-              />
+              <Ionicons style={globalStyles.searchIcon} name="search-outline" size={20} />
               <TextInput
                 style={globalStyles.searchInput}
                 placeholder="Search..."
@@ -130,26 +126,26 @@ export default function HomeScreen({ route }: any) {
                 }}
               ></AListItem>
             )}
-            keyExtractor={(item, index) => item.name}
+            keyExtractor={(item, _) => item.name}
           />
         </View>
       ) : (
         <View
           style={{
             flex: 1,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          <Text style={{ fontSize: 22, textAlign: "center" }}>
-            Tap{" "}
+          <Text style={{ fontSize: 22, textAlign: 'center' }}>
+            Tap{' '}
             <Ionicons
               name="add-circle"
               style={(styles.fab, { marginLeft: 10 })}
               size={25}
               onPress={() => setModalVisible(true)}
-            />{" "}
+            />{' '}
             to add a new item
           </Text>
         </View>
@@ -161,18 +157,18 @@ export default function HomeScreen({ route }: any) {
           saveItem={async (old: AListItem, item: AListItem) => {
             if (old.name) {
               analytics()
-                .logEvent("edit_item", {
+                .logEvent('edit_item', {
                   name: item.name,
                 })
-                .then((_) => console.log("item edit logged"))
+                .then((_) => console.log('item edit logged'))
                 .catch((_) => console.error("Couldn't log edit item event"));
             } else {
               analytics()
-                .logEvent("add_item", {
+                .logEvent('add_item', {
                   name: item.name,
                 })
-                .then((_) => console.log("add item logged"))
-                .catch((_) => console.log("add item log failed"));
+                .then((_) => console.log('add item logged'))
+                .catch((_) => console.log('add item log failed'));
             }
             await replaceItem(old, item);
             await loadItemsFromLocalStorage(searchText);
@@ -190,7 +186,7 @@ export default function HomeScreen({ route }: any) {
         />
       )}
       <ConfirmationModal
-        message={"Are you sure you wish to delete " + selectedItem?.name}
+        message={'Are you sure you wish to delete ' + selectedItem?.name}
         visible={confirmationModalVisible}
         item={selectedItem}
         acceptCallbackFn={() => {
@@ -215,7 +211,7 @@ const getStyles = (insets: EdgeInsets) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: "#fff",
+      backgroundColor: '#fff',
       paddingTop: insets.top,
       paddingLeft: insets.left,
       paddingRight: insets.right,
@@ -228,10 +224,10 @@ const getStyles = (insets: EdgeInsets) =>
     fab: {
       width: 60,
       height: 60,
-      position: "absolute",
+      position: 'absolute',
       bottom: 20,
       left: 20,
       borderRadius: 100,
-      alignContent: "center",
+      alignContent: 'center',
     },
   });

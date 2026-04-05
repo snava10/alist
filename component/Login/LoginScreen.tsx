@@ -1,6 +1,7 @@
-import { View, StyleSheet } from "react-native";
-import AuthenticationComponent from "./AuthenticationComponent";
-import auth from "@react-native-firebase/auth";
+import { View, StyleSheet } from 'react-native';
+import AuthenticationComponent from './AuthenticationComponent';
+import auth from '@react-native-firebase/auth';
+import React from 'react';
 
 export type LoginScreenProperties = {
   loginWithFacebook: boolean;
@@ -15,10 +16,10 @@ export default function LoginScreen() {
       <AuthenticationComponent
         isLoggedIn={false}
         successCallbackFn={() => {
-          console.log("Successfully logged in");
+          console.log('Successfully logged in');
         }}
         logOutFn={() => {
-          console.log("Successfully logged out");
+          console.log('Successfully logged out');
         }}
         authProviders={{
           google: true,
@@ -37,8 +38,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 10,
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
