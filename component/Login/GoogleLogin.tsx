@@ -29,15 +29,17 @@ async function onGoogleButtonPress() {
     if (auth().currentUser) {
       // await auth().signOut()
       const user: FirebaseAuthTypes.User = auth().currentUser as FirebaseAuthTypes.User;
-      return linkWithCredential(user, googleCredential).catch((error) =>
-        auth().signInWithCredential(googleCredential)
-      );
+      return linkWithCredential(user, googleCredential).catch((error) => {
+        console.error(error);
+        auth().signInWithCredential(googleCredential);
+      });
     }
     // Sign-in the user with the credential
     return auth().signInWithCredential(googleCredential);
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function GoogleLogin({ callbackFn }: any) {
   return (
     <View>

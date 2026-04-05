@@ -14,21 +14,19 @@ import { NavigationProp, useNavigation } from '@react-navigation/native';
 
 type NavigationType = NavigationProp<HomeTabParamList>;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function ProfileScreen({ route }: any) {
-  const [open, setOpen] = useState(false);
   const [user, setUser] = useState(route.params.user);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isEnabled, setIsEnabled] = useState(false);
-  const [backupCadence, setBackupCadence] = useState(BackupCadence.DAILY);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [modalMessage, setModalMessage] = useState(
-    'Deleting you account will remove your credentials and all backups. The data will still be available in your phone. Do you wish to proceed?'
+    'Deleting your account will remove your credentials and all backups. The data will still be available in your phone. Do you wish to proceed?'
   );
   const [showRestoreFromBackupModal, setShowRestoreFromBackupModal] = useState(false);
 
   const navigation = useNavigation<NavigationType>();
 
-  const items = Object.values(BackupCadence).map((i) => {
+  Object.values(BackupCadence).map((i) => {
     if (i === BackupCadence.INSTANT) {
       return {
         label: i,
@@ -168,7 +166,7 @@ export default function ProfileScreen({ route }: any) {
           acceptCallbackFn={() => {
             auth()
               .currentUser?.getIdToken(true)
-              .then((token) => {
+              .then(() => {
                 const currentUser = auth().currentUser as FirebaseAuthTypes.User;
                 deleteItems(currentUser.uid).then((deletedCount) => {
                   console.log(`Deleted ${deletedCount} documents`);

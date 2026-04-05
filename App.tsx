@@ -6,7 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import LoginScreen, { LoginScreenProperties } from './component/Login/LoginScreen';
-import auth, { CallbackOrObserver, FirebaseAuthTypes } from '@react-native-firebase/auth';
+import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const Tab = createBottomTabNavigator();
@@ -15,7 +15,7 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
   const [initializing, setInitializing] = useState(true);
-  const [anonymous, setAnonymous] = useState(false);
+  const [anonymous, _] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const loginScreenProperties = {
@@ -45,7 +45,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <Stack.Navigator screenOptions={({ route }) => ({ headerShown: false })}>
+        <Stack.Navigator screenOptions={() => ({ headerShown: false })}>
           {isLoggedIn ? (
             <>
               <Stack.Screen
@@ -74,9 +74,10 @@ export default function App() {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function HomeTabScreen(props: any) {
   return (
-    <Tab.Navigator screenOptions={({ route }) => ({ headerShown: false })}>
+    <Tab.Navigator screenOptions={() => ({ headerShown: false })}>
       <Tab.Screen
         name="Home"
         component={HomeScreen}
