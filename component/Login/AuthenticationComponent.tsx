@@ -1,10 +1,10 @@
-import { View, StyleSheet, Text, Pressable, ViewStyle } from "react-native";
-import React, { useEffect, useState } from "react";
-import FacebookLogin from "./FacebookLogin";
-import GoogleLogin from "./GoogleLogin";
-import globalStyles from "../Core/GlobalStyles";
-import AppleLogin from "./AppleLogin";
-import analytics from "@react-native-firebase/analytics";
+import { View, StyleSheet, Text, Pressable, ViewStyle } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import FacebookLogin from './FacebookLogin';
+import GoogleLogin from './GoogleLogin';
+import globalStyles from '../Core/GlobalStyles';
+import AppleLogin from './AppleLogin';
+import analytics from '@react-native-firebase/analytics';
 
 export type AuthenticationComponentProps = {
   isLoggedIn: boolean;
@@ -51,9 +51,7 @@ export default function AuthenticationComponent({
           style={[globalStyles.button, globalStyles.button.primary.outlined]}
           onPress={deleteAccountFn}
         >
-          <Text style={globalStyles.button.text.dangerSmall}>
-            Delete Account
-          </Text>
+          <Text style={globalStyles.button.text.dangerSmall}>Delete Account</Text>
         </Pressable>
       </View>
     </View>
@@ -61,53 +59,39 @@ export default function AuthenticationComponent({
     <View style={{ flex: 1 }}>
       <View style={styles.child_view}>
         {authProviders.facebook ? <FacebookLogin></FacebookLogin> : <></>}
-        {authProviders.google ? (
-          <GoogleLogin callbackFn={successCallbackFn}></GoogleLogin>
-        ) : (
-          <></>
-        )}
-        {authProviders.apple ? (
-          <AppleLogin callbackFn={successCallbackFn}></AppleLogin>
-        ) : (
-          <></>
-        )}
+        {authProviders.google ? <GoogleLogin callbackFn={successCallbackFn}></GoogleLogin> : <></>}
+        {authProviders.apple ? <AppleLogin callbackFn={successCallbackFn}></AppleLogin> : <></>}
         {authProviders.allowAnonymous ? (
           <>
             <View
               style={{
-                flexDirection: "row",
-                alignItems: "center",
+                flexDirection: 'row',
+                alignItems: 'center',
                 paddingHorizontal: 50,
                 paddingVertical: 10,
               }}
             >
-              <View
-                style={{ flex: 1, height: 1, backgroundColor: "#b0afac" }}
-              />
+              <View style={{ flex: 1, height: 1, backgroundColor: '#b0afac' }} />
               <View>
                 <Text
                   style={{
                     width: 50,
-                    textAlign: "center",
-                    color: "#b0afac",
-                    fontWeight: "bold",
+                    textAlign: 'center',
+                    color: '#b0afac',
+                    fontWeight: 'bold',
                     fontSize: 20,
                   }}
                 >
                   or
                 </Text>
               </View>
-              <View
-                style={{ flex: 1, height: 1, backgroundColor: "#b0afac" }}
-              />
+              <View style={{ flex: 1, height: 1, backgroundColor: '#b0afac' }} />
             </View>
             <Pressable
               style={({ pressed }) => [
                 globalStyles.button,
                 { height: 40, width: 220 },
-                pressed
-                  ? globalStyles.button.primary.dark
-                  : globalStyles.button.primary.main,
+                pressed ? globalStyles.button.primary.dark : globalStyles.button.primary.main,
               ]}
               onPress={() => {
                 setIsLoggedIn(true);
@@ -116,9 +100,7 @@ export default function AuthenticationComponent({
                 }
               }}
             >
-              <Text style={globalStyles.button.text.default}>
-                Continue anonymous
-              </Text>
+              <Text style={globalStyles.button.text.default}>Continue anonymous</Text>
             </Pressable>
           </>
         ) : (
@@ -132,7 +114,7 @@ export default function AuthenticationComponent({
 const styles = StyleSheet.create({
   child_view: {
     flex: 1,
-    justifyContent: "center",
-    alignSelf: "center",
+    justifyContent: 'center',
+    alignSelf: 'center',
   },
 });

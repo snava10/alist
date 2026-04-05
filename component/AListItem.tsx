@@ -1,7 +1,7 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
-import * as Clipboard from "expo-clipboard";
-import Ionicons from "@expo/vector-icons/Ionicons";
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 type AListItem = {
   name: string;
@@ -11,11 +11,7 @@ type AListItem = {
   encrypted?: boolean;
 };
 
-const AListItem = (props: {
-  item: AListItem;
-  removeItem: any;
-  editItem: any;
-}) => {
+const AListItem = (props: { item: AListItem; removeItem: any; editItem: any }) => {
   const [copied, setCopied] = useState(false);
 
   const copyValue = async (item: string) => {
@@ -39,13 +35,7 @@ const AListItem = (props: {
       )}
 
       {copied && (
-        <View
-          style={[
-            styles.column,
-            styles.contentColumn,
-            { backgroundColor: "green" },
-          ]}
-        >
+        <View style={[styles.column, styles.contentColumn, { backgroundColor: 'green' }]}>
           <Text style={styles.copied}>Copied</Text>
         </View>
       )}
@@ -70,8 +60,8 @@ const AListItem = (props: {
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     padding: 10,
     height: 80,
   },
@@ -79,27 +69,27 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     padding: 16,
     borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   contentColumn: {
     flex: 0.9,
-    backgroundColor: "#f0f0f0",
+    backgroundColor: '#f0f0f0',
   },
   iconColumn: {
     flex: 0.1,
-    flexDirection: "row",
+    flexDirection: 'row',
   },
   nameText: {
     fontSize: 18,
   },
   valueText: {
     fontSize: 20,
-    fontWeight: "bold",
+    fontWeight: 'bold',
   },
   copied: {
     fontSize: 20,
-    color: "white",
+    color: 'white',
   },
 });
 

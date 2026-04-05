@@ -1,14 +1,7 @@
-import React, { useState } from "react";
-import {
-  View,
-  Modal,
-  StyleSheet,
-  TextInput,
-  Pressable,
-  Text,
-} from "react-native";
-import AListItem from "./AListItem";
-import globalStyles from "./Core/GlobalStyles";
+import React, { useState } from 'react';
+import { View, Modal, StyleSheet, TextInput, Pressable, Text } from 'react-native';
+import AListItem from './AListItem';
+import globalStyles from './Core/GlobalStyles';
 
 const AddItemModal = (props: {
   item?: AListItem | null;
@@ -17,13 +10,11 @@ const AddItemModal = (props: {
   showModal: any;
   visible: boolean;
 }) => {
-  const [name, setName] = useState(props.item !== null ? props.item?.name : "");
-  const [value, setValue] = useState(
-    props.item !== null ? props.item?.value : ""
-  );
+  const [name, setName] = useState(props.item !== null ? props.item?.name : '');
+  const [value, setValue] = useState(props.item !== null ? props.item?.value : '');
   const oldItem = props.item ?? {
-    name: "",
-    value: "",
+    name: '',
+    value: '',
     timestamp: Date.now(),
   };
 
@@ -33,8 +24,8 @@ const AddItemModal = (props: {
         name,
         value,
       } as AListItem);
-      setName("");
-      setValue("");
+      setName('');
+      setValue('');
       props.hideModal();
     }
   };
@@ -64,7 +55,7 @@ const AddItemModal = (props: {
             placeholder="Value"
             placeholderTextColor="#6e6e6e"
           />
-          <View style={{ flexDirection: "row" }}>
+          <View style={{ flexDirection: 'row' }}>
             <Pressable
               style={[globalStyles.button, globalStyles.button.primary.main]}
               onPress={handleSave}
@@ -75,8 +66,8 @@ const AddItemModal = (props: {
             <Pressable
               style={[globalStyles.button, globalStyles.button.error.main]}
               onPress={() => {
-                setName("");
-                setValue("");
+                setName('');
+                setValue('');
                 props.hideModal();
               }}
             >
@@ -92,16 +83,16 @@ const AddItemModal = (props: {
 const styles = StyleSheet.create({
   centeredView: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: 'center',
     marginTop: 22,
   },
   modalView: {
     margin: 20,
-    backgroundColor: "white",
+    backgroundColor: 'white',
     borderRadius: 20,
     padding: 35,
-    alignItems: "center",
-    shadowColor: "#000",
+    alignItems: 'center',
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -112,7 +103,7 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 10,
-    alignSelf: "stretch",
+    alignSelf: 'stretch',
     height: 48,
     borderWidth: 1,
     paddingLeft: 7,
@@ -123,13 +114,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     padding: 16,
     borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   container: {
     flex: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     padding: 16,
   },
 });

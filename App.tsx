@@ -1,18 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { NavigationContainer } from "@react-navigation/native";
-import HomeScreen from "./component/HomeScreen";
-import ProfileScreen from "./component/ProfileScreen";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import LoginScreen, {
-  LoginScreenProperties,
-} from "./component/Login/LoginScreen";
-import auth, {
-  CallbackOrObserver,
-  FirebaseAuthTypes,
-} from "@react-native-firebase/auth";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import React, { useEffect, useState } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import HomeScreen from './component/HomeScreen';
+import ProfileScreen from './component/ProfileScreen';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import LoginScreen, { LoginScreenProperties } from './component/Login/LoginScreen';
+import auth, { CallbackOrObserver, FirebaseAuthTypes } from '@react-native-firebase/auth';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -35,7 +30,7 @@ export default function App() {
       setUser(u);
       if (initializing) setInitializing(false);
       setIsLoggedIn(true);
-      console.log("Display Name", u.displayName);
+      console.log('Display Name', u.displayName);
     } else {
       setUser(null);
       setIsLoggedIn(false);
@@ -50,9 +45,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={({ route }) => ({ headerShown: false })}
-        >
+        <Stack.Navigator screenOptions={({ route }) => ({ headerShown: false })}>
           {isLoggedIn ? (
             <>
               <Stack.Screen
@@ -89,10 +82,8 @@ function HomeTabScreen(props: any) {
         component={HomeScreen}
         initialParams={props.route.params}
         options={{
-          tabBarLabel: "Home",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" color={color} size={size} />
-          ),
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} />,
         }}
       />
       <Tab.Screen
@@ -100,10 +91,8 @@ function HomeTabScreen(props: any) {
         component={ProfileScreen}
         initialParams={props.route.params}
         options={{
-          tabBarLabel: "Profile",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" color={color} size={size} />
-          ),
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ color, size }) => <Ionicons name="person" color={color} size={size} />,
         }}
       />
     </Tab.Navigator>

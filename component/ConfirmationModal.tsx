@@ -1,6 +1,7 @@
-import { Modal, View, Text, Pressable } from "react-native";
-import globalStyles from "./Core/GlobalStyles";
-import AListItem from "./AListItem";
+import { Modal, View, Text, Pressable } from 'react-native';
+import globalStyles from './Core/GlobalStyles';
+import AListItem from './AListItem';
+import React from 'react';
 
 const ConfirmationModal = (props: {
   visible: boolean;
@@ -22,7 +23,7 @@ const ConfirmationModal = (props: {
       <View style={globalStyles.modalViewCentered}>
         <View style={globalStyles.modalView}>
           <Text style={{ fontSize: 20 }}>{props.message}</Text>
-          <View style={{ flexDirection: "row", marginTop: 10 }}>
+          <View style={{ flexDirection: 'row', marginTop: 10 }}>
             <Pressable
               style={[globalStyles.button, globalStyles.button.primary.main]}
               onPress={props.acceptCallbackFn}
