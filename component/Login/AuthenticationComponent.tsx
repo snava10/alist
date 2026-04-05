@@ -1,17 +1,17 @@
-import { View, StyleSheet, Text, Pressable, ViewStyle } from 'react-native';
+import { View, StyleSheet, Text, Pressable } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import FacebookLogin from './FacebookLogin';
 import GoogleLogin from './GoogleLogin';
 import globalStyles from '../Core/GlobalStyles';
 import AppleLogin from './AppleLogin';
-import analytics from '@react-native-firebase/analytics';
+import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 
 export type AuthenticationComponentProps = {
   isLoggedIn: boolean;
-  successCallbackFn: Function;
-  logOutFn: any;
-  continueAnonymousCallbackFn?: Function;
-  deleteAccountFn: any;
+  successCallbackFn: (user: FirebaseAuthTypes.User | null) => void;
+  logOutFn: () => void;
+  continueAnonymousCallbackFn?: () => void;
+  deleteAccountFn: () => void;
   authProviders: {
     google?: boolean;
     facebook?: boolean;

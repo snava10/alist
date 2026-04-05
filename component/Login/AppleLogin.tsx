@@ -4,7 +4,11 @@ import { firebase, FirebaseAuthTypes, linkWithCredential } from '@react-native-f
 import { appleAuth, AppleButton } from '@invertase/react-native-apple-authentication';
 import { createUserSettings } from '../Core/Storage';
 
-export default function AppleLogin({ callbackFn }: any) {
+export default function AppleLogin({
+  callbackFn,
+}: {
+  callbackFn: (user: FirebaseAuthTypes.User | null) => void;
+}) {
   async function onAppleButtonPress() {
     var retryCount = 2;
     while (retryCount > 0) {

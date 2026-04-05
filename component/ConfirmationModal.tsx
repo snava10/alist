@@ -7,9 +7,9 @@ const ConfirmationModal = (props: {
   visible: boolean;
   message: string;
   item: AListItem | null;
-  acceptCallbackFn: any;
-  rejectCallbackFn: any;
-  hideModalFn: any;
+  acceptCallbackFn: () => void;
+  rejectCallbackFn: () => void;
+  hideModalFn: () => void;
 }) => {
   return (
     <Modal

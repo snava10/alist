@@ -6,8 +6,8 @@ import globalStyles from './Core/GlobalStyles';
 const AddItemModal = (props: {
   item?: AListItem | null;
   saveItem: (oldItem: AListItem, newItem: AListItem) => void;
-  hideModal: any;
-  showModal: any;
+  hideModal: () => void;
+  showModal: () => void;
   visible: boolean;
 }) => {
   const [name, setName] = useState(props.item !== null ? props.item?.name : '');

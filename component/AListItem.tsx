@@ -11,7 +11,11 @@ type AListItem = {
   encrypted?: boolean;
 };
 
-const AListItem = (props: { item: AListItem; removeItem: any; editItem: any }) => {
+const AListItem = (props: {
+  item: AListItem;
+  removeItem: (item: AListItem) => void;
+  editItem: (item: AListItem) => void;
+}) => {
   const [copied, setCopied] = useState(false);
 
   const copyValue = async (item: string) => {

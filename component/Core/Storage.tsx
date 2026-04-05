@@ -3,10 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BackupCadence, MembershipType, UserSettings } from './DataModel';
 import firestore from '@react-native-firebase/firestore';
 import base64 from 'react-native-base64';
-import { EXPO_PUBLIC_ENCRYPTION, EXPO_PUBLIC_FIREBASE_EMULATOR } from '@env';
+import { EXPO_PUBLIC_FIREBASE_EMULATOR } from '@env';
 import auth from '@react-native-firebase/auth';
 import { Platform } from 'react-native';
-import { decrypt, encrypt, getRSAKeys } from './Security';
+import { decrypt, encrypt } from './Security';
 
 if (EXPO_PUBLIC_FIREBASE_EMULATOR === 'true') {
   console.debug('Connecting to firebase emulator');
@@ -146,7 +146,7 @@ export async function createUserSettings(userId: string): Promise<UserSettings> 
     .then(() => defaultSettings);
 }
 
-const compareItems = (a: AListItem, b: AListItem) => a.name.localeCompare(b.name);
+const _compareItems = (a: AListItem, b: AListItem) => a.name.localeCompare(b.name);
 
 // export async function pushItem(item: AListItem, userId: string) {
 //   const encodedValue = base64.encode(item.value);
