@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, screen, fireEvent } from '@testing-library/react-native';
 import AuthenticationComponent, { AuthenticationComponentProps } from '../AuthenticationComponent';
 
 jest.mock('../FacebookLogin', () => {
@@ -167,6 +167,13 @@ describe('AuthenticationComponent', () => {
 
     rerender(<AuthenticationComponent {...defaultProps} isLoggedIn={true} />);
     expect(toJSON()).toBeTruthy();
+  });
+
+  it('calls continueAnonymousCallbackFn when Continue anonymous is pressed', () => {
+    render(<AuthenticationComponent {...defaultProps} />);
+
+    fireEvent.press(screen.getByText('Continue anonymous'));
+    expect(mockAnonymousFn).toHaveBeenCalled();
   });
 
   it('handles different configurations', () => {

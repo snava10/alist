@@ -1,115 +1,137 @@
+import React from 'react';
+import { render, waitFor } from '@testing-library/react-native';
 import GoogleLogin from '../GoogleLogin';
+import auth, { linkWithCredential } from '@react-native-firebase/auth';
+import { GoogleSigninButton } from '@react-native-google-signin/google-signin';
 
-jest.mock('@react-native-google-signin/google-signin', () => ({
-  GoogleSigninButton: {
-    Size: { Wide: 'Wide' },
-    Color: { Dark: 'Dark' },
-  },
-  GoogleSignin: {
-    configure: jest.fn(),
-    hasPlayServices: jest.fn().mockResolvedValue(true),
-    signIn: jest.fn().mockResolvedValue({
-      type: 'success',
-      data: {
-        idToken: 'test-token',
-        user: { id: 'user-123' },
-      },
-    }),
-  },
-  SignInSuccessResponse: {},
-}));
+const mockSignInWithCredential = jest.fn();
+const mockHasPlayServices = jest.fn().mockResolvedValue(true);
+const mockGoogleSignIn = jest.fn();
 
-jest.mock('@react-native-firebase/auth', () => ({
-  __esModule: true,
-  default: jest.fn(() => ({
-    currentUser: null,
-    signInWithCredential: jest.fn().mockResolvedValue(undefined),
-    GoogleAuthProvider: {
-      credential: jest.fn((token) => ({ provider: 'google', token })),
+jest.mock('@react-native-google-signin/google-signin', () => {
+  const ButtonComponent = jest.fn(() => null);
+  (ButtonComponent as any).Size = { Wide: 'Wide' };
+  (ButtonComponent as any).Color = { Dark: 'Dark' };
+  return {
+    GoogleSigninButton: ButtonComponent,
+    GoogleSignin: {
+      configure: jest.fn(),
+      hasPlayServices: (...args: unknown[]) => mockHasPlayServices(...args),
+      signIn: (...args: unknown[]) => mockGoogleSignIn(...args),
     },
-  })),
-  linkWithCredential: jest.fn().mockRejectedValue(new Error('Not linked')),
-  FirebaseAuthTypes: {},
-}));
+    SignInSuccessResponse: {},
+  };
+});
+
+jest.mock('@react-native-firebase/auth', () => {
+  const mockAuth = Object.assign(
+    jest.fn(() => ({
+      currentUser: null,
+      signInWithCredential: (...args: unknown[]) => mockSignInWithCredential(...args),
+      signOut: jest.fn().mockResolvedValue(undefined),
+    })),
+    {
+      GoogleAuthProvider: {
+        credential: jest.fn((token) => ({ provider: 'google', token })),
+      },
+    }
+  );
+  return {
+    __esModule: true,
+    default: mockAuth,
+    linkWithCredential: jest.fn().mockResolvedValue(undefined),
+    FirebaseAuthTypes: {},
+  };
+});
 
 jest.mock('../../Core/Storage', () => ({
-  createUserSettings: jest.fn().mockResolvedValue(undefined),
+  createUserSettings: jest.fn().mockResolvedValue({ userId: 'user-123' }),
 }));
 
 describe('GoogleLogin', () => {
   const mockCallbackFn = jest.fn();
 
+  const pressGoogleButton = () => {
+    const calls = (GoogleSigninButton as unknown as jest.Mock).mock.calls;
+    const lastCall = calls[calls.length - 1];
+    const onPress = lastCall[0].onPress;
+    onPress();
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('exports GoogleLogin component', () => {
-    expect(typeof GoogleLogin).toBe('function');
+  it('renders Google Sign-In button', () => {
+    render(<GoogleLogin callbackFn={mockCallbackFn} />);
+    expect(GoogleSigninButton).toHaveBeenCalled();
   });
 
-  it('has GoogleSignin configured', () => {
-    expect(typeof GoogleLogin).toBe('function');
+  it('signs in and calls callback on success', async () => {
+    mockGoogleSignIn.mockResolvedValue({
+      type: 'success',
+      data: { idToken: 'google-token-123' },
+    });
+    mockSignInWithCredential.mockResolvedValue({
+      user: { uid: 'user-123' },
+    });
+
+    render(<GoogleLogin callbackFn={mockCallbackFn} />);
+    pressGoogleButton();
+
+    await waitFor(() => {
+      expect(mockHasPlayServices).toHaveBeenCalled();
+      expect(mockGoogleSignIn).toHaveBeenCalled();
+      expect(mockSignInWithCredential).toHaveBeenCalled();
+      expect(mockCallbackFn).toHaveBeenCalled();
+    });
   });
 
-  it('accepts callback function as prop', () => {
-    expect(GoogleLogin.length).toBeGreaterThanOrEqual(0);
+  it('calls callback with error log when credentials are null', async () => {
+    mockGoogleSignIn.mockResolvedValue({
+      type: 'success',
+      data: { idToken: 'google-token-123' },
+    });
+    mockSignInWithCredential.mockResolvedValue(undefined);
+    const spy = jest.spyOn(console, 'error').mockImplementation();
+
+    render(<GoogleLogin callbackFn={mockCallbackFn} />);
+    pressGoogleButton();
+
+    await waitFor(() => {
+      expect(spy).toHaveBeenCalledWith('Error: User credentials are null');
+      expect(mockCallbackFn).toHaveBeenCalled();
+    });
+    spy.mockRestore();
   });
 
-  it('is a functional component', () => {
-    expect(typeof GoogleLogin).toBe('function');
+  it('calls callback on error', async () => {
+    mockGoogleSignIn.mockRejectedValue(new Error('Google sign-in failed'));
+
+    render(<GoogleLogin callbackFn={mockCallbackFn} />);
+    pressGoogleButton();
+
+    await waitFor(() => {
+      expect(mockCallbackFn).toHaveBeenCalled();
+    });
   });
 
-  it('receives callbackFn parameter', () => {
-    expect(typeof GoogleLogin).toBe('function');
-  });
+  it('links credential when currentUser exists', async () => {
+    const mockUser = { uid: 'existing-user' };
+    (auth as unknown as jest.Mock).mockReturnValue({
+      currentUser: mockUser,
+      signInWithCredential: mockSignInWithCredential,
+    });
+    mockGoogleSignIn.mockResolvedValue({
+      type: 'success',
+      data: { idToken: 'google-token-123' },
+    });
 
-  it('defined with proper signature', () => {
-    expect(GoogleLogin.toString()).toContain('callbackFn');
-  });
+    render(<GoogleLogin callbackFn={mockCallbackFn} />);
+    pressGoogleButton();
 
-  it('is callable with props', () => {
-    expect(() => {
-      GoogleLogin({ callbackFn: mockCallbackFn });
-    }).not.toThrow();
-  });
-
-  it('handles missing callback', () => {
-    expect(() => {
-      GoogleLogin({ callbackFn: undefined });
-    }).not.toThrow();
-  });
-
-  it('component function exists', () => {
-    expect(GoogleLogin).toBeDefined();
-    expect(typeof GoogleLogin).toBe('function');
-  });
-
-  it('is react component', () => {
-    expect(GoogleLogin.$$typeof).toBe(undefined); // Not a React element yet, it's a function
-  });
-
-  it('exports default GoogleLogin', () => {
-    expect(GoogleLogin).not.toBeNull();
-  });
-
-  it('component returns JSX', () => {
-    const result = GoogleLogin({ callbackFn: jest.fn() });
-    expect(result).toBeDefined();
-  });
-
-  it('handles alternative callback functions', () => {
-    const alternativeCallback = jest.fn();
-    expect(() => {
-      GoogleLogin({ callbackFn: alternativeCallback });
-    }).not.toThrow();
-  });
-
-  it('supports different prop values', () => {
-    const callbacks = [jest.fn(), jest.fn(), jest.fn()];
-    callbacks.forEach((cb) => {
-      expect(() => {
-        GoogleLogin({ callbackFn: cb });
-      }).not.toThrow();
+    await waitFor(() => {
+      expect(linkWithCredential).toHaveBeenCalledWith(mockUser, expect.any(Object));
     });
   });
 });

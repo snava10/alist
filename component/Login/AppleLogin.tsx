@@ -64,7 +64,7 @@ export default function AppleLogin({
                   const userSettings = await createUserSettings(userCredentials.user.uid);
                   console.log(JSON.stringify(userSettings));
                   console.log(JSON.stringify(userCredentials));
-                  callbackFn();
+                  callbackFn(userCredentials.user);
                 } else {
                   if (firebase.auth().currentUser?.isAnonymous) {
                     console.error('Error: User credentials are null');
@@ -73,12 +73,12 @@ export default function AppleLogin({
                       'Login with Apple Succeded but there was an error merging the account with an anonymous user'
                     );
                   }
-                  callbackFn();
+                  callbackFn(firebase.auth().currentUser ?? null);
                 }
               })
               .catch((error) => {
                 console.log('Error ' + error);
-                callbackFn();
+                callbackFn(firebase.auth().currentUser ?? null);
               })
           }
         />

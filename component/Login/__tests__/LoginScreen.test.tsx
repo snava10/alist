@@ -1,128 +1,104 @@
-import React from 'react';
-import { render } from '@testing-library/react-native';
-import LoginScreen from '../LoginScreen';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-
-jest.mock('../AuthenticationComponent', () => {
-  return function MockAuthenticationComponent() {
-    return <div testID="auth-component">Authentication Component</div>;
-  };
-});
-
-jest.mock('@react-native-firebase/auth', () => ({
+/* eslint-disable @typescript-eslint/no-explicit-any */
+jest.mock('../FacebookLogin', () => ({
   __esModule: true,
-  default: jest.fn(() => ({
-    signInAnonymously: jest.fn().mockResolvedValue(undefined),
-  })),
+  default: () => null,
 }));
 
-describe('LoginScreen', () => {
-  it('renders without crashing', () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <LoginScreen />
-      </SafeAreaProvider>
-    );
-    expect(toJSON()).toBeTruthy();
+jest.mock('../GoogleLogin', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
+jest.mock('../AppleLogin', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
+// Capture the props passed to AuthenticationComponent for callback testing
+let capturedAuthProps: any = null;
+jest.mock('../AuthenticationComponent', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    capturedAuthProps = props;
+    return null;
+  },
+}));
+
+import React from 'react';
+import { render } from '@testing-library/react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import auth from '@react-native-firebase/auth';
+import LoginScreen from '../LoginScreen';
+
+const Stack = createNativeStackNavigator();
+
+const renderLoginScreen = () =>
+  render(
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <Stack.Navigator>
+          <Stack.Screen name="Login" component={LoginScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
+  );
+
+describe('LoginScreen - Rendering Tests', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    capturedAuthProps = null;
   });
 
-  it('displays the main container', () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <LoginScreen />
-      </SafeAreaProvider>
-    );
-    expect(toJSON()).toBeTruthy();
+  it('renders and passes correct props to AuthenticationComponent', () => {
+    renderLoginScreen();
+
+    expect(capturedAuthProps).not.toBeNull();
+    expect(capturedAuthProps.isLoggedIn).toBe(false);
+    expect(capturedAuthProps.authProviders).toEqual({
+      google: true,
+      apple: true,
+      facebook: true,
+      allowAnonymous: true,
+    });
   });
 
-  it('renders with SafeAreaProvider context', () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <LoginScreen />
-      </SafeAreaProvider>
-    );
-    expect(toJSON()).toBeTruthy();
+  it('successCallbackFn logs message', () => {
+    const spy = jest.spyOn(console, 'log').mockImplementation();
+    renderLoginScreen();
+
+    capturedAuthProps.successCallbackFn();
+    expect(spy).toHaveBeenCalledWith('Successfully logged in');
+    spy.mockRestore();
   });
 
-  it('has proper flex layout', () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <LoginScreen />
-      </SafeAreaProvider>
-    );
-    expect(toJSON()).toBeTruthy();
+  it('logOutFn logs message', () => {
+    const spy = jest.spyOn(console, 'log').mockImplementation();
+    renderLoginScreen();
+
+    capturedAuthProps.logOutFn();
+    expect(spy).toHaveBeenCalledWith('Successfully logged out');
+    spy.mockRestore();
   });
 
-  it('has centered alignment', () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <LoginScreen />
-      </SafeAreaProvider>
-    );
-    expect(toJSON()).toBeTruthy();
+  it('continueAnonymousCallbackFn calls signInAnonymously', () => {
+    const mockSignInAnonymously = jest.fn().mockResolvedValue({});
+    (auth as unknown as jest.Mock).mockReturnValue({
+      signInAnonymously: mockSignInAnonymously,
+      currentUser: null,
+      useEmulator: jest.fn(),
+    });
+
+    renderLoginScreen();
+
+    capturedAuthProps.continueAnonymousCallbackFn();
+    expect(mockSignInAnonymously).toHaveBeenCalled();
   });
 
-  it('mounts without errors', () => {
-    expect(() => {
-      render(
-        <SafeAreaProvider>
-          <LoginScreen />
-        </SafeAreaProvider>
-      );
-    }).not.toThrow();
-  });
-
-  it('renders with proper styling', () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <LoginScreen />
-      </SafeAreaProvider>
-    );
-    expect(toJSON()).toBeTruthy();
-  });
-
-  it('handles component lifecycle mounting', () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <LoginScreen />
-      </SafeAreaProvider>
-    );
-    expect(toJSON()).toBeTruthy();
-  });
-
-  it('renders in authentication context', () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <LoginScreen />
-      </SafeAreaProvider>
-    );
-    expect(toJSON()).toBeTruthy();
-  });
-
-  it('provides callback functions to AuthenticationComponent', () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <LoginScreen />
-      </SafeAreaProvider>
-    );
-    expect(toJSON()).toBeTruthy();
-  });
-
-  it('initializes authentication provider options', () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <LoginScreen />
-      </SafeAreaProvider>
-    );
-    expect(toJSON()).toBeTruthy();
-  });
-
-  it('handles authentication component callbacks', () => {
-    const { toJSON } = render(
-      <SafeAreaProvider>
-        <LoginScreen />
-      </SafeAreaProvider>
-    );
-    expect(toJSON()).toBeTruthy();
+  it('deleteAccountFn is a no-op', () => {
+    renderLoginScreen();
+    // Should not throw
+    expect(() => capturedAuthProps.deleteAccountFn()).not.toThrow();
   });
 });
