@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { render } from '@testing-library/react-native';
 import ProfileScreen from '../ProfileScreen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import * as auth from '@react-native-firebase/auth';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   __esModule: true,

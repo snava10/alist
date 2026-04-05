@@ -10,6 +10,7 @@ jest.mock('expo-clipboard', () => ({
 
 // Mock Ionicons
 jest.mock('@expo/vector-icons/Ionicons', () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   return function MockIonicons(props: any) {
     return null;
   };
