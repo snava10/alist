@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, act } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Mock Ionicons before importing App
@@ -128,13 +128,17 @@ describe('App', () => {
     expect(typeof capturedCallback).toBe('function');
 
     // Test authenticated state: call callback with a user
-    capturedCallback(mockUser);
+    act(() => {
+      capturedCallback(mockUser);
+    });
 
     expect(consoleLogSpy).toHaveBeenCalledWith('Display Name', mockUser.displayName);
     expect(toJSON()).toBeTruthy();
 
     // Test unauthenticated state: call callback with null
-    capturedCallback(null);
+    act(() => {
+      capturedCallback(null);
+    });
     expect(toJSON()).toBeTruthy();
 
     consoleLogSpy.mockRestore();
