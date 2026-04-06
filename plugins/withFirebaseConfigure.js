@@ -1,4 +1,4 @@
-import configPlugins from '@expo/config-plugins';
+import configPlugins from 'expo/config-plugins.js';
 import fs from 'fs';
 import path from 'path';
 

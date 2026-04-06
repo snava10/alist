@@ -16,12 +16,12 @@ jobs:
           fi
 
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: 20.x
+          node-version: 22.x
 
       - name: Setup EAS
         uses: expo/expo-github-action@v8
@@ -44,6 +44,6 @@ jobs:
 
       - name: android EAS build and submit
         run: eas build --profile production --platform android --non-interactive --auto-submit
-      
+
       - name: ios EAS build and submit
         run: eas build --profile production --platform ios --non-interactive --auto-submit
