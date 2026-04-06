@@ -206,7 +206,7 @@ describe('Storage', () => {
   });
 
   it('createUserSettings returns existing settings', async () => {
-    const existing = { userId: 'user123', backup: 'daily', membership: 'free' };
+    const existing = { userId: 'user123', backup: 'DAILY', membership: 'FREE' };
     mockDocGet.mockResolvedValue({ data: () => existing });
 
     const settings = await createUserSettings('user123');
@@ -217,7 +217,17 @@ describe('Storage', () => {
   it('pullItems retrieves items from firestore', async () => {
     mockWhereGet.mockResolvedValue({
       empty: false,
-      docs: [{ data: () => ({ name: 'item1', value: 'val1', encrypted: false, userId: 'u1' }) }],
+      docs: [
+        {
+          data: () => ({
+            name: 'item1',
+            value: 'val1',
+            timestamp: 1,
+            encrypted: false,
+            userId: 'u1',
+          }),
+        },
+      ],
     });
 
     const items = await pullItems('u1');
@@ -245,8 +255,24 @@ describe('Storage', () => {
     mockWhereGet.mockResolvedValue({
       empty: false,
       docs: [
-        { data: () => ({ name: 'item1', value: 'val1', encrypted: true, userId: 'u1' }) },
-        { data: () => ({ name: 'item2', value: 'val2', encrypted: false, userId: 'u1' }) },
+        {
+          data: () => ({
+            name: 'item1',
+            value: 'val1',
+            timestamp: 1,
+            encrypted: true,
+            userId: 'u1',
+          }),
+        },
+        {
+          data: () => ({
+            name: 'item2',
+            value: 'val2',
+            timestamp: 2,
+            encrypted: false,
+            userId: 'u1',
+          }),
+        },
       ],
     });
 
@@ -321,7 +347,7 @@ describe('Storage', () => {
     mockDocGet.mockResolvedValue({ data: () => undefined });
 
     const result = await getUserSettings('u1');
-    expect(result).toBeUndefined();
+    expect(result).toBeNull();
   });
 
   it('getItems with null filter returns all items', async () => {
@@ -351,7 +377,15 @@ describe('Storage', () => {
     mockWhereGet.mockResolvedValue({
       empty: false,
       docs: [
-        { data: () => ({ name: 'enc', value: 'encrypted-data', encrypted: true, userId: 'u1' }) },
+        {
+          data: () => ({
+            name: 'enc',
+            value: 'encrypted-data',
+            timestamp: 1,
+            encrypted: true,
+            userId: 'u1',
+          }),
+        },
       ],
     });
 
@@ -364,7 +398,17 @@ describe('Storage', () => {
   it('restoreFromBackup encrypts non-encrypted items via saveItem', async () => {
     mockWhereGet.mockResolvedValue({
       empty: false,
-      docs: [{ data: () => ({ name: 'plain', value: 'data', encrypted: false, userId: 'u1' }) }],
+      docs: [
+        {
+          data: () => ({
+            name: 'plain',
+            value: 'data',
+            timestamp: 1,
+            encrypted: false,
+            userId: 'u1',
+          }),
+        },
+      ],
     });
 
     const count = await restoreFromBackup('u1');
@@ -427,7 +471,15 @@ describe('Storage', () => {
     mockWhereGet.mockResolvedValue({
       empty: false,
       docs: [
-        { data: () => ({ name: 'item1', value: 'encoded-val', encrypted: false, userId: 'u1' }) },
+        {
+          data: () => ({
+            name: 'item1',
+            value: 'encoded-val',
+            timestamp: 1,
+            encrypted: false,
+            userId: 'u1',
+          }),
+        },
       ],
     });
 

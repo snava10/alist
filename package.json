@@ -24,6 +24,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:contracts": "jest --testPathPattern='Contracts\\.test'",
     "test:mutate": "npx stryker run --ignoreStatic",
     "prepare": "husky"
   },
@@ -69,7 +70,8 @@
     "react-native-safe-area-context": "~5.6.2",
     "react-native-screens": "~4.23.0",
     "react-native-vector-icons": "^10.2.0",
-    "react-native-web": "^0.21.0"
+    "react-native-web": "^0.21.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@stryker-mutator/core": "^9.6.0",
@@ -85,7 +87,7 @@
     "@types/react-test-renderer": "^19.1.0",
     "@typescript-eslint/eslint-plugin": "^8.57.2",
     "@typescript-eslint/parser": "^8.57.2",
-    "eslint": "^10.1.0",
+    "eslint": "^9.7.0",
     "eslint-config-expo": "~55.0.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.1.2",

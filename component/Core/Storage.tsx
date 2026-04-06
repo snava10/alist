@@ -7,6 +7,7 @@ import { EXPO_PUBLIC_FIREBASE_EMULATOR } from '@env';
 import auth from '@react-native-firebase/auth';
 import { Platform } from 'react-native';
 import { decrypt, encrypt } from './Security';
+import { validateUserSettings, validateFirestoreItem } from './Contracts';
 
 if (EXPO_PUBLIC_FIREBASE_EMULATOR === 'true') {
   console.debug('Connecting to firebase emulator');
@@ -127,7 +128,9 @@ export async function getUserSettings(userId?: string): Promise<UserSettings | n
     .doc(userId)
     .get()
     .then((doc) => {
-      return doc.data() as UserSettings;
+      const data = doc.data();
+      if (!data) return null;
+      return validateUserSettings(data);
     });
 }
 
@@ -139,11 +142,12 @@ export async function createUserSettings(userId: string): Promise<UserSettings> 
     backup: BackupCadence.DAILY,
     membership: MembershipType.FREE,
   } as UserSettings;
+  const validated = validateUserSettings(defaultSettings);
   return firestore()
     .collection('UserSettings')
     .doc(userId)
-    .set(defaultSettings)
-    .then(() => defaultSettings);
+    .set(validated)
+    .then(() => validated);
 }
 
 const _compareItems = (a: AListItem, b: AListItem) => a.name.localeCompare(b.name);
@@ -166,9 +170,9 @@ export async function pullItems(userId: string): Promise<Array<AListItem>> {
     .then((querySnapshot) => {
       if (querySnapshot.empty) return [];
       return querySnapshot.docs.map((d) => {
-        const item = { ...d.data() } as AListItem;
-        console.log('Item pulled from firebase ', JSON.stringify(item));
-        item.value = base64.decode(item.value);
+        const raw = validateFirestoreItem(d.data());
+        console.log('Item pulled from firebase ', JSON.stringify(raw));
+        const item: AListItem = { ...raw, value: base64.decode(raw.value) };
         return item;
       });
     });
