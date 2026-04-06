@@ -60,9 +60,16 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import auth from '@react-native-firebase/auth';
 import { deleteItems, restoreFromBackup } from '../Core/Storage';
+import { View, Text } from 'react-native';
 import ProfileScreen from '../ProfileScreen';
 
 const Stack = createNativeStackNavigator();
+
+const HomeScreen = () => (
+  <View>
+    <Text>Home</Text>
+  </View>
+);
 
 const renderProfileScreen = (params: any) =>
   render(
@@ -70,6 +77,7 @@ const renderProfileScreen = (params: any) =>
       <NavigationContainer>
         <Stack.Navigator>
           <Stack.Screen name="Profile" component={ProfileScreen} initialParams={params} />
+          <Stack.Screen name="Home" component={HomeScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
@@ -86,6 +94,12 @@ describe('ProfileScreen - Rendering Tests', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
   });
 
   it('renders all expected elements for a logged-in user', async () => {
@@ -271,6 +285,10 @@ describe('ProfileScreen - Rendering Tests', () => {
     await waitFor(() => {
       expect(restoreFromBackup).toHaveBeenCalledWith(mockUser.uid);
     });
+
+    await act(() => {
+      jest.advanceTimersByTime(1000);
+    });
   });
 
   it('dismisses restore from backup modal when No is pressed', async () => {
@@ -437,6 +455,10 @@ describe('ProfileScreen - Rendering Tests', () => {
           provider: mockUser.providerId,
         })
       );
+    });
+
+    await act(() => {
+      jest.advanceTimersByTime(1000);
     });
   });
 
