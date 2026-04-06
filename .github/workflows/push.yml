@@ -27,7 +27,7 @@ jobs:
           expo-token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Run Expo Doctor
-        run: npx expo-doctor
+        run: npx --no-install expo-doctor
   test:
     runs-on: ubuntu-latest
     needs: expo-doctor
