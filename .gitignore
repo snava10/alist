@@ -11,6 +11,10 @@ npm-debug.*
 web-build/
 coverage/
 
+# Stryker mutation testing
+.stryker-tmp/
+reports/mutation/
+
 # macOS
 .DS_Store
 
