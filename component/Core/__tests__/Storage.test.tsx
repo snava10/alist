@@ -221,7 +221,7 @@ describe('Storage', () => {
         {
           data: () => ({
             name: 'item1',
-            value: 'val1',
+            value: 'dmFsMQ==', // base64('val1')
             timestamp: 1,
             encrypted: false,
             userId: 'u1',
@@ -258,7 +258,7 @@ describe('Storage', () => {
         {
           data: () => ({
             name: 'item1',
-            value: 'val1',
+            value: 'dmFsMQ==', // base64('val1')
             timestamp: 1,
             encrypted: true,
             userId: 'u1',
@@ -267,7 +267,7 @@ describe('Storage', () => {
         {
           data: () => ({
             name: 'item2',
-            value: 'val2',
+            value: 'dmFsMg==', // base64('val2')
             timestamp: 2,
             encrypted: false,
             userId: 'u1',
@@ -343,7 +343,7 @@ describe('Storage', () => {
     expect(result).toEqual(settings);
   });
 
-  it('getUserSettings returns undefined when no settings exist', async () => {
+  it('getUserSettings returns null when no settings exist', async () => {
     mockDocGet.mockResolvedValue({ data: () => undefined });
 
     const result = await getUserSettings('u1');
@@ -380,7 +380,7 @@ describe('Storage', () => {
         {
           data: () => ({
             name: 'enc',
-            value: 'encrypted-data',
+            value: 'ZW5jcnlwdGVkLWRhdGE=', // base64('encrypted-data')
             timestamp: 1,
             encrypted: true,
             userId: 'u1',
@@ -402,7 +402,7 @@ describe('Storage', () => {
         {
           data: () => ({
             name: 'plain',
-            value: 'data',
+            value: 'ZGF0YQ==', // base64('data')
             timestamp: 1,
             encrypted: false,
             userId: 'u1',
@@ -414,7 +414,7 @@ describe('Storage', () => {
     const count = await restoreFromBackup('u1');
     expect(count).toBe(1);
     expect(AsyncStorage.clear).toHaveBeenCalled();
-    expect(encrypt).toHaveBeenCalledWith('data');
+    expect(encrypt).toHaveBeenCalledWith('ZGF0YQ==');
   });
 
   it('deleteItems returns 0 when all deletes fail', async () => {
@@ -474,7 +474,7 @@ describe('Storage', () => {
         {
           data: () => ({
             name: 'item1',
-            value: 'encoded-val',
+            value: 'ZW5jb2RlZC12YWw=', // base64('encoded-val')
             timestamp: 1,
             encrypted: false,
             userId: 'u1',
@@ -485,6 +485,6 @@ describe('Storage', () => {
 
     const items = await pullItems('u1');
     expect(items).toHaveLength(1);
-    expect(items[0].value).toBe('encoded-val');
+    expect(items[0].value).toBe('ZW5jb2RlZC12YWw=');
   });
 });

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { BackupCadence, MembershipType, UserSettings } from './DataModel';
 
 /**
  * Firestore data contracts.
@@ -9,41 +10,49 @@ import { z } from 'zod';
 
 // ── Enums ──
 
-export const BackupCadenceSchema = z.enum(['NONE', 'DAILY', 'INSTANT']);
+export const BackupCadenceSchema = z.nativeEnum(BackupCadence);
 
-export const MembershipTypeSchema = z.enum(['FREE', 'PREMIUM']);
+export const MembershipTypeSchema = z.nativeEnum(MembershipType);
 
 // ── Firestore Documents ──
 
 /** Shape of a document in the "UserSettings" collection */
-export const UserSettingsContract = z.object({
-  userId: z.string().min(1),
-  backup: BackupCadenceSchema,
-  membership: MembershipTypeSchema,
-});
+export const UserSettingsContract: z.ZodType<UserSettings> = z
+  .object({
+    userId: z.string().min(1),
+    backup: BackupCadenceSchema,
+    membership: MembershipTypeSchema,
+  })
+  .strict();
+
+const base64Regex = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
 /** Shape of a document in the "Items" collection (as stored in Firestore) */
-export const FirestoreItemContract = z.object({
-  name: z.string().min(1),
-  value: z.string(), // base64-encoded in Firestore
-  timestamp: z.number(),
-  userId: z.string().min(1),
-  encrypted: z.boolean().optional(),
-});
+export const FirestoreItemContract = z
+  .object({
+    name: z.string().min(1),
+    value: z.string().regex(base64Regex, 'value must be a valid base64-encoded string'),
+    timestamp: z.number(),
+    userId: z.string().min(1),
+    encrypted: z.boolean().optional(),
+  })
+  .strict();
 
 // ── Local types (what the app works with after decoding) ──
 
-export const LocalItemContract = z.object({
-  name: z.string().min(1),
-  value: z.string(),
-  timestamp: z.number(),
-  userId: z.string().optional(),
-  encrypted: z.boolean().optional(),
-});
+export const LocalItemContract = z
+  .object({
+    name: z.string().min(1),
+    value: z.string(),
+    timestamp: z.number(),
+    userId: z.string().optional(),
+    encrypted: z.boolean().optional(),
+  })
+  .strict();
 
 // ── Validators ──
 
-export function validateUserSettings(data: unknown) {
+export function validateUserSettings(data: unknown): UserSettings {
   return UserSettingsContract.parse(data);
 }
 

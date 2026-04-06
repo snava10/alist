@@ -1,7 +1,5 @@
 import {
   UserSettingsContract,
-  FirestoreItemContract,
-  LocalItemContract,
   validateUserSettings,
   validateFirestoreItem,
   validateLocalItem,
