@@ -39,6 +39,7 @@ jobs:
   android-build:
     runs-on: ubuntu-latest
     needs: test
+    if: github.ref == 'refs/heads/master'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -68,7 +69,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-android-build-
       - name: Build Application
-        if: github.ref == 'refs/heads/main'
         run: eas build --profile preview --platform android --non-interactive --local --clear-cache=false
 
       - name: Upload application
