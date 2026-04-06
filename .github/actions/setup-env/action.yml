@@ -5,8 +5,6 @@ description: Common setup for Node, Java, Expo/EAS and dependencies
 runs:
   using: "composite"
   steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
 
     - name: Setup Java
       uses: actions/setup-java@v4
