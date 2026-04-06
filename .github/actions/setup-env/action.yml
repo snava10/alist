@@ -2,9 +2,16 @@ name: Setup Environment
 
 description: Common setup for Node, Java, Expo/EAS and dependencies
 
+inputs:
+  expo-token:
+    description: "Expo token"
+    required: true
+
 runs:
   using: "composite"
   steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
     - name: Setup Java
       uses: actions/setup-java@v4
@@ -22,7 +29,7 @@ runs:
       uses: expo/expo-github-action@v8
       with:
         eas-version: latest
-        token: ${{ secrets.EXPO_TOKEN }}
+        token: ${{ inputs.expo-token }}
 
     - name: Cache Expo
       uses: actions/cache@v4
