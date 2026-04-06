@@ -39,15 +39,6 @@ jest.mock('../Login/AppleLogin', () => ({
   default: () => null,
 }));
 
-import React from 'react';
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import auth from '@react-native-firebase/auth';
-import { deleteItems, restoreFromBackup } from '../Core/Storage';
-import ProfileScreen from '../ProfileScreen';
-
 jest.mock('../Core/Storage', () => ({
   ...jest.requireActual('../Core/Storage'),
   deleteItems: jest.fn().mockResolvedValue(3),
@@ -61,6 +52,15 @@ jest.mock('@react-native-firebase/analytics', () => ({
     logEvent: mockLogEvent,
   })),
 }));
+
+import React from 'react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import auth from '@react-native-firebase/auth';
+import { deleteItems, restoreFromBackup } from '../Core/Storage';
+import ProfileScreen from '../ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
