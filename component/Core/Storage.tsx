@@ -172,7 +172,13 @@ export async function pullItems(userId: string): Promise<Array<AListItem>> {
       return querySnapshot.docs.map((d) => {
         const raw = validateFirestoreItem(d.data());
         console.log('Item pulled from firebase ', JSON.stringify(raw));
-        const item: AListItem = { ...raw, value: base64.decode(raw.value) };
+        const item: AListItem = {
+          name: raw.name,
+          value: base64.decode(raw.value),
+          timestamp: raw.timestamp,
+          userId: raw.userId,
+          ...(raw.encrypted !== undefined && { encrypted: raw.encrypted }),
+        };
         return item;
       });
     });

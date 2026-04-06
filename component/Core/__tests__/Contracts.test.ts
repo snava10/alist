@@ -63,7 +63,7 @@ describe('Firestore Contracts', () => {
 
     it('rejects extra fields (strict)', () => {
       expect(() =>
-        UserSettingsContract.strict().parse({ ...validUserSettings, extraField: 'nope' })
+        UserSettingsContract.parse({ ...validUserSettings, extraField: 'nope' })
       ).toThrow(ZodError);
     });
   });
