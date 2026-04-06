@@ -1,0 +1,79 @@
+name: Build React Native App
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    branches:
+      - master
+      - main
+
+permissions:
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-env
+        with:
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Run tests
+        run: npm test -- --coverage --watchAll=false --coverageReporters=json-summary --coverageReporters=lcov
+
+      - name: Post coverage to PR
+        if: github.event_name == 'pull_request'
+        uses: MishaKav/jest-coverage-comment@main
+        with:
+          coverage-summary-path: ./coverage/coverage-summary.json
+          title: Code Coverage
+
+  android-build:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-env
+        with:
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      - name: Cache Android build
+        uses: actions/cache@v4
+        with:
+          path: |
+            android/app/build
+            android/build
+          key: ${{ runner.os }}-android-build-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-android-build-
+      - name: Build Application
+        run: eas build --profile preview --platform android --non-interactive --local --clear-cache=false
+
+      - name: Upload application
+        uses: actions/upload-artifact@v4
+        with:
+          name: app
+          path: build-*.apk
+          retention-days: 3

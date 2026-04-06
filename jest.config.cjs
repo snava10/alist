@@ -19,7 +19,10 @@ module.exports = {
     },
   },
   testPathIgnorePatterns: ['/node_modules/', '/android/', '/ios/'],
+  moduleNameMapper: {
+    '@expo/vector-icons/Ionicons': '<rootDir>/__mocks__/@expo/vector-icons/Ionicons.js',
+  },
   transformIgnorePatterns: [
-    'node_modules/(?!(react-native|@react-native|@react-navigation|expo|@expo|react-native-vector-icons)/)',
+    'node_modules/(?!(react-native|@react-native|@react-navigation|expo|@expo|react-native-vector-icons|@react-native-firebase)/)',
   ],
 };
