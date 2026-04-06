@@ -25,6 +25,10 @@ runs:
         node-version: "22"
         cache: "npm"
 
+    - name: Pin npm version
+      run: npm install -g npm@11
+      shell: bash
+
     - name: Setup Expo & EAS
       uses: expo/expo-github-action@v8
       with:
