@@ -39,6 +39,20 @@ jest.mock('../Login/AppleLogin', () => ({
   default: () => null,
 }));
 
+jest.mock('../Core/Storage', () => ({
+  ...jest.requireActual('../Core/Storage'),
+  deleteItems: jest.fn().mockResolvedValue(3),
+  restoreFromBackup: jest.fn().mockResolvedValue(5),
+}));
+
+const mockLogEvent = jest.fn().mockResolvedValue(undefined);
+jest.mock('@react-native-firebase/analytics', () => ({
+  __esModule: true,
+  default: jest.fn(() => ({
+    logEvent: mockLogEvent,
+  })),
+}));
+
 import React from 'react';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -47,12 +61,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import auth from '@react-native-firebase/auth';
 import { deleteItems, restoreFromBackup } from '../Core/Storage';
 import ProfileScreen from '../ProfileScreen';
-
-jest.mock('../Core/Storage', () => ({
-  ...jest.requireActual('../Core/Storage'),
-  deleteItems: jest.fn().mockResolvedValue(3),
-  restoreFromBackup: jest.fn().mockResolvedValue(5),
-}));
 
 const Stack = createNativeStackNavigator();
 
@@ -286,6 +294,171 @@ describe('ProfileScreen - Rendering Tests', () => {
 
     await waitFor(() => {
       expect(screen.queryByText(/replace all your data/)).toBeNull();
+    });
+  });
+
+  it('displays empty string when no displayName available anywhere', async () => {
+    const userWithNoName = {
+      ...mockUser,
+      displayName: null,
+      providerData: [{ displayName: null, providerId: 'google.com' }],
+    };
+    renderProfileScreen({ user: userWithNoName });
+
+    await waitFor(() => {
+      expect(screen.getByText('Backup')).toBeTruthy();
+    });
+    expect(screen.queryByText('Test User')).toBeNull();
+  });
+
+  it('displays empty string when providerData is empty', async () => {
+    const userNoProvider = {
+      ...mockUser,
+      displayName: null,
+      providerData: [],
+    };
+    renderProfileScreen({ user: userNoProvider });
+
+    await waitFor(() => {
+      expect(screen.getByText('Backup')).toBeTruthy();
+    });
+    expect(screen.queryByText('Test User')).toBeNull();
+  });
+
+  it('logs user_delete analytics event on successful deletion', async () => {
+    const mockDelete = jest.fn().mockResolvedValue(undefined);
+    const mockGetIdToken = jest.fn().mockResolvedValue('token');
+    (auth as unknown as jest.Mock).mockReturnValue({
+      currentUser: {
+        ...mockUser,
+        getIdToken: mockGetIdToken,
+        delete: mockDelete,
+      },
+      signOut: jest.fn(),
+    });
+
+    renderProfileScreen({ user: mockUser });
+
+    await waitFor(() => {
+      expect(screen.getByText('Delete Account')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Delete Account'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Yes')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Yes'));
+    });
+
+    await waitFor(() => {
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        'user_delete',
+        expect.objectContaining({
+          uid: mockUser.uid,
+          provider: mockUser.providerId,
+        })
+      );
+    });
+  });
+
+  it('logs user_delete_error analytics on auth/requires-recent-login', async () => {
+    const recentLoginError = new Error(
+      '[auth/requires-recent-login] This operation requires recent authentication.'
+    );
+    const mockDelete = jest.fn().mockRejectedValue(recentLoginError);
+    const mockGetIdToken = jest.fn().mockResolvedValue('token');
+    (auth as unknown as jest.Mock).mockReturnValue({
+      currentUser: {
+        ...mockUser,
+        getIdToken: mockGetIdToken,
+        delete: mockDelete,
+      },
+      signOut: jest.fn(),
+    });
+
+    renderProfileScreen({ user: mockUser });
+
+    await waitFor(() => {
+      expect(screen.getByText('Delete Account')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Delete Account'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Yes')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Yes'));
+    });
+
+    await waitFor(() => {
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        'user_delete_error',
+        expect.objectContaining({
+          uid: mockUser.uid,
+          provider: mockUser.providerId,
+        })
+      );
+    });
+  });
+
+  it('logs backup_restore analytics event on successful restore', async () => {
+    renderProfileScreen({ user: mockUser });
+
+    await waitFor(() => {
+      expect(screen.getByText('Backup Restore')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Backup Restore'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Yes')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Yes'));
+    });
+
+    await waitFor(() => {
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        'backup_restore',
+        expect.objectContaining({
+          uid: mockUser.uid,
+          provider: mockUser.providerId,
+        })
+      );
+    });
+  });
+
+  it('hides backup section after logout', async () => {
+    const mockSignOut = jest.fn().mockResolvedValue(undefined);
+    (auth as unknown as jest.Mock).mockReturnValue({
+      currentUser: mockUser,
+      signOut: mockSignOut,
+    });
+
+    renderProfileScreen({ user: mockUser });
+
+    await waitFor(() => {
+      expect(screen.getByText('Backup')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Log Out'));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Backup')).toBeNull();
     });
   });
 });
