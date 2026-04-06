@@ -24,22 +24,15 @@ jobs:
           expo-token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Run tests
-        run: npm test -- --coverage --watchAll=false
-
-      - name: Upload coverage to codecov
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage/lcov.info
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
+        run: npm test -- --coverage --watchAll=false --coverageReporters=json-summary --coverageReporters=lcov
 
       - name: Post coverage to PR
         if: github.event_name == 'pull_request'
-        uses: romeovs/lcov-reporter-action@v0.3.1
+        uses: MishaKav/jest-coverage-comment@main
         with:
-          lcov-file: ./coverage/lcov.info
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          coverage-summary-path: ./coverage/coverage-summary.json
+          title: Code Coverage
+          junitxml-path: ./coverage/lcov.info
 
   android-build:
     runs-on: ubuntu-latest
