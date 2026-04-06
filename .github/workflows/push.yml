@@ -14,8 +14,23 @@ permissions:
   pull-requests: write
 
 jobs:
+  expo-doctor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-env
+        with:
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Run Expo Doctor
+        run: npx expo-doctor
   test:
     runs-on: ubuntu-latest
+    needs: expo-doctor
 
     steps:
       - name: Checkout repository
@@ -38,6 +53,7 @@ jobs:
 
   mutation-test:
     runs-on: ubuntu-latest
+    needs: expo-doctor
 
     steps:
       - name: Checkout repository
