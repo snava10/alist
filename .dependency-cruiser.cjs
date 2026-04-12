@@ -142,7 +142,7 @@ module.exports = {
         path: '^component/Core/',
       },
       to: {
-        path: '^component/(HomeScreen|ProfileScreen|AddItemModal|ConfirmationModal|Login/)',
+        path: '^component/(HomeScreen|ProfileScreen|AddItemModal|AListItem|ConfirmationModal|Login/)',
       },
     },
 

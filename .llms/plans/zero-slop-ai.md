@@ -181,7 +181,7 @@ These catch:
 
 Update:
 
-- Ended up using Maestro as is the recomended by Expo and it integrates with EAS.
+- Ended up using Maestro, as it is recommended by Expo and integrates with EAS.
   ⸻
 
 6. Architecture enforcement (MOST teams skip this)
