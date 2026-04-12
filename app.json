@@ -32,6 +32,7 @@
     ],
     "@react-native-firebase/app",
     "./plugins/withFirebaseConfigure",
+    "./plugins/withFmtFix",
     "expo-web-browser"
   ],
   "ios": {

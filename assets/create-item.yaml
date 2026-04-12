@@ -1,0 +1,6 @@
+appId: com.acorn.alist
+---
+- launchApp:
+    clearState: true
+- tapOn: 
+- tapOn: Name

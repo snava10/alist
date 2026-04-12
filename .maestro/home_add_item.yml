@@ -1,0 +1,6 @@
+appId: com.acorn.alist
+---
+- launchApp
+- assertVisible: "Continue anonymous"
+- tapOn: "Continue anonymous"
+- assertVisible: "Tap.*to add a new item"
