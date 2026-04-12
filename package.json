@@ -27,8 +27,8 @@
     "test:contracts": "jest --testPathPattern='Contracts\\.test'",
     "test:mutate": "npx stryker run --ignoreStatic",
     "deps:check": "depcruise --config .dependency-cruiser.cjs component App.tsx",
-    "deps:graph": "depcruise --config .dependency-cruiser.cjs --output-type dot component App.tsx | dot -T svg > reports/dependency-graph.svg",
-    "deps:graph:html": "depcruise --config .dependency-cruiser.cjs --output-type dot component App.tsx | dot -T svg > reports/dependency-graph.svg && echo 'Graph saved to reports/dependency-graph.svg'",
+    "deps:graph": "mkdir -p reports && depcruise --config .dependency-cruiser.cjs --output-type dot component App.tsx | dot -T svg > reports/dependency-graph.svg",
+    "deps:graph:html": "mkdir -p reports && depcruise --config .dependency-cruiser.cjs --output-type dot component App.tsx | dot -T svg > reports/dependency-graph.svg && echo 'Graph saved to reports/dependency-graph.svg'",
     "prepare": "husky"
   },
   "dependencies": {
