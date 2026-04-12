@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
-import AListItem from '../AListItem';
 
 // Mock expo-clipboard
 jest.mock('expo-clipboard', () => ({
@@ -17,8 +16,9 @@ jest.mock('@expo/vector-icons/Ionicons', () => {
 });
 
 import * as Clipboard from 'expo-clipboard';
+import { AListItemComponent } from '../AListItemComponent';
 
-describe('AListItem', () => {
+describe('AListItemComponent', () => {
   const mockItem = {
     name: 'API Key',
     value: 'secret-key-12345',
@@ -44,14 +44,14 @@ describe('AListItem', () => {
 
   it('renders without crashing', () => {
     const { toJSON } = render(
-      <AListItem item={mockItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
+      <AListItemComponent item={mockItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
     );
     expect(toJSON()).toBeTruthy();
   });
 
   it('displays item value and name', () => {
     const { getByText } = render(
-      <AListItem item={mockItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
+      <AListItemComponent item={mockItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
     );
 
     expect(getByText(mockItem.value)).toBeTruthy();
@@ -62,7 +62,7 @@ describe('AListItem', () => {
     (Clipboard.setStringAsync as jest.Mock).mockResolvedValue(undefined);
 
     const { getByText } = render(
-      <AListItem item={mockItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
+      <AListItemComponent item={mockItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
     );
 
     const valueText = getByText(mockItem.value);
@@ -77,7 +77,7 @@ describe('AListItem', () => {
     (Clipboard.setStringAsync as jest.Mock).mockResolvedValue(undefined);
 
     const { getByText, queryByText } = render(
-      <AListItem item={mockItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
+      <AListItemComponent item={mockItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
     );
 
     const valueText = getByText(mockItem.value);
@@ -95,9 +95,8 @@ describe('AListItem', () => {
     (Clipboard.setStringAsync as jest.Mock).mockResolvedValue(undefined);
 
     const { getByText, queryByText } = render(
-      <AListItem item={mockItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
+      <AListItemComponent item={mockItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
     );
-
     const valueText = getByText(mockItem.value);
     fireEvent.press(valueText);
 
@@ -106,6 +105,7 @@ describe('AListItem', () => {
     });
 
     // Fast-forward time by 1 second
+
     act(() => {
       jest.advanceTimersByTime(1000);
     });
@@ -118,7 +118,7 @@ describe('AListItem', () => {
 
   it('calls editItem callback when edit icon is pressed', async () => {
     const { root } = render(
-      <AListItem item={mockItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
+      <AListItemComponent item={mockItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
     );
 
     // Find and press the edit icon (first Ionicons element for create-outline)
@@ -130,7 +130,7 @@ describe('AListItem', () => {
 
   it('calls removeItem callback when delete icon is pressed', async () => {
     const { root } = render(
-      <AListItem item={mockItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
+      <AListItemComponent item={mockItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
     );
 
     // Find and press the delete icon (trash-outline)
@@ -143,7 +143,11 @@ describe('AListItem', () => {
   it('handles encrypted items', () => {
     const encryptedItem = { ...mockItem, encrypted: true };
     const { toJSON } = render(
-      <AListItem item={encryptedItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
+      <AListItemComponent
+        item={encryptedItem}
+        removeItem={mockRemoveItem}
+        editItem={mockEditItem}
+      />
     );
 
     expect(toJSON()).toBeTruthy();
@@ -154,13 +158,15 @@ describe('AListItem', () => {
     const item2 = { ...mockItem, name: 'Item 2', value: 'value-2' };
 
     const { getByText, rerender } = render(
-      <AListItem item={item1} removeItem={mockRemoveItem} editItem={mockEditItem} />
+      <AListItemComponent item={item1} removeItem={mockRemoveItem} editItem={mockEditItem} />
     );
 
     expect(getByText('Item 1')).toBeTruthy();
     expect(getByText('value-1')).toBeTruthy();
 
-    rerender(<AListItem item={item2} removeItem={mockRemoveItem} editItem={mockEditItem} />);
+    rerender(
+      <AListItemComponent item={item2} removeItem={mockRemoveItem} editItem={mockEditItem} />
+    );
 
     expect(getByText('Item 2')).toBeTruthy();
     expect(getByText('value-2')).toBeTruthy();
@@ -170,7 +176,7 @@ describe('AListItem', () => {
     (Clipboard.setStringAsync as jest.Mock).mockResolvedValue(undefined);
 
     const { getByText, queryByText } = render(
-      <AListItem item={mockItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
+      <AListItemComponent item={mockItem} removeItem={mockRemoveItem} editItem={mockEditItem} />
     );
 
     const valueText = getByText(mockItem.value);

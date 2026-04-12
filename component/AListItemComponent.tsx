@@ -2,20 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { AListItem } from './Core/DataModel';
 
-type AListItem = {
-  name: string;
-  value: string;
-  timestamp: number;
-  userId?: string;
-  encrypted?: boolean;
-};
-
-const AListItem = (props: {
+export function AListItemComponent(props: {
   item: AListItem;
   removeItem: (item: AListItem) => void;
   editItem: (item: AListItem) => void;
-}) => {
+}) {
   const [copied, setCopied] = useState(false);
 
   const copyValue = async (item: string) => {
@@ -60,7 +53,7 @@ const AListItem = (props: {
       </View>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -96,5 +89,3 @@ const styles = StyleSheet.create({
     color: 'white',
   },
 });
-
-export default AListItem;

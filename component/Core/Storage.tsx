@@ -1,6 +1,5 @@
-import AListItem from '../AListItem';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BackupCadence, MembershipType, UserSettings } from './DataModel';
+import { BackupCadence, MembershipType, UserSettings, AListItem } from './DataModel';
 import firestore from '@react-native-firebase/firestore';
 import base64 from 'react-native-base64';
 import { EXPO_PUBLIC_FIREBASE_EMULATOR } from '@env';

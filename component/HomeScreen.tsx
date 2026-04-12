@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, View, Text, TextInput } from 'react-native';
-import AListItem from './AListItem';
 import AddItemModal from './AddItemModal';
 import ConfirmationModal from './ConfirmationModal';
 import {
@@ -15,6 +14,8 @@ import globalStyles from './Core/GlobalStyles';
 import analytics from '@react-native-firebase/analytics';
 import { EdgeInsets, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { AListItem } from './Core/DataModel';
+import { AListItemComponent } from './AListItemComponent';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function HomeScreen({ route }: any) {
@@ -114,7 +115,7 @@ export default function HomeScreen({ route }: any) {
           <FlatList
             data={alistItems}
             renderItem={({ item }) => (
-              <AListItem
+              <AListItemComponent
                 item={item}
                 removeItem={(item: AListItem) => {
                   setSelectedItem(item);
@@ -124,7 +125,7 @@ export default function HomeScreen({ route }: any) {
                   setSelectedItem(item);
                   setModalVisible(true);
                 }}
-              ></AListItem>
+              ></AListItemComponent>
             )}
             keyExtractor={(item, _) => item.name}
           />
