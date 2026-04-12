@@ -179,7 +179,10 @@ These catch:
 • state bugs
 • real usage failures
 
-⸻
+Update:
+
+- Ended up using Maestro as is the recomended by Expo and it integrates with EAS.
+  ⸻
 
 6. Architecture enforcement (MOST teams skip this)
 

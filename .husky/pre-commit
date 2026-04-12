@@ -1,2 +1,3 @@
 #!/bin/sh
 npx lint-staged
+npx depcruise --config .dependency-cruiser.cjs component App.tsx

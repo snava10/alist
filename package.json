@@ -26,6 +26,9 @@
     "test:coverage": "jest --coverage",
     "test:contracts": "jest --testPathPattern='Contracts\\.test'",
     "test:mutate": "npx stryker run --ignoreStatic",
+    "deps:check": "depcruise --config .dependency-cruiser.cjs component App.tsx",
+    "deps:graph": "depcruise --config .dependency-cruiser.cjs --output-type dot component App.tsx | dot -T svg > reports/dependency-graph.svg",
+    "deps:graph:html": "depcruise --config .dependency-cruiser.cjs --output-type dot component App.tsx | dot -T svg > reports/dependency-graph.svg && echo 'Graph saved to reports/dependency-graph.svg'",
     "prepare": "husky"
   },
   "dependencies": {
@@ -87,6 +90,7 @@
     "@types/react-test-renderer": "^19.1.0",
     "@typescript-eslint/eslint-plugin": "^8.57.2",
     "@typescript-eslint/parser": "^8.57.2",
+    "dependency-cruiser": "^17.3.10",
     "eslint": "^10.1.0",
     "eslint-config-expo": "~55.0.0",
     "eslint-config-prettier": "^9.1.0",
