@@ -3,6 +3,16 @@
 
 import '@testing-library/jest-native/extend-expect';
 
+jest.mock('expo-crypto', () => ({
+  getRandomBytes: (length) => {
+    const out = new Uint8Array(length);
+    for (let i = 0; i < length; i += 1) {
+      out[i] = (Math.random() * 256) | 0;
+    }
+    return out;
+  },
+}));
+
 // These two libraries depend on native code (Obj-C/Java) that doesn't exist
 // in the Node.js test environment. Without these mocks:
 // - SafeAreaProvider renders an empty <RNCSafeAreaProvider/> that swallows children

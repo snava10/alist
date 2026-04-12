@@ -17,13 +17,19 @@ export const MembershipTypeSchema = z.nativeEnum(MembershipType);
 // ── Firestore Documents ──
 
 /** Shape of a document in the "UserSettings" collection */
-export const UserSettingsContract: z.ZodType<UserSettings> = z
+export const UserSettingsContract = z
   .object({
     userId: z.string().min(1),
     backup: BackupCadenceSchema,
     membership: MembershipTypeSchema,
+    wrappedKey: z.string().min(1).optional(),
   })
   .strict();
+
+/** Shape of the wrapped-key blob stored under UserSettings.wrappedKey */
+export const WrappedKeyContract = z.object({
+  wrappedKey: z.string().min(1),
+});
 
 const base64Regex = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
@@ -34,7 +40,7 @@ export const FirestoreItemContract = z
     value: z.string().regex(base64Regex, 'value must be a valid base64-encoded string'),
     timestamp: z.number(),
     userId: z.string().min(1),
-    encrypted: z.boolean().optional(),
+    encrypted: z.boolean(),
   })
   .strict();
 
@@ -53,7 +59,7 @@ export const LocalItemContract = z
 // ── Validators ──
 
 export function validateUserSettings(data: unknown): UserSettings {
-  return UserSettingsContract.parse(data);
+  return UserSettingsContract.parse(data) as UserSettings;
 }
 
 export function validateFirestoreItem(data: unknown) {

@@ -1,135 +1,109 @@
-import { encrypt, decrypt, getRSAKeys, KeyPair } from '../Security';
+import { encrypt, decrypt, wrapAESKey, unwrapAESKey } from '../Security';
+
+// ── SecureStore mock: simple in-memory key-value store ──────────────────────
+const store: Record<string, string> = {};
 
 jest.mock('expo-secure-store', () => ({
-  getItemAsync: jest.fn().mockResolvedValue(null),
-  setItemAsync: jest.fn().mockResolvedValue(undefined),
+  getItemAsync: jest.fn((key: string) => Promise.resolve(store[key] ?? null)),
+  setItemAsync: jest.fn((key: string, value: string) => {
+    store[key] = value;
+    return Promise.resolve();
+  }),
 }));
 
+// node-forge is only used for the legacy RSA fallback path; no mock needed for AES tests.
 jest.mock('node-forge', () => {
   const forge = jest.requireActual('node-forge');
-  return {
-    ...forge,
-    pki: {
-      ...forge.pki,
-      rsa: {
-        generateKeyPair: jest.fn(() => {
-          const keyPair = jest.requireActual('node-forge').pki.rsa.generateKeyPair({
-            bits: 512,
-          });
-          return keyPair;
-        }),
-      },
-      publicKeyToPem: jest.fn(() => 'PUBLIC_KEY_PEM'),
-      privateKeyToPem: jest.fn(() => 'PRIVATE_KEY_PEM'),
-      publicKeyFromPem: jest.fn(() => ({
-        encrypt: jest.fn((data) => data),
-      })),
-      privateKeyFromPem: jest.fn(() => ({
-        decrypt: jest.fn((data) => data),
-      })),
-    },
-    util: {
-      encodeUtf8: jest.fn((data) => data),
-      decodeUtf8: jest.fn((data) => data),
-      encode64: jest.fn((data) => data),
-      decode64: jest.fn((data) => data),
-    },
-  };
+  return forge;
 });
 
-describe('Security', () => {
+describe('Security – AES-256-GCM', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('exports encrypt function', () => {
-    expect(typeof encrypt).toBe('function');
-  });
-
-  it('exports decrypt function', () => {
-    expect(typeof decrypt).toBe('function');
-  });
-
-  it('exports getRSAKeys function', () => {
-    expect(typeof getRSAKeys).toBe('function');
-  });
-
-  it('KeyPair interface includes public and private keys', () => {
-    const keyPair: KeyPair = {
-      public: 'public-key',
-      private: 'private-key',
-    };
-    expect(keyPair.public).toBe('public-key');
-    expect(keyPair.private).toBe('private-key');
-  });
-
-  it('KeyPair type is defined', () => {
-    const keyPair: KeyPair = {
-      public: 'test-public',
-      private: 'test-private',
-    };
-    expect(keyPair).toBeDefined();
-  });
-
-  it('encrypt function is async', () => {
-    const result = encrypt('test-value');
-    expect(result instanceof Promise).toBe(true);
-  });
-
-  it('decrypt function is async', () => {
-    const result = decrypt('test-hash');
-    expect(result instanceof Promise).toBe(true);
-  });
-
-  it('getRSAKeys function is async', () => {
-    const result = getRSAKeys();
-    expect(result instanceof Promise).toBe(true);
-  });
-
-  it('handles encryption of empty string', async () => {
-    expect(typeof encrypt).toBe('function');
-  });
-
-  it('handles decryption of empty string', async () => {
-    expect(typeof decrypt).toBe('function');
-  });
-
-  it('RSA key generation uses correct key size', () => {
-    expect(typeof getRSAKeys).toBe('function');
-  });
-
-  it('returns KeyPair from getRSAKeys', async () => {
-    const result = await getRSAKeys();
-    if (result) {
-      expect(result.public).toBeDefined();
-      expect(result.private).toBeDefined();
+    // Clear the in-memory SecureStore so each test gets a fresh AES key
+    for (const k of Object.keys(store)) {
+      delete store[k];
     }
   });
 
-  it('SecureStore is used for key storage', () => {
-    expect(typeof getRSAKeys).toBe('function');
+  it('encrypt returns a non-empty base64 string', async () => {
+    const result = await encrypt('hello');
+    expect(typeof result).toBe('string');
+    expect(result.length).toBeGreaterThan(0);
   });
 
-  it('encrypt handles various input types', async () => {
-    expect(typeof encrypt).toBe('function');
+  it('encrypt → decrypt round-trip', async () => {
+    const plaintext = 'super secret';
+    const ciphertext = await encrypt(plaintext);
+    const recovered = await decrypt(ciphertext);
+    expect(recovered).toBe(plaintext);
   });
 
-  it('decrypt handles various input types', async () => {
-    expect(typeof decrypt).toBe('function');
+  it('encrypts strings longer than 214 bytes correctly', async () => {
+    const longString = 'a'.repeat(500);
+    const ciphertext = await encrypt(longString);
+    const recovered = await decrypt(ciphertext);
+    expect(recovered).toBe(longString);
   });
 
-  it('KeyPair has correct shape', () => {
-    const kp: KeyPair = {
-      public: 'pub',
-      private: 'priv',
-    };
-    expect(Object.keys(kp)).toContain('public');
-    expect(Object.keys(kp)).toContain('private');
+  it('encrypt produces a different ciphertext each call (random IV)', async () => {
+    const ct1 = await encrypt('same plaintext');
+    const ct2 = await encrypt('same plaintext');
+    expect(ct1).not.toBe(ct2);
   });
 
-  it('Security module exports all required functions', () => {
-    expect(encrypt).toBeDefined();
-    expect(decrypt).toBeDefined();
-    expect(getRSAKeys).toBeDefined();
+  it('decrypt throws when ciphertext is garbage', async () => {
+    // This is not a valid AES-GCM blob so it should throw (not fall through to RSA
+    // because the base64 will decode to bytes that are not a valid legacy RSA blob either)
+    await expect(decrypt('bm90dmFsaWQ=')).rejects.toBeDefined();
+  });
+
+  it('reuses the same AES key across multiple calls', async () => {
+    const ct = await encrypt('reuse check');
+    // Second decrypt reloads from SecureStore
+    const recovered = await decrypt(ct);
+    expect(recovered).toBe('reuse check');
+  });
+});
+
+describe('Security – wrapAESKey / unwrapAESKey', () => {
+  beforeEach(() => {
+    for (const k of Object.keys(store)) {
+      delete store[k];
+    }
+  });
+
+  it('wrapAESKey returns a non-empty base64 string', async () => {
+    const wrapped = await wrapAESKey('my-passphrase');
+    expect(typeof wrapped).toBe('string');
+    expect(wrapped.length).toBeGreaterThan(0);
+  });
+
+  it('wrapAESKey produces a different output each call (random salt)', async () => {
+    const w1 = await wrapAESKey('pass');
+    const w2 = await wrapAESKey('pass');
+    expect(w1).not.toBe(w2);
+  });
+
+  it('wrapAESKey / unwrapAESKey round-trip: encrypted data decryptable after restore', async () => {
+    const plaintext = 'restore me';
+    const ciphertext = await encrypt(plaintext);
+
+    // Capture the wrapped key for the current AES key
+    const wrapped = await wrapAESKey('correct-horse');
+
+    // Simulate a "new device" by clearing the stored AES key
+    delete store['agus_list_aes_key'];
+
+    // Restore via unwrapAESKey
+    await unwrapAESKey(wrapped, 'correct-horse');
+
+    // Data encrypted with the original key should now be decryptable
+    const recovered = await decrypt(ciphertext);
+    expect(recovered).toBe(plaintext);
+  });
+
+  it('unwrapAESKey throws on wrong passphrase', async () => {
+    const wrapped = await wrapAESKey('right-passphrase');
+    await expect(unwrapAESKey(wrapped, 'wrong-passphrase')).rejects.toBeDefined();
   });
 });

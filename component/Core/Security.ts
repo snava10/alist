@@ -1,72 +1,209 @@
 import * as forge from 'node-forge';
 import * as SecureStore from 'expo-secure-store';
+import { getRandomBytes } from 'expo-crypto';
 
-const RSA_KEY_SIZE = 2048;
+const AES_KEY_ALIAS = 'agus_list_aes_key';
 const PRIVATE_KEY_ALIAS = 'agus_list_rsa_private_key';
-const PUBLIC_KEY_ALIAS = 'agus_list_rsa_public_key';
+const AES_KEY_BYTES = 32;
+const GCM_IV_BYTES = 12;
+const GCM_TAG_BYTES = 16;
+const WRAP_SALT_BYTES = 16;
+const PBKDF2_ITERATIONS = 100000;
+const PBKDF2_FAST_ITERATIONS = 15000;
+const WRAPPED_KEY_VERSION = 1;
 
-export interface KeyPair {
-  public: string;
-  private: string;
+function randomBytes(length: number): string {
+  const bytes = getRandomBytes(length);
+  return String.fromCharCode(...bytes);
 }
 
-export async function encrypt(value: string): Promise<string> {
+function encodeUint32BE(value: number): string {
+  return String.fromCharCode(
+    (value >>> 24) & 0xff,
+    (value >>> 16) & 0xff,
+    (value >>> 8) & 0xff,
+    value & 0xff
+  );
+}
+
+function decodeUint32BE(bytes: string): number {
+  return (
+    (bytes.charCodeAt(0) << 24) |
+    (bytes.charCodeAt(1) << 16) |
+    (bytes.charCodeAt(2) << 8) |
+    bytes.charCodeAt(3)
+  );
+}
+
+// ── AES-256-GCM helpers ──────────────────────────────────────────────────────
+
+/** Returns the raw 32-byte AES key, generating and persisting it on first use. */
+async function getRawAESKeyBytes(): Promise<string> {
+  const stored = await SecureStore.getItemAsync(AES_KEY_ALIAS);
+  if (stored) {
+    return forge.util.decode64(stored);
+  }
+  const rawBytes = randomBytes(AES_KEY_BYTES);
+  await SecureStore.setItemAsync(AES_KEY_ALIAS, forge.util.encode64(rawBytes));
+  return rawBytes;
+}
+
+/** Encrypt with AES-256-GCM. Returns base64(12-byte-IV ‖ ciphertext). */
+export async function encrypt(plaintext: string): Promise<string> {
+  const key = await getRawAESKeyBytes();
+  const iv = randomBytes(GCM_IV_BYTES);
+  const cipher = forge.cipher.createCipher('AES-GCM', key);
+  cipher.start({ iv, tagLength: 128 });
+  cipher.update(forge.util.createBuffer(forge.util.encodeUtf8(plaintext)));
+
+  if (!cipher.finish()) {
+    throw new Error('Failed to encrypt value');
+  }
+
+  const ciphertext = cipher.output.getBytes();
+  const tag = cipher.mode.tag.getBytes();
+  return forge.util.encode64(iv + ciphertext + tag);
+}
+
+/**
+ * Decrypt with AES-256-GCM.
+ * Falls back to legacy RSA-OAEP (node-forge) when decryption fails with an
+ * OperationError so that existing stored items migrate transparently.
+ */
+export async function decrypt(hash: string): Promise<string> {
   try {
-    const keyPair = await getRSAKeys();
-    if (!keyPair) {
-      throw 'Failed to get RSA keys';
+    const combined = forge.util.decode64(hash);
+    if (combined.length <= GCM_IV_BYTES + GCM_TAG_BYTES) {
+      throw new Error('Invalid AES payload length');
     }
-    const publicKey = forge.pki.publicKeyFromPem(keyPair.public);
-    const encrypted = publicKey.encrypt(forge.util.encodeUtf8(value), 'RSA-OAEP');
-    return forge.util.encode64(encrypted);
+
+    const iv = combined.slice(0, GCM_IV_BYTES);
+    const encryptedAndTag = combined.slice(GCM_IV_BYTES);
+    const ciphertext = encryptedAndTag.slice(0, encryptedAndTag.length - GCM_TAG_BYTES);
+    const tag = encryptedAndTag.slice(encryptedAndTag.length - GCM_TAG_BYTES);
+    const key = await getRawAESKeyBytes();
+
+    const decipher = forge.cipher.createDecipher('AES-GCM', key);
+    decipher.start({ iv, tag: forge.util.createBuffer(tag), tagLength: 128 });
+    decipher.update(forge.util.createBuffer(ciphertext));
+
+    if (!decipher.finish()) {
+      const operationError = new Error('AES-GCM authentication failed');
+      operationError.name = 'OperationError';
+      throw operationError;
+    }
+
+    return forge.util.decodeUtf8(decipher.output.getBytes());
   } catch (e) {
-    console.error('Failed to encrypt value', e);
-    throw 'Failed to encrypt value';
+    if (e instanceof Error && e.name === 'OperationError') {
+      return rsaDecryptLegacy(hash);
+    }
+    throw e;
   }
 }
 
-export async function decrypt(hash: string): Promise<string> {
+// ── Legacy RSA fallback (read-only — no new RSA encryptions) ─────────────────
+
+async function rsaDecryptLegacy(hash: string): Promise<string> {
   try {
-    const keyPair = await getRSAKeys();
-    if (!keyPair) {
-      throw 'Failed to get RSA keys';
+    const privatePem = await SecureStore.getItemAsync(PRIVATE_KEY_ALIAS);
+    if (!privatePem) {
+      throw new Error('No RSA private key available for legacy decryption');
     }
-    const privateKey = forge.pki.privateKeyFromPem(keyPair.private);
+    const privateKey = forge.pki.privateKeyFromPem(privatePem);
     const decoded = forge.util.decode64(hash);
     const decrypted = privateKey.decrypt(decoded, 'RSA-OAEP');
     return forge.util.decodeUtf8(decrypted);
   } catch (e) {
-    console.error('Failed to decrypt value ', e);
-    throw 'Failed to decrypt value';
+    console.error('Legacy RSA decrypt failed', e);
+    throw new Error('Failed to decrypt value');
   }
 }
 
-export async function getRSAKeys(): Promise<KeyPair | null> {
-  const publicKey = await SecureStore.getItemAsync(PUBLIC_KEY_ALIAS);
-  const privateKey = await SecureStore.getItemAsync(PRIVATE_KEY_ALIAS);
+// ── Cross-device key portability ─────────────────────────────────────────────
 
-  if (publicKey && privateKey) {
-    return {
-      public: publicKey,
-      private: privateKey,
-    };
+/**
+ * Wraps the AES key with a passphrase using PBKDF2-SHA256 + AES-GCM.
+ * Returns base64(version ‖ iterations ‖ 16-byte-salt ‖ wrapped-key).
+ */
+export async function wrapAESKey(
+  passphrase: string,
+  options?: { mode?: 'standard' | 'fast' }
+): Promise<string> {
+  const rawKeyBytes = await getRawAESKeyBytes();
+  const salt = randomBytes(WRAP_SALT_BYTES);
+  const iterations = options?.mode === 'fast' ? PBKDF2_FAST_ITERATIONS : PBKDF2_ITERATIONS;
+  const wrappingKey = forge.pkcs5.pbkdf2(
+    passphrase,
+    salt,
+    iterations,
+    AES_KEY_BYTES,
+    forge.md.sha256.create()
+  );
+
+  const iv = randomBytes(GCM_IV_BYTES);
+  const cipher = forge.cipher.createCipher('AES-GCM', wrappingKey);
+  cipher.start({ iv, tagLength: 128 });
+  cipher.update(forge.util.createBuffer(rawKeyBytes));
+
+  if (!cipher.finish()) {
+    throw new Error('Failed to wrap key');
   }
 
-  try {
-    return await generateAndStoreKeys();
-  } catch (e) {
-    console.error(`Failed to generate and store RSA keys ${e}`);
-    throw 'Failed to generate and store RSA keys';
-  }
+  const wrapped = iv + cipher.output.getBytes() + cipher.mode.tag.getBytes();
+  const metadata = String.fromCharCode(WRAPPED_KEY_VERSION) + encodeUint32BE(iterations);
+  return forge.util.encode64(metadata + salt + wrapped);
 }
 
-async function generateAndStoreKeys(): Promise<KeyPair> {
-  const keypair = forge.pki.rsa.generateKeyPair({ bits: RSA_KEY_SIZE });
-  const publicPem = forge.pki.publicKeyToPem(keypair.publicKey);
-  const privatePem = forge.pki.privateKeyToPem(keypair.privateKey);
+/**
+ * Restores the AES key from a passphrase-wrapped blob and stores it in
+ * SecureStore, overwriting the current key.
+ * Throws if the passphrase is wrong (GCM auth fails).
+ */
+export async function unwrapAESKey(wrapped: string, passphrase: string): Promise<void> {
+  const combined = forge.util.decode64(wrapped);
 
-  await SecureStore.setItemAsync(PRIVATE_KEY_ALIAS, privatePem);
-  await SecureStore.setItemAsync(PUBLIC_KEY_ALIAS, publicPem);
+  const legacyMinimumLength = WRAP_SALT_BYTES + GCM_IV_BYTES + GCM_TAG_BYTES + 1;
+  const versionedMinimumLength = 1 + 4 + WRAP_SALT_BYTES + GCM_IV_BYTES + GCM_TAG_BYTES + 1;
 
-  return { public: publicPem, private: privatePem };
+  if (combined.length < legacyMinimumLength) {
+    throw new Error('Invalid wrapped key payload');
+  }
+
+  let iterations = PBKDF2_ITERATIONS;
+  let cursor = 0;
+  if (combined.length >= versionedMinimumLength && combined.charCodeAt(0) === WRAPPED_KEY_VERSION) {
+    iterations = decodeUint32BE(combined.slice(1, 5));
+    cursor = 5;
+  }
+
+  const salt = combined.slice(cursor, cursor + WRAP_SALT_BYTES);
+  const encryptedPayload = combined.slice(cursor + WRAP_SALT_BYTES);
+  const iv = encryptedPayload.slice(0, GCM_IV_BYTES);
+  const ciphertextWithTag = encryptedPayload.slice(GCM_IV_BYTES);
+  const ciphertext = ciphertextWithTag.slice(0, ciphertextWithTag.length - GCM_TAG_BYTES);
+  const tag = ciphertextWithTag.slice(ciphertextWithTag.length - GCM_TAG_BYTES);
+
+  const unwrappingKey = forge.pkcs5.pbkdf2(
+    passphrase,
+    salt,
+    iterations,
+    AES_KEY_BYTES,
+    forge.md.sha256.create()
+  );
+
+  const decipher = forge.cipher.createDecipher('AES-GCM', unwrappingKey);
+  decipher.start({ iv, tag: forge.util.createBuffer(tag), tagLength: 128 });
+  decipher.update(forge.util.createBuffer(ciphertext));
+
+  if (!decipher.finish()) {
+    throw new Error('Invalid passphrase');
+  }
+
+  const unwrappedKeyBytes = decipher.output.getBytes();
+  if (unwrappedKeyBytes.length !== AES_KEY_BYTES) {
+    throw new Error('Invalid unwrapped key length');
+  }
+
+  await SecureStore.setItemAsync(AES_KEY_ALIAS, forge.util.encode64(unwrappedKeyBytes));
 }

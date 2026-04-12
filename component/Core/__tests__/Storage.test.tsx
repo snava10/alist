@@ -13,6 +13,10 @@ import {
   saveItem,
   removeItem,
   getUserSettings,
+  pushAllItems,
+  saveWrappedKey,
+  getWrappedKey,
+  restoreKeyFromCloud,
 } from '../Storage';
 import { decrypt, encrypt } from '../Security';
 
@@ -65,6 +69,7 @@ jest.mock('../Security', () => ({
     public: 'public-key',
     private: 'private-key',
   }),
+  unwrapAESKey: jest.fn().mockResolvedValue(undefined),
 }));
 
 describe('Storage', () => {
@@ -488,5 +493,81 @@ describe('Storage', () => {
     const items = await pullItems('u1');
     expect(items).toHaveLength(1);
     expect(items[0]!.value).toBe('ZW5jb2RlZC12YWw=');
+  });
+
+  // ── pushAllItems ────────────────────────────────────────────────────────────
+
+  it('pushAllItems uploads all _ali_ items to Firestore as encrypted', async () => {
+    const item = { name: 'myItem', value: 'enc-data', timestamp: 1, encrypted: true };
+    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_myItem', 'other']);
+    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([['_ali_myItem', JSON.stringify(item)]]);
+
+    const mockSet = jest.fn().mockResolvedValue(undefined);
+    const mockDocFn = jest.fn(() => ({ set: mockSet }));
+    const mockCollectionInner = jest.fn(() => ({ doc: mockDocFn }));
+    const mockDocOuter = jest.fn(() => ({ collection: mockCollectionInner }));
+    const mockCollectionOuter = jest.fn(() => ({ doc: mockDocOuter }));
+    const { default: firestore } = jest.requireMock('@react-native-firebase/firestore') as {
+      default: jest.Mock;
+    };
+    firestore.mockReturnValueOnce({
+      collection: mockCollectionOuter,
+      useEmulator: jest.fn(),
+    });
+
+    await pushAllItems('user1');
+    expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({ encrypted: true }));
+  });
+
+  it('pushAllItems skips non-_ali_ keys', async () => {
+    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['settings', 'other']);
+    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([]);
+
+    // Should resolve without error and not call Firestore set
+    await expect(pushAllItems('user1')).resolves.toBeUndefined();
+  });
+
+  // ── saveWrappedKey / getWrappedKey ─────────────────────────────────────────
+
+  it('saveWrappedKey writes wrappedKey to Firestore UserSettings', async () => {
+    await saveWrappedKey('user1', 'base64wrappedkey');
+    expect(mockDocSet).toHaveBeenCalledWith({ wrappedKey: 'base64wrappedkey' }, { merge: true });
+  });
+
+  it('getWrappedKey returns the stored wrapped key', async () => {
+    mockDocGet.mockResolvedValue({ data: () => ({ wrappedKey: 'stored-wrapped-key' }) });
+    const result = await getWrappedKey('user1');
+    expect(result).toBe('stored-wrapped-key');
+  });
+
+  it('getWrappedKey returns null when not set', async () => {
+    mockDocGet.mockResolvedValue({ data: () => ({}) });
+    const result = await getWrappedKey('user1');
+    expect(result).toBeNull();
+  });
+
+  it('getWrappedKey returns null when document missing', async () => {
+    mockDocGet.mockResolvedValue({ data: () => undefined });
+    const result = await getWrappedKey('user1');
+    expect(result).toBeNull();
+  });
+
+  // ── restoreKeyFromCloud ────────────────────────────────────────────────────
+
+  it('restoreKeyFromCloud calls unwrapAESKey with the stored blob', async () => {
+    mockDocGet.mockResolvedValue({ data: () => ({ wrappedKey: 'abc123' }) });
+    const { unwrapAESKey } = jest.requireMock('../Security') as { unwrapAESKey: jest.Mock };
+
+    await restoreKeyFromCloud('user1', 'my-passphrase');
+
+    expect(unwrapAESKey).toHaveBeenCalledWith('abc123', 'my-passphrase');
+  });
+
+  it('restoreKeyFromCloud throws when no wrapped key exists', async () => {
+    mockDocGet.mockResolvedValue({ data: () => undefined });
+
+    await expect(restoreKeyFromCloud('user1', 'pass')).rejects.toThrow(
+      'No backup key found for this account'
+    );
   });
 });
