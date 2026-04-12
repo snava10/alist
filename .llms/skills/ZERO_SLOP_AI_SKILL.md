@@ -13,17 +13,19 @@ AI-generated code is caught and rejected before it reaches production.
 The pipeline has been fully implemented in this project. Use this guide to replicate it in
 new projects.
 
-The six protection layers, in order of when they fire:
+The protection layers listed below are ordered by **execution stage** — from the earliest
+(developer's machine, on save / on commit) to the latest (CI Phase 3, after every other
+gate has passed):
 
-| Layer | Tool | Catches |
-|---|---|---|
-| TypeScript strict mode | `tsc` | Wrong types, implicit any, null bugs |
-| Linting + formatting | ESLint + Prettier + Husky | Style, dead code, commit-time enforcement |
-| Unit tests | Jest + React Testing Library | Logic bugs |
-| Mutation testing | Stryker | Fake / useless tests |
-| Contract tests | Zod schemas | Data shape drift between app and backend |
-| Architecture rules | dependency-cruiser | Broken module boundaries |
-| E2E tests | Maestro (via EAS) | Navigation, state, real user flows |
+| Stage | Layer | Tool | Catches |
+|---|---|---|---|
+| Commit-time | TypeScript strict mode | `tsc` | Wrong types, implicit any, null bugs |
+| Commit-time | Linting + formatting | ESLint + Prettier + Husky | Style, dead code, commit-time enforcement |
+| CI Phase 1 | Unit tests | Jest + React Testing Library | Logic bugs |
+| CI Phase 2 | Mutation testing | Stryker | Fake / useless tests |
+| CI Phase 2 | Contract tests | Zod schemas | Data shape drift between app and backend |
+| CI Phase 2 | Architecture rules | dependency-cruiser | Broken module boundaries |
+| CI Phase 3 | E2E tests | Maestro (via EAS) | Navigation, state, real user flows |
 
 ---
 
@@ -134,6 +136,8 @@ npm install --save-dev @stryker-mutator/core @stryker-mutator/jest-runner @stryk
 
 ```json
 "test:mutate": "npx stryker run --ignoreStatic"
+// --ignoreStatic skips mutants in static class members and module-level constants
+// that Jest cannot execute in isolation. Remove the flag to run a stricter scan.
 ```
 
 ### `stryker.config.json`
@@ -291,6 +295,7 @@ module.exports = {
     },
   ],
   options: {
+    // Paths here are treated as regular expressions, so '.' must be escaped as '\\.'.
     doNotFollow: { path: ['node_modules', 'android', 'ios', '\\.git', 'coverage'] },
     exclude: { path: ['__tests__', '\\.test\\.tsx?$'] },
     tsPreCompilationDeps: true,
@@ -370,6 +375,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - run: npm ci
       - run: npm run type-check
 
@@ -377,6 +385,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - run: npm ci
       - run: npm run lint
 
@@ -384,6 +395,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - run: npm ci
       - run: npm test -- --coverage --watchAll=false
 
@@ -393,6 +407,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - run: npm ci
       - run: npm run test:mutate -- --reporters clear-text,json
 
@@ -401,6 +418,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - run: npm ci
       - run: npm run deps:check
 
@@ -409,16 +429,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - run: npm ci
       - run: npm run test:contracts -- --watchAll=false
 
   # ── Phase 3 (needs Phase 2) ───────────────────────────────
+  # E2E tests run only on the default branch. PRs get full coverage from
+  # Phases 1 and 2; E2E is reserved for post-merge validation to keep
+  # PR feedback cycles fast and to avoid consuming EAS build minutes on every PR.
   e2e-test:
     needs: [mutation-test, static-analysis, contract-tests]
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - run: npm ci
       - run: npx eas-cli@latest workflow:run .eas/workflows/e2e-test-android.yml --non-interactive
 ```
