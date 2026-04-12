@@ -1,4 +1,4 @@
-name: Build React Native App
+name: On Push Pipeline
 
 on:
   push:
@@ -13,31 +13,42 @@ on:
 permissions:
   pull-requests: write
 
+# ─────────────────────────────────────────────────────────────
+# Phase 1 — Fast checks (1–2 min): TypeScript, ESLint, Unit tests
+# Phase 2 — Deep checks (5–10 min): Mutation testing, Static analysis, Contract tests
+# Phase 3 — Real user simulation: Maestro E2E tests
+# Only if all 3 phases pass → merge allowed.
+# ─────────────────────────────────────────────────────────────
+
 jobs:
-  expo-doctor:
+  # ── Phase 1: Fast checks ──────────────────────────────────
+
+  type-check:
+    name: "TypeCheck"
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup environment
-        uses: ./.github/actions/setup-env
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-env
         with:
           expo-token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm run type-check
 
-      - name: Run Expo Doctor
-        run: npx --no-install expo-doctor
-  test:
+  lint:
+    name: "ESLint"
     runs-on: ubuntu-latest
-    needs: expo-doctor
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-env
+        with:
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm run lint
 
-      - name: Setup environment
-        uses: ./.github/actions/setup-env
+  unit-tests:
+    name: "Unit Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-env
         with:
           expo-token: ${{ secrets.EXPO_TOKEN }}
 
@@ -51,16 +62,15 @@ jobs:
           coverage-summary-path: ./coverage/coverage-summary.json
           title: Code Coverage
 
+  # ── Phase 2: Deep checks (gated on Phase 1) ──────────────
+
   mutation-test:
+    name: "Mutation Testing"
     runs-on: ubuntu-latest
-    needs: expo-doctor
-
+    needs: [type-check, lint, unit-tests]
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup environment
-        uses: ./.github/actions/setup-env
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-env
         with:
           expo-token: ${{ secrets.EXPO_TOKEN }}
 
@@ -129,16 +139,55 @@ jobs:
               });
             }
 
-  android-build:
+  static-analysis:
+    name: "Architecture (dependency-cruiser)"
     runs-on: ubuntu-latest
-    needs: test
+    needs: [type-check, lint, unit-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-env
+        with:
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+      - name: Run dependency-cruiser
+        run: npm run deps:check
+
+  contract-tests:
+    name: "Contract Tests"
+    runs-on: ubuntu-latest
+    needs: [type-check, lint, unit-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-env
+        with:
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+      - name: Run contract tests
+        run: npm run test:contracts -- --watchAll=false
+
+  # ── Phase 3: Real user simulation (gated on Phase 2) ─────
+
+  e2e-test:
+    name: "E2E Tests (Maestro)"
+    runs-on: ubuntu-latest
+    needs: [mutation-test, static-analysis, contract-tests]
     if: github.ref == 'refs/heads/master'
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-env
+        with:
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+      - name: Run E2E tests on EAS
+        run: npx eas-cli@latest workflow:run .eas/workflows/e2e-test-android.yml --non-interactive
 
-      - name: Setup environment
-        uses: ./.github/actions/setup-env
+  # ── Build (only on master, after all phases pass) ─────────
+
+  android-build:
+    name: "Build · Android"
+    runs-on: ubuntu-latest
+    needs: [e2e-test]
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-env
         with:
           expo-token: ${{ secrets.EXPO_TOKEN }}
 
@@ -152,6 +201,7 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
+
       - name: Cache Android build
         uses: actions/cache@v4
         with:
@@ -161,6 +211,7 @@ jobs:
           key: ${{ runner.os }}-android-build-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-android-build-
+
       - name: Build Application
         run: eas build --profile preview --platform android --non-interactive --local
 
@@ -170,19 +221,3 @@ jobs:
           name: app
           path: build-*.apk
           retention-days: 3
-
-  e2e-test:
-    runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/master'
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup environment
-        uses: ./.github/actions/setup-env
-        with:
-          expo-token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Run E2E tests on EAS
-        run: npx eas-cli@latest workflow:run .eas/workflows/e2e-test-android.yml --non-interactive

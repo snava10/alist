@@ -255,7 +255,7 @@ Frontend (React Native)
 • TypeScript strict mode
 • ESLint + Prettier
 • Jest + React Testing Library
-• Detox (E2E)
+• Maestro (E2E)
 • Pact (API contracts)
 
 ⸻
