@@ -13,6 +13,9 @@ on:
 permissions:
   pull-requests: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 # ─────────────────────────────────────────────────────────────
 # Phase 1 — Fast checks (1–2 min): TypeScript, ESLint, Unit tests
 # Phase 2 — Deep checks (5–10 min): Mutation testing, Static analysis, Contract tests
