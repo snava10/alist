@@ -43,6 +43,15 @@ jest.mock('../Core/Storage', () => ({
   ...jest.requireActual('../Core/Storage'),
   deleteItems: jest.fn().mockResolvedValue(3),
   restoreFromBackup: jest.fn().mockResolvedValue(5),
+  pushAllItems: jest.fn().mockResolvedValue(2),
+  saveWrappedKey: jest.fn().mockResolvedValue(undefined),
+  restoreKeyFromCloud: jest.fn().mockResolvedValue(true),
+}));
+
+jest.mock('../Core/Security', () => ({
+  ...jest.requireActual('../Core/Security'),
+  wrapAESKey: jest.fn().mockResolvedValue('wrapped-key-data'),
+  unwrapAESKey: jest.fn().mockResolvedValue(undefined),
 }));
 
 const mockLogEvent = jest.fn().mockResolvedValue(undefined);
@@ -59,7 +68,14 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import auth from '@react-native-firebase/auth';
-import { deleteItems, restoreFromBackup } from '../Core/Storage';
+import {
+  deleteItems,
+  restoreFromBackup,
+  pushAllItems,
+  saveWrappedKey,
+  restoreKeyFromCloud,
+} from '../Core/Storage';
+import { wrapAESKey } from '../Core/Security';
 import { View, Text } from 'react-native';
 import ProfileScreen from '../ProfileScreen';
 
@@ -108,7 +124,10 @@ describe('ProfileScreen - Rendering Tests', () => {
     await waitFor(() => {
       expect(screen.getByText('Test User')).toBeTruthy();
       expect(screen.getByText('Backup')).toBeTruthy();
+      expect(screen.getByText('Backup Now')).toBeTruthy();
       expect(screen.getByText('Backup Restore')).toBeTruthy();
+      expect(screen.getByText('Set Backup Key')).toBeTruthy();
+      expect(screen.getByText('Restore Key')).toBeTruthy();
       expect(screen.getByText('Log Out')).toBeTruthy();
       expect(screen.getByText('Delete Account')).toBeTruthy();
     });
@@ -481,6 +500,170 @@ describe('ProfileScreen - Rendering Tests', () => {
 
     await waitFor(() => {
       expect(screen.queryByText('Backup')).toBeNull();
+    });
+  });
+
+  it('opens Backup Now modal and pushes items on confirm', async () => {
+    renderProfileScreen({ user: mockUser });
+
+    await waitFor(() => {
+      expect(screen.getByText('Backup Now')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Backup Now'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Back up all items/)).toBeTruthy();
+      expect(screen.getByText('Yes')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Yes'));
+    });
+
+    await waitFor(() => {
+      expect(pushAllItems).toHaveBeenCalledWith(mockUser.uid);
+    });
+  });
+
+  it('dismisses Backup Now modal when No is pressed', async () => {
+    renderProfileScreen({ user: mockUser });
+
+    await waitFor(() => {
+      expect(screen.getByText('Backup Now')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Backup Now'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Back up all items/)).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('No'));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Back up all items/)).toBeNull();
+    });
+  });
+
+  it('opens Set Backup Key passphrase modal', async () => {
+    renderProfileScreen({ user: mockUser });
+
+    await waitFor(() => {
+      expect(screen.getByText('Set Backup Key')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Set Backup Key'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Set a passphrase/)).toBeTruthy();
+      expect(screen.getByTestId('passphrase-input')).toBeTruthy();
+    });
+  });
+
+  it('Set Backup Key: wraps AES key and saves to Firestore on confirm', async () => {
+    renderProfileScreen({ user: mockUser });
+
+    await waitFor(() => {
+      expect(screen.getByText('Set Backup Key')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Set Backup Key'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('passphrase-input')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('passphrase-input'), 'my-passphrase');
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Confirm'));
+    });
+
+    await waitFor(() => {
+      expect(wrapAESKey).toHaveBeenCalledWith('my-passphrase');
+      expect(saveWrappedKey).toHaveBeenCalledWith(mockUser.uid, 'wrapped-key-data');
+    });
+  });
+
+  it('Set Backup Key: shows error when passphrase is empty', async () => {
+    renderProfileScreen({ user: mockUser });
+
+    await waitFor(() => {
+      expect(screen.getByText('Set Backup Key')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Set Backup Key'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('passphrase-input')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Confirm'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Passphrase cannot be empty.')).toBeTruthy();
+    });
+  });
+
+  it('opens Restore Key modal for cross-device recovery', async () => {
+    renderProfileScreen({ user: mockUser });
+
+    await waitFor(() => {
+      expect(screen.getByText('Restore Key')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Restore Key'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/restore your encryption key/)).toBeTruthy();
+      expect(screen.getByTestId('passphrase-input')).toBeTruthy();
+    });
+  });
+
+  it('Restore Key: calls restoreKeyFromCloud on confirm', async () => {
+    renderProfileScreen({ user: mockUser });
+
+    await waitFor(() => {
+      expect(screen.getByText('Restore Key')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Restore Key'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('passphrase-input')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('passphrase-input'), 'my-passphrase');
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Confirm'));
+    });
+
+    await waitFor(() => {
+      expect(restoreKeyFromCloud).toHaveBeenCalledWith(mockUser.uid, 'my-passphrase');
     });
   });
 });

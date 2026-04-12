@@ -13,6 +13,7 @@ export type UserSettings = {
   userId: string;
   backup: BackupCadence;
   membership: MembershipType;
+  wrappedKey?: string;
 };
 
 export type HomeTabParamList = {

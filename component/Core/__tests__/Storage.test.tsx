@@ -13,8 +13,12 @@ import {
   saveItem,
   removeItem,
   getUserSettings,
+  pushAllItems,
+  saveWrappedKey,
+  getWrappedKey,
+  restoreKeyFromCloud,
 } from '../Storage';
-import { decrypt, encrypt } from '../Security';
+import { decrypt, encrypt, unwrapAESKey } from '../Security';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn().mockResolvedValue(null),
@@ -65,8 +69,9 @@ jest.mock('../Security', () => ({
     public: 'public-key',
     private: 'private-key',
   }),
+  wrapAESKey: jest.fn().mockResolvedValue('wrapped-key'),
+  unwrapAESKey: jest.fn().mockResolvedValue(undefined),
 }));
-
 describe('Storage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -223,7 +228,7 @@ describe('Storage', () => {
             name: 'item1',
             value: 'dmFsMQ==', // base64('val1')
             timestamp: 1,
-            encrypted: false,
+            encrypted: true,
             userId: 'u1',
           }),
         },
@@ -233,6 +238,26 @@ describe('Storage', () => {
     const items = await pullItems('u1');
     expect(items).toHaveLength(1);
     expect(items[0]!.name).toBe('item1');
+  });
+
+  it('pullItems always sets encrypted field from Firestore', async () => {
+    mockWhereGet.mockResolvedValue({
+      empty: false,
+      docs: [
+        {
+          data: () => ({
+            name: 'item1',
+            value: 'dmFsMQ==',
+            timestamp: 1,
+            encrypted: true,
+            userId: 'u1',
+          }),
+        },
+      ],
+    });
+
+    const items = await pullItems('u1');
+    expect(items[0]!.encrypted).toBe(true);
   });
 
   it('deleteItems removes items from firestore', async () => {
@@ -279,6 +304,43 @@ describe('Storage', () => {
     const count = await restoreFromBackup('u1');
     expect(count).toBe(2);
     expect(AsyncStorage.clear).toHaveBeenCalled();
+  });
+
+  it('restoreFromBackup awaits all items (Promise.all behaviour)', async () => {
+    // Verify all setItem calls complete before the function returns.
+    const setItemCalls: string[] = [];
+    (AsyncStorage.setItem as jest.Mock).mockImplementation((key: string) => {
+      setItemCalls.push(key);
+      return Promise.resolve();
+    });
+    mockWhereGet.mockResolvedValue({
+      empty: false,
+      docs: [
+        {
+          data: () => ({
+            name: 'enc1',
+            value: 'dmFsMQ==',
+            timestamp: 1,
+            encrypted: true,
+            userId: 'u1',
+          }),
+        },
+        {
+          data: () => ({
+            name: 'enc2',
+            value: 'dmFsMg==',
+            timestamp: 2,
+            encrypted: true,
+            userId: 'u1',
+          }),
+        },
+      ],
+    });
+
+    const count = await restoreFromBackup('u1');
+    expect(count).toBe(2);
+    expect(setItemCalls).toContain('_ali_enc1');
+    expect(setItemCalls).toContain('_ali_enc2');
   });
 
   it('saveItem encrypts value and stores with _ali_ prefix', async () => {
@@ -372,6 +434,20 @@ describe('Storage', () => {
     expect(AsyncStorage.setItem).toHaveBeenCalledWith(
       '_ali_plain',
       expect.stringContaining('"encrypted":true')
+    );
+  });
+
+  it('maybeDecrypt awaits saveItem (no fire-and-forget)', async () => {
+    // Ensure the setItem call for an unencrypted item happens before getItem resolves.
+    const item = { name: 'plain2', value: 'hello2', timestamp: 1, encrypted: false };
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(item));
+
+    await getItem('_ali_plain2');
+
+    // If saveItem were fire-and-forget, setItem might not have been called yet.
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+      '_ali_plain2',
+      expect.stringContaining('"name":"plain2"')
     );
   });
 
@@ -488,5 +564,106 @@ describe('Storage', () => {
     const items = await pullItems('u1');
     expect(items).toHaveLength(1);
     expect(items[0]!.value).toBe('ZW5jb2RlZC12YWw=');
+  });
+
+  // ── pushAllItems ──
+
+  describe('pushAllItems', () => {
+    it('pushes all _ali_ items to Firestore', async () => {
+      const item = { name: 'pw', value: 'ZW5jcnlwdGVkLWNpcGhlcg==', timestamp: 1, encrypted: true };
+      (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_pw', 'other']);
+      (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([['_ali_pw', JSON.stringify(item)]]);
+
+      const count = await pushAllItems('u1');
+      expect(count).toBe(1);
+      expect(mockDocSet).toHaveBeenCalledTimes(1);
+    });
+
+    it('stores items with encrypted=true in Firestore', async () => {
+      const item = { name: 'pw', value: 'Y2lwaGVydGV4dA==', timestamp: 1, encrypted: true };
+      (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_pw']);
+      (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([['_ali_pw', JSON.stringify(item)]]);
+
+      await pushAllItems('u1');
+
+      const firestoreDoc = mockDocSet.mock.calls[0][0];
+      expect(firestoreDoc.encrypted).toBe(true);
+      expect(firestoreDoc.userId).toBe('u1');
+      expect(firestoreDoc.name).toBe('pw');
+    });
+
+    it('returns 0 when no items exist', async () => {
+      (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([]);
+      const count = await pushAllItems('u1');
+      expect(count).toBe(0);
+      expect(mockDocSet).not.toHaveBeenCalled();
+    });
+
+    it('skips null values from multiGet', async () => {
+      (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_a', '_ali_b']);
+      (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([
+        ['_ali_a', null],
+        ['_ali_b', JSON.stringify({ name: 'b', value: 'dmFsMg==', timestamp: 1, encrypted: true })],
+      ]);
+
+      const count = await pushAllItems('u1');
+      expect(count).toBe(1);
+      expect(mockDocSet).toHaveBeenCalledTimes(1);
+    });
+
+    it('pushes multiple items in parallel', async () => {
+      const items = [
+        ['_ali_a', JSON.stringify({ name: 'a', value: 'dmFsYQ==', timestamp: 1, encrypted: true })],
+        ['_ali_b', JSON.stringify({ name: 'b', value: 'dmFsYg==', timestamp: 2, encrypted: true })],
+        ['_ali_c', JSON.stringify({ name: 'c', value: 'dmFsYw==', timestamp: 3, encrypted: true })],
+      ] as [string, string][];
+      (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_a', '_ali_b', '_ali_c']);
+      (AsyncStorage.multiGet as jest.Mock).mockResolvedValue(items);
+
+      const count = await pushAllItems('u1');
+      expect(count).toBe(3);
+      expect(mockDocSet).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  // ── Wrapped key (cross-device key recovery) ──
+
+  describe('saveWrappedKey / getWrappedKey / restoreKeyFromCloud', () => {
+    it('saveWrappedKey calls Firestore set with merge', async () => {
+      await saveWrappedKey('u1', 'wrapped-key-data');
+      expect(mockDocSet).toHaveBeenCalledWith({ wrappedKey: 'wrapped-key-data' }, { merge: true });
+    });
+
+    it('getWrappedKey returns wrappedKey from Firestore', async () => {
+      mockDocGet.mockResolvedValue({ data: () => ({ wrappedKey: 'my-wrapped-key' }) });
+      const result = await getWrappedKey('u1');
+      expect(result).toBe('my-wrapped-key');
+    });
+
+    it('getWrappedKey returns null when no wrappedKey field', async () => {
+      mockDocGet.mockResolvedValue({ data: () => ({}) });
+      const result = await getWrappedKey('u1');
+      expect(result).toBeNull();
+    });
+
+    it('getWrappedKey returns null when document has no data', async () => {
+      mockDocGet.mockResolvedValue({ data: () => undefined });
+      const result = await getWrappedKey('u1');
+      expect(result).toBeNull();
+    });
+
+    it('restoreKeyFromCloud returns false when no wrapped key found', async () => {
+      mockDocGet.mockResolvedValue({ data: () => undefined });
+      const result = await restoreKeyFromCloud('u1', 'passphrase');
+      expect(result).toBe(false);
+    });
+
+    it('restoreKeyFromCloud calls unwrapAESKey and returns true when key found', async () => {
+      mockDocGet.mockResolvedValue({ data: () => ({ wrappedKey: 'wrapped-key-data' }) });
+
+      const result = await restoreKeyFromCloud('u1', 'my-passphrase');
+      expect(result).toBe(true);
+      expect(unwrapAESKey).toHaveBeenCalledWith('wrapped-key-data', 'my-passphrase');
+    });
   });
 });
