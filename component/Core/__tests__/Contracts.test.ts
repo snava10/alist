@@ -3,6 +3,8 @@ import {
   validateUserSettings,
   validateFirestoreItem,
   validateLocalItem,
+  WrappedKeyContract,
+  validateWrappedKey,
 } from '../Contracts';
 import { ZodError } from 'zod';
 
@@ -28,6 +30,12 @@ describe('Firestore Contracts', () => {
       for (const membership of ['FREE', 'PREMIUM']) {
         expect(() => validateUserSettings({ ...validUserSettings, membership })).not.toThrow();
       }
+    });
+
+    it('accepts optional wrappedKey field', () => {
+      expect(() =>
+        validateUserSettings({ ...validUserSettings, wrappedKey: 'abc123==' })
+      ).not.toThrow();
     });
 
     it('rejects missing userId', () => {
@@ -66,6 +74,12 @@ describe('Firestore Contracts', () => {
         UserSettingsContract.parse({ ...validUserSettings, extraField: 'nope' })
       ).toThrow(ZodError);
     });
+
+    it('rejects empty wrappedKey', () => {
+      expect(() => validateUserSettings({ ...validUserSettings, wrappedKey: '' })).toThrow(
+        ZodError
+      );
+    });
   });
 
   describe('FirestoreItemContract', () => {
@@ -74,14 +88,20 @@ describe('Firestore Contracts', () => {
       value: 'YmFzZTY0ZW5jb2RlZA==',
       timestamp: 1712438400000,
       userId: 'user-123',
+      encrypted: true,
     };
 
     it('accepts valid firestore item', () => {
       expect(() => validateFirestoreItem(validItem)).not.toThrow();
     });
 
-    it('accepts item with encrypted flag', () => {
-      expect(() => validateFirestoreItem({ ...validItem, encrypted: true })).not.toThrow();
+    it('accepts item with encrypted=false', () => {
+      expect(() => validateFirestoreItem({ ...validItem, encrypted: false })).not.toThrow();
+    });
+
+    it('rejects item missing encrypted field', () => {
+      const { encrypted: _encrypted, ...noEncrypted } = validItem;
+      expect(() => validateFirestoreItem(noEncrypted)).toThrow(ZodError);
     });
 
     it('rejects missing name', () => {
@@ -123,6 +143,41 @@ describe('Firestore Contracts', () => {
     });
   });
 
+  describe('WrappedKeyContract', () => {
+    const validWrappedKey = {
+      userId: 'user-123',
+      wrappedKey: 'AAEC/w==', // valid base64
+    };
+
+    it('accepts valid wrapped key document', () => {
+      expect(() => validateWrappedKey(validWrappedKey)).not.toThrow();
+    });
+
+    it('rejects missing userId', () => {
+      const { userId: _userId, ...noUserId } = validWrappedKey;
+      expect(() => validateWrappedKey(noUserId)).toThrow(ZodError);
+    });
+
+    it('rejects empty userId', () => {
+      expect(() => validateWrappedKey({ ...validWrappedKey, userId: '' })).toThrow(ZodError);
+    });
+
+    it('rejects missing wrappedKey', () => {
+      const { wrappedKey: _wk, ...noWk } = validWrappedKey;
+      expect(() => validateWrappedKey(noWk)).toThrow(ZodError);
+    });
+
+    it('rejects empty wrappedKey', () => {
+      expect(() => validateWrappedKey({ ...validWrappedKey, wrappedKey: '' })).toThrow(ZodError);
+    });
+
+    it('rejects extra fields (strict)', () => {
+      expect(() => WrappedKeyContract.parse({ ...validWrappedKey, extra: 'nope' })).toThrow(
+        ZodError
+      );
+    });
+  });
+
   describe('LocalItemContract', () => {
     const validLocalItem = {
       name: 'password',
@@ -160,6 +215,16 @@ describe('Firestore Contracts', () => {
       expect(() => validateUserSettings(appCreated)).not.toThrow();
     });
 
+    it('UserSettings with wrappedKey matches the contract', () => {
+      const withKey = {
+        userId: 'user-789',
+        backup: 'DAILY',
+        membership: 'FREE',
+        wrappedKey: 'c29tZVdyYXBwZWRLZXk=',
+      };
+      expect(() => validateUserSettings(withKey)).not.toThrow();
+    });
+
     it('Firestore item round-trip preserves contract', () => {
       // Simulate: local item → encode → store in Firestore → read back
       const localItem = {
@@ -167,7 +232,7 @@ describe('Firestore Contracts', () => {
         value: 'my-secret-password',
         timestamp: Date.now(),
         userId: 'user-123',
-        encrypted: false,
+        encrypted: true,
       };
 
       // What gets written to Firestore (base64 encoded value)
@@ -192,9 +257,21 @@ describe('Firestore Contracts', () => {
         name: 'drifted',
         value: 'c29tZXRoaW5n',
         userId: 'user-123',
+        encrypted: true,
         // timestamp missing — backend schema drifted
       };
       expect(() => validateFirestoreItem(driftedItem)).toThrow(ZodError);
+    });
+
+    it('contract rejects data drift — missing encrypted field from backend', () => {
+      const noEncrypted = {
+        name: 'item',
+        value: 'c29tZXRoaW5n',
+        userId: 'user-123',
+        timestamp: 123456,
+        // encrypted missing
+      };
+      expect(() => validateFirestoreItem(noEncrypted)).toThrow(ZodError);
     });
 
     it('contract rejects wrong enum from backend', () => {

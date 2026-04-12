@@ -22,6 +22,7 @@ export const UserSettingsContract: z.ZodType<UserSettings> = z
     userId: z.string().min(1),
     backup: BackupCadenceSchema,
     membership: MembershipTypeSchema,
+    wrappedKey: z.string().min(1).optional(),
   })
   .strict();
 
@@ -34,7 +35,19 @@ export const FirestoreItemContract = z
     value: z.string().regex(base64Regex, 'value must be a valid base64-encoded string'),
     timestamp: z.number(),
     userId: z.string().min(1),
-    encrypted: z.boolean().optional(),
+    encrypted: z.boolean(),
+  })
+  .strict();
+
+/**
+ * Shape of the wrapped-key payload stored in Firestore under UserSettings.
+ * `wrappedKey` is base64(16-byte-salt || AES-KW-wrapped-AES-256-key).
+ * The passphrase used to derive the wrapping key never leaves the device.
+ */
+export const WrappedKeyContract = z
+  .object({
+    userId: z.string().min(1),
+    wrappedKey: z.string().min(1),
   })
   .strict();
 
@@ -62,4 +75,8 @@ export function validateFirestoreItem(data: unknown) {
 
 export function validateLocalItem(data: unknown) {
   return LocalItemContract.parse(data);
+}
+
+export function validateWrappedKey(data: unknown) {
+  return WrappedKeyContract.parse(data);
 }
