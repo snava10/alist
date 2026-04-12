@@ -26,10 +26,11 @@ jobs:
       profile: e2e-test
 
   maestro_test:
-    needs: [get_existing_build, build_android_for_e2e]
+    needs: [get_existing_build]
+    after: [build_android_for_e2e]
     type: maestro
     params:
-      build_id: ${{ needs.get_existing_build.outputs.build_id || needs.build_android_for_e2e.outputs.build_id }}
+      build_id: ${{ needs.get_existing_build.outputs.build_id || after.build_android_for_e2e.outputs.build_id }}
       flow_path:
         - '.maestro/login_anonymous.yml'
         - '.maestro/home_add_item.yml'
