@@ -238,7 +238,7 @@ describe('Security', () => {
     it('wrapAESKey produces different output each call (random salt)', async () => {
       const w1 = await wrapAESKey('passphrase');
       // Reset so we use the same underlying AES key for the second wrap.
-      const savedKey = store['agus_list_aes_key'];
+      const savedKey = store['agus_list_aes_key'] as string;
       Object.keys(store).forEach((k) => delete store[k]);
       jest.clearAllMocks();
       store['agus_list_aes_key'] = savedKey; // restore the same key

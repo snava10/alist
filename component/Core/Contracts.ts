@@ -17,7 +17,7 @@ export const MembershipTypeSchema = z.nativeEnum(MembershipType);
 // ── Firestore Documents ──
 
 /** Shape of a document in the "UserSettings" collection */
-export const UserSettingsContract: z.ZodType<UserSettings> = z
+export const UserSettingsContract = z
   .object({
     userId: z.string().min(1),
     backup: BackupCadenceSchema,
@@ -66,7 +66,7 @@ export const LocalItemContract = z
 // ── Validators ──
 
 export function validateUserSettings(data: unknown): UserSettings {
-  return UserSettingsContract.parse(data);
+  return UserSettingsContract.parse(data) as UserSettings;
 }
 
 export function validateFirestoreItem(data: unknown) {
