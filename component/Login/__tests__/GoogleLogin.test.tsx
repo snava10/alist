@@ -10,8 +10,8 @@ const mockGoogleSignIn = jest.fn();
 
 jest.mock('@react-native-google-signin/google-signin', () => {
   const ButtonComponent = jest.fn(() => null);
-  (ButtonComponent as any).Size = { Wide: 'Wide' };
-  (ButtonComponent as any).Color = { Dark: 'Dark' };
+  (ButtonComponent as unknown as Record<string, unknown>).Size = { Wide: 'Wide' };
+  (ButtonComponent as unknown as Record<string, unknown>).Color = { Dark: 'Dark' };
   return {
     GoogleSigninButton: ButtonComponent,
     GoogleSignin: {

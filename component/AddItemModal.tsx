@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Modal, StyleSheet, TextInput, Pressable, Text } from 'react-native';
-import AListItem from './AListItem';
 import globalStyles from './Core/GlobalStyles';
+import { AListItem } from './Core/DataModel';
 
 const AddItemModal = (props: {
   item?: AListItem | null;

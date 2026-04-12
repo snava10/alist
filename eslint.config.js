@@ -19,6 +19,8 @@ export default [
       '.husky/**',
       'plugins/**',
       'firebase-emulator/**',
+      '.stryker-tmp/**',
+      'reports/**',
     ],
   },
   {
@@ -48,6 +50,12 @@ export default [
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unsafe-function-type': 'warn',
+    },
+  },
+  {
+    files: ['**/*.{js,cjs}'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
   prettier,

@@ -18,3 +18,11 @@ export type UserSettings = {
 export type HomeTabParamList = {
   Home: { itemsReload?: number }; // Define the Home screen params
 };
+
+export type AListItem = {
+  name: string;
+  value: string;
+  timestamp: number;
+  userId?: string;
+  encrypted?: boolean;
+};

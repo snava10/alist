@@ -133,13 +133,13 @@ describe('Storage', () => {
 
   it('filters items by search term', async () => {
     const item1 = { name: 'apple', value: 'v1', timestamp: 1, encrypted: false };
-    const item2 = { name: 'banana', value: 'v2', timestamp: 2, encrypted: false };
+    const _item2 = { name: 'banana', value: 'v2', timestamp: 2, encrypted: false };
     (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_apple', '_ali_banana']);
     (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([['_ali_apple', JSON.stringify(item1)]]);
 
     const items = await getItems('apple');
     expect(items).toHaveLength(1);
-    expect(items[0].name).toBe('apple');
+    expect(items[0]!.name).toBe('apple');
   });
 
   it('returns all items for empty filter', async () => {
@@ -232,7 +232,7 @@ describe('Storage', () => {
 
     const items = await pullItems('u1');
     expect(items).toHaveLength(1);
-    expect(items[0].name).toBe('item1');
+    expect(items[0]!.name).toBe('item1');
   });
 
   it('deleteItems removes items from firestore', async () => {
@@ -304,7 +304,8 @@ describe('Storage', () => {
   });
 
   it('removeItem with null item does not call AsyncStorage.removeItem', async () => {
-    await removeItem(null as any);
+    // @ts-expect-error testing null input
+    await removeItem(null);
 
     expect(AsyncStorage.removeItem).not.toHaveBeenCalled();
   });
@@ -355,9 +356,10 @@ describe('Storage', () => {
     (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_test']);
     (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([['_ali_test', JSON.stringify(item)]]);
 
-    const items = await getItems(null as any);
+    // @ts-expect-error testing null input
+    const items = await getItems(null);
     expect(items).toHaveLength(1);
-    expect(items[0].name).toBe('test');
+    expect(items[0]!.name).toBe('test');
   });
 
   it('maybeDecrypt saves unencrypted items (triggers encryption)', async () => {
@@ -454,7 +456,7 @@ describe('Storage', () => {
 
     const items = await getAllItems();
     expect(items).toHaveLength(1);
-    expect(items[0].name).toBe('test');
+    expect(items[0]!.name).toBe('test');
   });
 
   it('getItems filters by case-insensitive search', async () => {
@@ -464,7 +466,7 @@ describe('Storage', () => {
 
     const items = await getItems('apple');
     expect(items).toHaveLength(1);
-    expect(items[0].name).toBe('Apple');
+    expect(items[0]!.name).toBe('Apple');
   });
 
   it('pullItems decodes base64 values', async () => {
@@ -485,6 +487,6 @@ describe('Storage', () => {
 
     const items = await pullItems('u1');
     expect(items).toHaveLength(1);
-    expect(items[0].value).toBe('ZW5jb2RlZC12YWw=');
+    expect(items[0]!.value).toBe('ZW5jb2RlZC12YWw=');
   });
 });

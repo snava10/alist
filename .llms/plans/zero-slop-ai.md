@@ -179,7 +179,10 @@ These catch:
 • state bugs
 • real usage failures
 
-⸻
+Update:
+
+- Ended up using Maestro, as it is recommended by Expo and integrates with EAS.
+  ⸻
 
 6. Architecture enforcement (MOST teams skip this)
 
@@ -252,7 +255,7 @@ Frontend (React Native)
 • TypeScript strict mode
 • ESLint + Prettier
 • Jest + React Testing Library
-• Detox (E2E)
+• Maestro (E2E)
 • Pact (API contracts)
 
 ⸻
