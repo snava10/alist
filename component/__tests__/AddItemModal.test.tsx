@@ -85,16 +85,16 @@ describe('AddItemModal', () => {
     const { UNSAFE_getAllByType } = render(<AddItemModal {...defaultProps} item={null} />);
 
     const textInputs = UNSAFE_getAllByType(TextInput);
-    expect(textInputs[0].props.value).toBe('');
-    expect(textInputs[1].props.value).toBe('');
+    expect(textInputs[0]!.props.value).toBe('');
+    expect(textInputs[1]!.props.value).toBe('');
   });
 
   it('initializes with existing item values in edit mode', async () => {
     const { UNSAFE_getAllByType } = render(<AddItemModal {...defaultProps} item={mockItem} />);
 
     const textInputs = UNSAFE_getAllByType(TextInput);
-    expect(textInputs[0].props.value).toBe(mockItem.name);
-    expect(textInputs[1].props.value).toBe(mockItem.value);
+    expect(textInputs[0]!.props.value).toBe(mockItem.name);
+    expect(textInputs[1]!.props.value).toBe(mockItem.value);
   });
 
   // Input field tests
@@ -102,7 +102,7 @@ describe('AddItemModal', () => {
     const { UNSAFE_getAllByType } = render(<AddItemModal {...defaultProps} />);
 
     const textInputs = UNSAFE_getAllByType(TextInput);
-    const nameInput = textInputs[0];
+    const nameInput = textInputs[0]!;
 
     fireEvent.changeText(nameInput, 'New Item');
     expect(nameInput.props.value).toBe('New Item');
@@ -112,7 +112,7 @@ describe('AddItemModal', () => {
     const { UNSAFE_getAllByType } = render(<AddItemModal {...defaultProps} />);
 
     const textInputs = UNSAFE_getAllByType(TextInput);
-    const valueInput = textInputs[1];
+    const valueInput = textInputs[1]!;
 
     fireEvent.changeText(valueInput, 'New Value');
     expect(valueInput.props.value).toBe('New Value');
@@ -123,8 +123,8 @@ describe('AddItemModal', () => {
     const { UNSAFE_getAllByType, getByText } = render(<AddItemModal {...defaultProps} />);
 
     const textInputs = UNSAFE_getAllByType(TextInput);
-    const nameInput = textInputs[0];
-    const valueInput = textInputs[1];
+    const nameInput = textInputs[0]!;
+    const valueInput = textInputs[1]!;
     const saveButton = getByText('Save');
 
     fireEvent.changeText(nameInput, 'Test Item');
@@ -149,7 +149,7 @@ describe('AddItemModal', () => {
     const { UNSAFE_getAllByType, getByText } = render(<AddItemModal {...defaultProps} />);
 
     const textInputs = UNSAFE_getAllByType(TextInput);
-    const valueInput = textInputs[1];
+    const valueInput = textInputs[1]!;
     const saveButton = getByText('Save');
 
     fireEvent.changeText(valueInput, 'Test Value');
@@ -164,7 +164,7 @@ describe('AddItemModal', () => {
     const { UNSAFE_getAllByType, getByText } = render(<AddItemModal {...defaultProps} />);
 
     const textInputs = UNSAFE_getAllByType(TextInput);
-    const nameInput = textInputs[0];
+    const nameInput = textInputs[0]!;
     const saveButton = getByText('Save');
 
     fireEvent.changeText(nameInput, 'Test Item');
@@ -190,8 +190,8 @@ describe('AddItemModal', () => {
     const { UNSAFE_getAllByType, getByText } = render(<AddItemModal {...defaultProps} />);
 
     const textInputs = UNSAFE_getAllByType(TextInput);
-    const nameInput = textInputs[0];
-    const valueInput = textInputs[1];
+    const nameInput = textInputs[0]!;
+    const valueInput = textInputs[1]!;
     const saveButton = getByText('Save');
 
     fireEvent.changeText(nameInput, 'Test Item');
@@ -207,8 +207,8 @@ describe('AddItemModal', () => {
     const { UNSAFE_getAllByType, getByText } = render(<AddItemModal {...defaultProps} />);
 
     const textInputs = UNSAFE_getAllByType(TextInput);
-    const nameInput = textInputs[0];
-    const valueInput = textInputs[1];
+    const nameInput = textInputs[0]!;
+    const valueInput = textInputs[1]!;
     const saveButton = getByText('Save');
 
     fireEvent.changeText(nameInput, 'Test Item');
@@ -226,8 +226,8 @@ describe('AddItemModal', () => {
     const { UNSAFE_getAllByType, getByText } = render(<AddItemModal {...defaultProps} />);
 
     const textInputs = UNSAFE_getAllByType(TextInput);
-    const nameInput = textInputs[0];
-    const valueInput = textInputs[1];
+    const nameInput = textInputs[0]!;
+    const valueInput = textInputs[1]!;
     const cancelButton = getByText('Cancel');
 
     fireEvent.changeText(nameInput, 'Test Item');
@@ -255,8 +255,8 @@ describe('AddItemModal', () => {
     const { UNSAFE_getAllByType, getByText } = render(<AddItemModal {...defaultProps} />);
 
     const textInputs = UNSAFE_getAllByType(TextInput);
-    const nameInput = textInputs[0];
-    const valueInput = textInputs[1];
+    const nameInput = textInputs[0]!;
+    const valueInput = textInputs[1]!;
     const cancelButton = getByText('Cancel');
 
     fireEvent.changeText(nameInput, 'Test Item');
@@ -289,8 +289,8 @@ describe('AddItemModal', () => {
     );
 
     const textInputs = UNSAFE_getAllByType(TextInput);
-    const nameInput = textInputs[0];
-    const valueInput = textInputs[1];
+    const nameInput = textInputs[0]!;
+    const valueInput = textInputs[1]!;
     const saveButton = getByText('Save');
 
     fireEvent.changeText(nameInput, 'Updated Item');
@@ -311,8 +311,8 @@ describe('AddItemModal', () => {
     );
 
     const textInputs = UNSAFE_getAllByType(TextInput);
-    const nameInput = textInputs[0];
-    const valueInput = textInputs[1];
+    const nameInput = textInputs[0]!;
+    const valueInput = textInputs[1]!;
     const saveButton = getByText('Save');
 
     // Change the fields
@@ -358,7 +358,7 @@ describe('AddItemModal', () => {
     const { UNSAFE_getAllByType } = render(<AddItemModal {...defaultProps} visible={true} />);
 
     const textInputs = UNSAFE_getAllByType(TextInput);
-    const nameInput = textInputs[0];
+    const nameInput = textInputs[0]!;
 
     fireEvent.changeText(nameInput, 'First');
     fireEvent.changeText(nameInput, 'Second');
@@ -375,8 +375,8 @@ describe('AddItemModal', () => {
     );
 
     const textInputs = UNSAFE_getAllByType(TextInput);
-    const nameInput = textInputs[0];
-    const valueInput = textInputs[1];
+    const nameInput = textInputs[0]!;
+    const valueInput = textInputs[1]!;
     const saveButton = getByText('Save');
 
     fireEvent.changeText(nameInput, '@#$%^&*()');
@@ -400,7 +400,7 @@ describe('AddItemModal', () => {
     );
 
     const textInputs = UNSAFE_getAllByType(TextInput);
-    const nameInput = textInputs[0];
+    const nameInput = textInputs[0]!;
     const saveButton = getByText('Save');
 
     fireEvent.changeText(nameInput, '   ');

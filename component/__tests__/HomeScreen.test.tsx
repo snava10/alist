@@ -47,7 +47,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from '../HomeScreen';
-import { createUserSettings, addTimestampToItems } from '../Core/Storage';
 
 const Stack = createNativeStackNavigator();
 
@@ -179,7 +178,7 @@ describe('HomeScreen - Rendering Tests', () => {
       expect(screen.getByText(/to add a new item/)).toBeTruthy();
     });
 
-    fireEvent.press(screen.getAllByTestId('add-circle')[1]);
+    fireEvent.press(screen.getAllByTestId('add-circle')[1]!);
 
     await waitFor(() => {
       expect(screen.getByText('Save')).toBeTruthy();
@@ -259,7 +258,7 @@ describe('HomeScreen - Rendering Tests', () => {
       expect(screen.getByText(/to add a new item/)).toBeTruthy();
     });
 
-    fireEvent.press(screen.getAllByTestId('add-circle')[1]);
+    fireEvent.press(screen.getAllByTestId('add-circle')[1]!);
 
     await waitFor(() => {
       expect(screen.getByText('Save')).toBeTruthy();

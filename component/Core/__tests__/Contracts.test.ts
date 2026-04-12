@@ -31,7 +31,7 @@ describe('Firestore Contracts', () => {
     });
 
     it('rejects missing userId', () => {
-      const { userId, ...noUserId } = validUserSettings;
+      const { userId: _userId, ...noUserId } = validUserSettings;
       expect(() => validateUserSettings(noUserId)).toThrow(ZodError);
     });
 
@@ -52,12 +52,12 @@ describe('Firestore Contracts', () => {
     });
 
     it('rejects missing backup field', () => {
-      const { backup, ...noBackup } = validUserSettings;
+      const { backup: _backup, ...noBackup } = validUserSettings;
       expect(() => validateUserSettings(noBackup)).toThrow(ZodError);
     });
 
     it('rejects missing membership field', () => {
-      const { membership, ...noMembership } = validUserSettings;
+      const { membership: _membership, ...noMembership } = validUserSettings;
       expect(() => validateUserSettings(noMembership)).toThrow(ZodError);
     });
 
@@ -85,7 +85,7 @@ describe('Firestore Contracts', () => {
     });
 
     it('rejects missing name', () => {
-      const { name, ...noName } = validItem;
+      const { name: _name, ...noName } = validItem;
       expect(() => validateFirestoreItem(noName)).toThrow(ZodError);
     });
 
@@ -94,12 +94,12 @@ describe('Firestore Contracts', () => {
     });
 
     it('rejects missing value', () => {
-      const { value, ...noValue } = validItem;
+      const { value: _value, ...noValue } = validItem;
       expect(() => validateFirestoreItem(noValue)).toThrow(ZodError);
     });
 
     it('rejects missing timestamp', () => {
-      const { timestamp, ...noTimestamp } = validItem;
+      const { timestamp: _timestamp, ...noTimestamp } = validItem;
       expect(() => validateFirestoreItem(noTimestamp)).toThrow(ZodError);
     });
 
@@ -110,7 +110,7 @@ describe('Firestore Contracts', () => {
     });
 
     it('rejects missing userId', () => {
-      const { userId, ...noUserId } = validItem;
+      const { userId: _userId, ...noUserId } = validItem;
       expect(() => validateFirestoreItem(noUserId)).toThrow(ZodError);
     });
 
@@ -139,12 +139,12 @@ describe('Firestore Contracts', () => {
     });
 
     it('rejects missing name', () => {
-      const { name, ...noName } = validLocalItem;
+      const { name: _name, ...noName } = validLocalItem;
       expect(() => validateLocalItem(noName)).toThrow(ZodError);
     });
 
     it('rejects missing timestamp', () => {
-      const { timestamp, ...noTimestamp } = validLocalItem;
+      const { timestamp: _timestamp, ...noTimestamp } = validLocalItem;
       expect(() => validateLocalItem(noTimestamp)).toThrow(ZodError);
     });
   });

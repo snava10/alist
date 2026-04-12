@@ -12,14 +12,6 @@ jest.mock('node-forge', () => {
     pki: {
       ...forge.pki,
       rsa: {
-        generateKeyPair: jest.fn(() => ({
-          publicKey: {
-            encrypt: jest.fn((data) => data),
-          },
-          privateKey: {
-            decrypt: jest.fn((data) => data),
-          },
-        })),
         generateKeyPair: jest.fn(() => {
           const keyPair = jest.requireActual('node-forge').pki.rsa.generateKeyPair({
             bits: 512,

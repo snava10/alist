@@ -9,8 +9,11 @@ const mockPerformRequest = jest.fn();
 
 jest.mock('@invertase/react-native-apple-authentication', () => {
   const AppleButtonComponent = jest.fn(() => null);
-  (AppleButtonComponent as any).Style = { BLACK: 'BLACK', WHITE: 'WHITE' };
-  (AppleButtonComponent as any).Type = { SIGN_IN: 'SIGN_IN' };
+  (AppleButtonComponent as unknown as Record<string, unknown>).Style = {
+    BLACK: 'BLACK',
+    WHITE: 'WHITE',
+  };
+  (AppleButtonComponent as unknown as Record<string, unknown>).Type = { SIGN_IN: 'SIGN_IN' };
   return {
     appleAuth: {
       isSupported: true,

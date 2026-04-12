@@ -8,7 +8,7 @@ jest.mock('expo-web-browser', () => ({
 }));
 
 const mockPromptAsync = jest.fn();
-let mockResponse: any = null;
+let mockResponse: unknown = null;
 
 jest.mock('expo-auth-session/providers/facebook', () => ({
   useAuthRequest: jest.fn(() => [{ id: 'facebook-request' }, mockResponse, mockPromptAsync]),
