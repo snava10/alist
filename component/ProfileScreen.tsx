@@ -379,7 +379,7 @@ export default function ProfileScreen({ route }: any) {
                   provider: user.providerId,
                   displayName: user.displayName ?? '',
                 })
-                .catch((_) => console.log('backup log failed'));
+                .catch((_) => console.log('backup restore analytics log failed'));
               console.info('Restored ', x, ' items');
               setTimeout(() => navigation.navigate('Home', { itemsReload: x }), 1000);
             });
@@ -408,7 +408,7 @@ export default function ProfileScreen({ route }: any) {
                 provider: user.providerId,
                 displayName: user.displayName ?? '',
               })
-              .catch((_) => console.log('backup push log failed'));
+              .catch((_) => console.log('backup push analytics log failed'));
           }}
           rejectCallbackFn={() => setShowBackupNowModal(false)}
           hideModalFn={() => setShowBackupNowModal(false)}

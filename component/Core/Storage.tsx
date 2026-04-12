@@ -182,7 +182,7 @@ export async function pushAllItems(userId: string): Promise<number> {
 }
 
 export async function pullItems(userId: string): Promise<Array<AListItem>> {
-  console.log('Pulling items for user ', userId);
+  console.log('Pulling items for user');
   return firestore()
     .collection('Items')
     .where('userId', '==', userId)
