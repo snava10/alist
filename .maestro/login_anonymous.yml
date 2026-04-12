@@ -1,0 +1,7 @@
+appId: com.acorn.alist
+---
+- launchApp:
+    appId: com.acorn.alist
+    clearState: true
+- assertVisible: "Continue anonymous"
+- tapOn: "Continue anonymous"

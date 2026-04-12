@@ -1,0 +1,38 @@
+name: e2e-test-ios
+
+on:
+  pull_request:
+    branches: ['*']
+
+jobs:
+  fingerprint:
+    type: fingerprint
+    environment: preview
+
+  get_existing_build:
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: ios
+      profile: e2e-test
+      fingerprint_hash: ${{ needs.fingerprint.outputs.ios_fingerprint_hash }}
+      simulator: true
+
+  build_ios_for_e2e:
+    needs: [get_existing_build]
+    if: ${{ !needs.get_existing_build.outputs.build_id }}
+    type: build
+    params:
+      platform: ios
+      profile: e2e-test
+
+  maestro_test:
+    needs: [get_existing_build]
+    after: [build_ios_for_e2e]
+    type: maestro
+    params:
+      build_id: ${{ needs.get_existing_build.outputs.build_id || after.build_ios_for_e2e.outputs.build_id }}
+      flow_path:
+        - '.maestro/login_anonymous.yml'
+        - '.maestro/home_add_item.yml'
+        - '.maestro/navigate_to_profile.yml'
