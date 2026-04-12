@@ -20,8 +20,8 @@ const withFmtFix = (config) => {
 
       let contents = fs.readFileSync(podfilePath, 'utf-8');
 
-      // Skip if already patched
-      if (contents.includes('fmt_base_path')) {
+      // Skip if this plugin's Podfile patch has already been inserted
+      if (contents.includes('PATCHED_FMT_CONSTEVAL')) {
         return config;
       }
 
@@ -31,18 +31,31 @@ const withFmtFix = (config) => {
     if File.exist?(fmt_base_path)
       fmt_content = File.read(fmt_base_path)
       unless fmt_content.include?('PATCHED_FMT_CONSTEVAL')
-        fmt_content = fmt_content.sub(
+        patched_fmt_content = fmt_content.sub(
           /\\/\\/ Detect consteval.*?#endif\\n#if FMT_USE_CONSTEVAL/m,
           "// PATCHED_FMT_CONSTEVAL: force-disable consteval for Apple Clang compatibility\\n#define FMT_USE_CONSTEVAL 0\\n#if FMT_USE_CONSTEVAL"
         )
-        File.write(fmt_base_path, fmt_content)
+        if patched_fmt_content == fmt_content
+          raise 'withFmtFix: failed to patch fmt/base.h because the expected consteval block was not found'
+        end
+        File.write(fmt_base_path, patched_fmt_content)
       end
     end`;
 
       // Insert the patch after react_native_post_install
-      contents = contents.replace(/(react_native_post_install\([\s\S]*?\)\n)/, `$1${fmtPatch}\n`);
+      const updatedContents = contents.replace(
+        /(react_native_post_install\([\s\S]*?\)\n)/,
+        `$1${fmtPatch}\n`
+      );
 
-      fs.writeFileSync(podfilePath, contents);
+      if (updatedContents === contents) {
+        throw new Error(
+          `withFmtFix: Failed to insert fmt patch into Podfile at ${podfilePath}. ` +
+            'Expected to find a react_native_post_install(...) call in the iOS Podfile, but no matching block was found.'
+        );
+      }
+
+      fs.writeFileSync(podfilePath, updatedContents);
 
       return config;
     },
