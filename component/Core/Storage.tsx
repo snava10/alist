@@ -5,8 +5,8 @@ import base64 from 'react-native-base64';
 import { EXPO_PUBLIC_FIREBASE_EMULATOR } from '@env';
 import auth from '@react-native-firebase/auth';
 import { Platform } from 'react-native';
-import { decrypt, encrypt } from './Security';
-import { validateUserSettings, validateFirestoreItem } from './Contracts';
+import { decrypt, encrypt, unwrapAESKey } from './Security';
+import { validateUserSettings, validateFirestoreItem, validateWrappedKey } from './Contracts';
 
 if (EXPO_PUBLIC_FIREBASE_EMULATOR === 'true') {
   console.debug('Connecting to firebase emulator');
@@ -86,7 +86,7 @@ async function maybeDecrypt(item: AListItem): Promise<AListItem> {
     });
   } else {
     console.debug('Item not encrypted ', JSON.stringify(item));
-    saveItem(item);
+    await saveItem(item);
   }
   return item;
 }
@@ -151,17 +151,38 @@ export async function createUserSettings(userId: string): Promise<UserSettings> 
 
 const _compareItems = (a: AListItem, b: AListItem) => a.name.localeCompare(b.name);
 
-// export async function pushItem(item: AListItem, userId: string) {
-//   const encodedValue = base64.encode(item.value);
-//   firestore()
-//     .collection("Items")
-//     .doc(`${userId}_${item.name}`)
-//     .set({ ...item, userId, value: encodedValue })
-//     .then(() => console.log("Item saved to firebase ", JSON.stringify(item)));
-// }
+/**
+ * Pushes all locally stored (already-encrypted) items to Firestore.
+ * The ciphertext is base64-encoded for transport; plaintext never leaves the device.
+ * @param userId The authenticated user's UID
+ * @returns The number of items pushed
+ */
+export async function pushAllItems(userId: string): Promise<number> {
+  const keys = await AsyncStorage.getAllKeys();
+  const kvp = await AsyncStorage.multiGet(keys.filter((k) => k.startsWith('_ali_')));
+  const validKvp = kvp.filter((kv): kv is [string, string] => kv[1] !== null);
+
+  await Promise.all(
+    validKvp.map(async ([_key, value]) => {
+      const item = JSON.parse(value) as AListItem;
+      // item.value is already the AES-GCM ciphertext in base64; encode it
+      // again for Firestore transport so pullItems can base64-decode it back.
+      const firestoreDoc = {
+        name: item.name,
+        value: base64.encode(item.value),
+        timestamp: item.timestamp ?? Date.now(),
+        userId,
+        encrypted: true,
+      };
+      const validated = validateFirestoreItem(firestoreDoc);
+      await firestore().collection('Items').doc(`${userId}_${item.name}`).set(validated);
+    })
+  );
+  return validKvp.length;
+}
 
 export async function pullItems(userId: string): Promise<Array<AListItem>> {
-  console.log('Pulling items for user ', userId);
+  console.log('Pulling items for user');
   return firestore()
     .collection('Items')
     .where('userId', '==', userId)
@@ -176,7 +197,7 @@ export async function pullItems(userId: string): Promise<Array<AListItem>> {
           value: base64.decode(raw.value),
           timestamp: raw.timestamp,
           userId: raw.userId,
-          ...(raw.encrypted !== undefined && { encrypted: raw.encrypted }),
+          encrypted: raw.encrypted,
         };
         return item;
       });
@@ -206,19 +227,52 @@ export async function deleteItems(userId: string): Promise<number> {
 }
 
 export async function restoreFromBackup(userId: string): Promise<number> {
-  // Get all items.
   const items = await pullItems(userId);
   console.log('Items pulled from firebase ', JSON.stringify(items));
   await AsyncStorage.clear();
-  items.forEach(async (item) => {
-    console.log('Restoring item ', JSON.stringify(item));
-    if (item.encrypted) {
-      console.log('Item is encrypted');
-      await AsyncStorage.setItem('_ali_' + item.name, JSON.stringify(item));
-    } else {
-      console.log('Item is not encrypted');
-      await saveItem(item);
-    }
-  });
+  await Promise.all(
+    items.map(async (item) => {
+      console.log('Restoring item ', JSON.stringify(item));
+      if (item.encrypted) {
+        console.log('Item is encrypted');
+        await AsyncStorage.setItem('_ali_' + item.name, JSON.stringify(item));
+      } else {
+        console.log('Item is not encrypted');
+        await saveItem(item);
+      }
+    })
+  );
   return items.length;
+}
+
+/**
+ * Stores the passphrase-wrapped AES key in Firestore under the user's
+ * UserSettings document. The raw key and passphrase never leave the device.
+ */
+export async function saveWrappedKey(userId: string, wrappedKey: string): Promise<void> {
+  validateWrappedKey({ userId, wrappedKey });
+  await firestore().collection('UserSettings').doc(userId).set({ wrappedKey }, { merge: true });
+}
+
+/**
+ * Fetches the wrapped AES key for the given user from Firestore.
+ * Returns null if no wrapped key has been stored yet.
+ */
+export async function getWrappedKey(userId: string): Promise<string | null> {
+  const doc = await firestore().collection('UserSettings').doc(userId).get();
+  const data = doc.data();
+  if (!data || !data.wrappedKey) return null;
+  return data.wrappedKey as string;
+}
+
+/**
+ * Cross-device key recovery: fetches the wrapped AES key from Firestore,
+ * unwraps it with the supplied passphrase, and stores the raw key locally.
+ * @returns true if the key was recovered, false if no wrapped key was found.
+ */
+export async function restoreKeyFromCloud(userId: string, passphrase: string): Promise<boolean> {
+  const wrappedKey = await getWrappedKey(userId);
+  if (!wrappedKey) return false;
+  await unwrapAESKey(wrappedKey, passphrase);
+  return true;
 }
