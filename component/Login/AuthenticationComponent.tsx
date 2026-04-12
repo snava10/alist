@@ -38,17 +38,15 @@ export default function AuthenticationComponent({
 
   return _isLoggedIn ? (
     <View style={{ flex: 1 }}>
-      <View style={styles.child_view}>
+      <View style={styles.bottom_buttons_row}>
         <Pressable
-          style={[globalStyles.button, globalStyles.button.primary.main]}
+          style={[globalStyles.button, globalStyles.button.primary.main, styles.bottom_button]}
           onPress={logOutFn}
         >
           <Text style={globalStyles.button.text.default}>Log Out</Text>
         </Pressable>
-      </View>
-      <View style={styles.child_view}>
         <Pressable
-          style={[globalStyles.button, globalStyles.button.primary.outlined]}
+          style={[globalStyles.button, globalStyles.button.primary.outlined, styles.bottom_button]}
           onPress={deleteAccountFn}
         >
           <Text style={globalStyles.button.text.dangerSmall}>Delete Account</Text>
@@ -116,5 +114,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignSelf: 'center',
+  },
+  bottom_buttons_row: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingBottom: 16,
+    gap: 12,
+  },
+  bottom_button: {
+    flex: 1,
   },
 });
