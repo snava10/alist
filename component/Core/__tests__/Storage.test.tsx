@@ -96,19 +96,53 @@ describe('Storage', () => {
   });
 
   it('getItemsCount returns count of ali-prefixed keys', async () => {
-    // (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_a', '_ali_b', 'other']);
+    // Setup Firestore mock for ali-prefixed keys
+    // We'll simulate Firestore returning 2 items with ali-prefixed keys for a user
+    const mockDocs = [
+      {
+        id: 'user1_ali_a',
+        data: () => ({
+          name: 'ali_a',
+          value: 'v1',
+          timestamp: 1,
+          encrypted: false,
+          userId: 'user1',
+        }),
+      },
+      {
+        id: 'user1_ali_b',
+        data: () => ({
+          name: 'ali_b',
+          value: 'v2',
+          timestamp: 2,
+          encrypted: false,
+          userId: 'user1',
+        }),
+      },
+      {
+        id: 'user1_other',
+        data: () => ({
+          name: 'other',
+          value: 'v3',
+          timestamp: 3,
+          encrypted: false,
+          userId: 'user1',
+        }),
+      },
+    ];
+    mockWhereGet.mockResolvedValue({
+      empty: false,
+      docs: mockDocs,
+    });
 
-    const count = await getItemsCount();
+    // We'll update getItemsCount to accept a userId for Firestore usage
+    const count = await getItemsCount('user1');
+    // Only count ali-prefixed keys
     expect(count).toBe(2);
   });
 
-  it('uses AsyncStorage for local persistence', async () => {
-    await getItem('test-key');
-    // expect(AsyncStorage.getItem).toHaveBeenCalled();
-  });
-
   it('handles null item retrieval', async () => {
-    const item = await getItem('non-existent-key');
+    const item = await getItem('non-existent-key', 'test_user_id');
     expect(item).toBeNull();
   });
 
@@ -119,7 +153,7 @@ describe('Storage', () => {
         {
           data: () => ({
             name: 'item1',
-            value: 'v1',
+            value: 'dmYx', // base64 for 'v1'
             timestamp: 1,
             encrypted: false,
             userId: 'user1',
@@ -128,7 +162,7 @@ describe('Storage', () => {
         {
           data: () => ({
             name: 'item2',
-            value: 'v2',
+            value: 'dmYy', // base64 for 'v2'
             timestamp: 2,
             encrypted: false,
             userId: 'user1',
@@ -175,7 +209,7 @@ describe('Storage', () => {
 
   it('handles storage operations with invalid JSON', async () => {
     // (AsyncStorage.getItem as jest.Mock).mockResolvedValue('not-valid-json');
-    const item = await getItem('key');
+    const item = await getItem('key', 'test_user_id');
     expect(item).toBeNull();
   });
 

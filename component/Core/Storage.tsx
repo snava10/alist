@@ -55,22 +55,29 @@ export async function addTimestampToItems(): Promise<void[]> {
   );
 }
 
-export async function getAllItems(): Promise<Array<AListItem>> {
-  const keys = await AsyncStorage.getAllKeys();
-  const kvp = await AsyncStorage.multiGet(keys.filter((k) => k.startsWith('_ali_')));
-  return Promise.all(
-    kvp
-      .filter((kvp) => kvp[1] !== null)
-      .map((kvp) => {
-        console.log('Item ', kvp[1]);
-        return maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem);
-      })
-  );
+/**
+ * Fetches all items for a user from Firestore.
+ * @param userId The user ID to scope the query
+ */
+export async function getAllItems(userId: string): Promise<Array<AListItem>> {
+  const querySnapshot = await firestore().collection('Items').where('userId', '==', userId).get();
+  if (querySnapshot.empty) return [];
+  return querySnapshot.docs.map((doc) => {
+    const raw = validateFirestoreItem(doc.data());
+    const item: AListItem = {
+      name: raw.name,
+      value: raw.value,
+      timestamp: raw.timestamp,
+      userId: raw.userId,
+      ...(raw.encrypted !== undefined && { encrypted: raw.encrypted }),
+    };
+    return item;
+  });
 }
 
-export async function getItems(filter: string): Promise<Array<AListItem>> {
+export async function getItems(userId: string, filter: string): Promise<Array<AListItem>> {
   if (filter === '' || filter === null) {
-    return getAllItems();
+    return getAllItems(userId);
   }
   const keys = await AsyncStorage.getAllKeys();
   const kvp = await AsyncStorage.multiGet(
@@ -125,9 +132,19 @@ export async function removeItem(item: AListItem) {
   }
 }
 
-export async function getItemsCount(): Promise<number> {
-  const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith('_ali_'));
-  return keys.length;
+/**
+ * Returns the count of ali-prefixed items for a user from Firestore.
+ * @param userId The user ID to scope the query
+ */
+export async function getItemsCount(userId: string): Promise<number> {
+  // Query Firestore for all items for the user
+  const querySnapshot = await firestore().collection('Items').where('userId', '==', userId).get();
+  if (querySnapshot.empty) return 0;
+  // Only count items whose name starts with 'ali_'
+  return querySnapshot.docs.filter((doc) => {
+    const data = doc.data();
+    return data && typeof data.name === 'string' && data.name.startsWith('ali_');
+  }).length;
 }
 
 export async function getUserSettings(userId?: string): Promise<UserSettings | null> {
