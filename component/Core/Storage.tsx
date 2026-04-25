@@ -21,19 +21,28 @@ if (EXPO_PUBLIC_FIREBASE_EMULATOR === 'true') {
   }
 }
 
-export async function getItem(id: string): Promise<AListItem | null> {
-  const value = await AsyncStorage.getItem(id);
-  if (value === null) {
+/**
+ * Fetches an item from Firestore for a given user and item name.
+ * @param name The name of the item (not prefixed)
+ * @param userId The user ID to scope the query
+ */
+export async function getItem(name: string, userId: string): Promise<AListItem | null> {
+  const doc = await firestore().collection('Items').doc(`${userId}_${name}`).get();
+  if (!doc.exists) {
     return null;
   }
-  var res: AListItem | null = null;
-  try {
-    console.log('Value ', value);
-    res = await maybeDecrypt(JSON.parse(value) as AListItem);
-  } catch (e) {
-    console.error(e);
+  const raw = validateFirestoreItem(doc.data());
+  let item: AListItem = {
+    name: raw.name,
+    value: raw.value,
+    timestamp: raw.timestamp,
+    userId: raw.userId,
+    ...(raw.encrypted !== undefined && { encrypted: raw.encrypted }),
+  };
+  if (item.encrypted) {
+    item.value = await decrypt(item.value);
   }
-  return res;
+  return item;
 }
 
 export async function addTimestampToItems(): Promise<void[]> {
