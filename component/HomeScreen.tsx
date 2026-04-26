@@ -78,12 +78,14 @@ export default function HomeScreen({ route }: any) {
           .then(() => console.log('User settings created'))
           .catch((error) => console.log('User settings ', error));
       }
-      addTimestampToItems()
-        .then(() => {
-          console.log('Add timestamps executed');
-          setOneOffCorrections(true);
-        })
-        .catch((error) => console.log('Add timestamps ', error));
+      if (user?.uid) {
+        addTimestampToItems(user.uid)
+          .then(() => {
+            console.log('Add timestamps executed');
+            setOneOffCorrections(true);
+          })
+          .catch((error) => console.log('Add timestamps ', error));
+      }
     }
   }, [oneOffCorrections]);
 
