@@ -1,5 +1,7 @@
 import {
   addTimestampToItems,
+  backupLocalStorageToFirestore,
+  clearLocalAsyncStorage,
   createUserSettings,
   deleteItems,
   getAllItems,
@@ -16,6 +18,7 @@ import {
 import { BackupCadence, MembershipType, type AListItem } from '../DataModel';
 import { encrypt, generateAndStoreKeys } from '../Security';
 import { MockFirestore } from './MockFirestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 describe('Storage', () => {
   let mockFirestore: MockFirestore;
@@ -206,5 +209,73 @@ describe('Storage', () => {
     expect(count).toBe(2);
     await expect(getAllItems('u1')).resolves.toHaveLength(0);
     await expect(getAllItems('u2')).resolves.toHaveLength(1);
+  });
+
+  it('backupLocalStorageToFirestore decrypts encrypted local items and saves plain ones to firestore', async () => {
+    const encryptedValue = await encrypt('secret');
+    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([
+      '_ali_secret',
+      '_ali_plain',
+      'not_an_ali_key',
+    ]);
+    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([
+      [
+        '_ali_secret',
+        JSON.stringify({
+          name: 'secret',
+          value: encryptedValue,
+          timestamp: 1,
+          encrypted: true,
+          userId: 'u1',
+        } satisfies AListItem),
+      ],
+      [
+        '_ali_plain',
+        JSON.stringify({
+          name: 'plain',
+          value: 'visible',
+          timestamp: 2,
+          encrypted: false,
+          userId: 'u1',
+        } satisfies AListItem),
+      ],
+    ]);
+
+    const items = await backupLocalStorageToFirestore();
+    const storedPlain = await mockFirestore.collection('Items').doc('u1_plain').get();
+
+    expect(items).toEqual([
+      {
+        name: 'secret',
+        value: 'secret',
+        timestamp: 1,
+        encrypted: true,
+        userId: 'u1',
+      },
+      {
+        name: 'plain',
+        value: 'visible',
+        timestamp: 2,
+        encrypted: false,
+        userId: 'u1',
+      },
+    ]);
+    expect(AsyncStorage.multiGet).toHaveBeenCalledWith(['_ali_secret', '_ali_plain']);
+    expect(storedPlain.exists).toBe(true);
+    expect(storedPlain.data()?.encrypted).toBe(true);
+  });
+
+  it('clear local async storage', async () => {
+    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([
+      '_ali_secret',
+      '_ali_plain',
+      'not_an_ali_key',
+    ]);
+
+    let multiRemoveMock = AsyncStorage.multiRemove as jest.Mock;
+
+    await clearLocalAsyncStorage();
+    expect(AsyncStorage.getAllKeys).toHaveBeenCalled();
+    expect(multiRemoveMock).toHaveBeenLastCalledWith(['_ali_secret', '_ali_plain']);
   });
 });

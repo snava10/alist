@@ -5,6 +5,7 @@ import auth from '@react-native-firebase/auth';
 import { Platform } from 'react-native';
 import { decrypt, encrypt } from './Security';
 import { validateUserSettings, validateFirestoreItem } from './Contracts';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type FirestoreDocData = Record<string, unknown>;
 type FirestoreWhereOperator =
@@ -91,7 +92,7 @@ export function resetFirestoreClientForTesting() {
 }
 
 function getItemDocId(name: string, userId: string): string {
-  return `${userId}_${name}`;
+  return `${userId}_${name.replace(' ', '')}`;
 }
 
 /**
@@ -280,4 +281,35 @@ export async function deleteItems(userId: string): Promise<number> {
       )
     )
     .then((result) => result.reduce((a, b) => a + b, 0));
+}
+
+export async function backupLocalStorageToFirestore(): Promise<AListItem[]> {
+  const keys = await AsyncStorage.getAllKeys();
+  const kvp = await AsyncStorage.multiGet(keys.filter((k) => k.startsWith('_ali_')));
+  return Promise.all(
+    kvp
+      .filter((kvp) => kvp[1] !== null)
+      .map((kvp) => {
+        console.log('Item ', kvp[1]);
+        return maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem);
+      })
+  );
+}
+
+async function maybeDecrypt(item: AListItem): Promise<AListItem> {
+  if (item.encrypted) {
+    return decrypt(item.value).then((value) => {
+      const res = { ...item, value: value };
+      return res;
+    });
+  } else {
+    console.debug('Item not encrypted ', JSON.stringify(item));
+    await saveItem(item);
+  }
+  return item;
+}
+
+export async function clearLocalAsyncStorage(): Promise<void> {
+  const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith('_ali_'));
+  return await AsyncStorage.multiRemove(keys);
 }
