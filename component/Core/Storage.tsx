@@ -45,9 +45,9 @@ export async function getItem(name: string, userId: string): Promise<AListItem |
   return item;
 }
 
-export async function addTimestampToItems(): Promise<void[]> {
+export async function addTimestampToItems(userid: string): Promise<void[]> {
   return Promise.all(
-    (await getAllItems())
+    (await getAllItems(userid))
       .filter((item) => !item.timestamp)
       .map((item) => {
         return replaceItem(item, { ...item, timestamp: Date.now() });
@@ -75,23 +75,17 @@ export async function getAllItems(userId: string): Promise<Array<AListItem>> {
   });
 }
 
-export async function getItems(userId: string, filter: string): Promise<Array<AListItem>> {
+export async function getItems(
+  userId: string,
+  filter: string | null = null
+): Promise<Array<AListItem>> {
+  // Fetch all items for the user from Firestore
+  const allItems = await getAllItems(userId);
   if (filter === '' || filter === null) {
-    return getAllItems(userId);
+    return allItems;
   }
-  const keys = await AsyncStorage.getAllKeys();
-  const kvp = await AsyncStorage.multiGet(
-    keys.filter(
-      (k) => k.startsWith('_ali_') && k.substring(5).toLowerCase().includes(filter.toLowerCase())
-    )
-  );
-  return Promise.all(
-    kvp
-      .filter((kvp) => kvp[1] !== null)
-      .map((kvp) => {
-        return maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem);
-      })
-  );
+  // Filter items by name (case-insensitive)
+  return allItems.filter((item) => item.name.toLowerCase().includes(filter.toLowerCase()));
 }
 
 async function maybeDecrypt(item: AListItem): Promise<AListItem> {
@@ -115,7 +109,7 @@ async function maybeDecrypt(item: AListItem): Promise<AListItem> {
 export async function saveItem(item: AListItem) {
   const res = { ...item, encrypted: true };
   res.value = await encrypt(item.value);
-  await AsyncStorage.setItem('_ali_' + item.name, JSON.stringify(res));
+  await firestore().collection('Items').doc(res.userId).update(res);
 }
 
 export async function replaceItem(old: AListItem, newItem: AListItem, timestamp: boolean = true) {
