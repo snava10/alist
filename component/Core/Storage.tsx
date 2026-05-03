@@ -159,6 +159,7 @@ export async function getItems(
   userId: string,
   filter: string | null = null
 ): Promise<Array<AListItem>> {
+  console.log(`Get items for user: ${userId}`);
   // Fetch all items for the user from Firestore
   const allItems = await getAllItems(userId);
   if (filter === '' || filter === null) {

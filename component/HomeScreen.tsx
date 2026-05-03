@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, View, Text, TextInput } from 'react-native';
 import AddItemModal from './AddItemModal';
 import ConfirmationModal from './ConfirmationModal';
+import auth from '@react-native-firebase/auth';
 import {
   addTimestampToItems,
   createUserSettings,
@@ -28,9 +29,10 @@ export default function HomeScreen({ route }: any) {
   const [searchText, setSearchText] = useState('');
 
   const loadItemsFromLocalStorage = async (st: string) => {
-    console.log('Loading items from local storage');
+    console.log('Loading items');
     try {
-      const items = await getItems(st);
+      const userId = auth().currentUser?.uid ?? '';
+      const items = await getItems(userId, st);
       console.log('Items ', items);
       setAListItems(items);
       route.params.itemsReload = 0;
