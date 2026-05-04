@@ -13,7 +13,7 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 jest.mock('../Core/Security', () => ({
-  encrypt: jest.fn().mockResolvedValue('encrypted-value'),
+  encrypt: jest.fn().mockResolvedValue('ZW5jcnlwdGVkLXZhbHVl'),
   decrypt: jest.fn().mockResolvedValue('decrypted-value'),
   getRSAKeys: jest.fn().mockResolvedValue({
     public: 'public-key',
@@ -226,73 +226,100 @@ describe('HomeScreen - Rendering Tests', () => {
     });
   });
 
-  it('removes an item via confirmation modal', async () => {
-    mockAsyncStorageWithItems([{ name: 'item1', value: 'value1', timestamp: 1, encrypted: false }]);
+  describe('confirmation modal testing', () => {
+    beforeEach(async () => {
+      setFirestoreClientForTesting(mockFirestore);
+      (auth as any).mockImplementation(() => ({
+        currentUser: mockUser,
+        useEmulator: jest.fn(),
+      }));
+      await mockFirestore.collection('Items').doc(`${mockUser.uid}_item1`).set({
+        name: 'item1',
+        value: 'dmFsdWUx',
+        timestamp: 1,
+        userId: mockUser.uid,
+        encrypted: true,
+      });
+    });
+    it('removes an item via confirmation modal', async () => {
+      mockAsyncStorageWithItems([
+        { name: 'item1', value: 'value1', timestamp: 1, encrypted: false },
+      ]);
 
-    renderHomeScreen({ user: mockUser, itemsReload: 0 });
+      renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
-    await waitFor(() => {
-      expect(screen.getByText('item1')).toBeTruthy();
+      await waitFor(() => {
+        expect(screen.getByText('item1')).toBeTruthy();
+      });
+
+      // Press the delete icon on the item
+      fireEvent.press(screen.getByTestId('trash-outline'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Yes')).toBeTruthy();
+      });
+
+      // Clear storage to simulate item being removed
+      (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([]);
+      (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([]);
+      (AsyncStorage.removeItem as jest.Mock).mockResolvedValue(undefined);
+
+      fireEvent.press(screen.getByText('Yes'));
+
+      await waitFor(() => {
+        expect(screen.getByText(/to add a new item/)).toBeTruthy();
+      });
     });
 
-    // Press the delete icon on the item
-    fireEvent.press(screen.getByTestId('trash-outline'));
+    it('cancels item removal via confirmation modal', async () => {
+      mockAsyncStorageWithItems([
+        { name: 'item1', value: 'value1', timestamp: 1, encrypted: false },
+      ]);
 
-    await waitFor(() => {
-      expect(screen.getByText('Yes')).toBeTruthy();
+      renderHomeScreen({ user: mockUser, itemsReload: 0 });
+
+      await waitFor(() => {
+        expect(screen.getByText('item1')).toBeTruthy();
+      });
+
+      fireEvent.press(screen.getByTestId('trash-outline'));
+
+      await waitFor(() => {
+        expect(screen.getByText('No')).toBeTruthy();
+      });
+
+      fireEvent.press(screen.getByText('No'));
+
+      await waitFor(() => {
+        expect(screen.getByText('item1')).toBeTruthy();
+      });
     });
 
-    // Clear storage to simulate item being removed
-    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([]);
-    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([]);
-    (AsyncStorage.removeItem as jest.Mock).mockResolvedValue(undefined);
+    it('opens edit modal when edit icon is pressed', async () => {
+      mockAsyncStorageWithItems([
+        { name: 'item1', value: 'value1', timestamp: 1, encrypted: false },
+      ]);
 
-    fireEvent.press(screen.getByText('Yes'));
+      renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
-    await waitFor(() => {
-      expect(screen.getByText(/to add a new item/)).toBeTruthy();
-    });
-  });
+      await waitFor(() => {
+        expect(screen.getByText('item1')).toBeTruthy();
+      });
 
-  it('cancels item removal via confirmation modal', async () => {
-    mockAsyncStorageWithItems([{ name: 'item1', value: 'value1', timestamp: 1, encrypted: false }]);
+      fireEvent.press(screen.getByTestId('create-outline'));
 
-    renderHomeScreen({ user: mockUser, itemsReload: 0 });
-
-    await waitFor(() => {
-      expect(screen.getByText('item1')).toBeTruthy();
-    });
-
-    fireEvent.press(screen.getByTestId('trash-outline'));
-
-    await waitFor(() => {
-      expect(screen.getByText('No')).toBeTruthy();
-    });
-
-    fireEvent.press(screen.getByText('No'));
-
-    await waitFor(() => {
-      expect(screen.getByText('item1')).toBeTruthy();
-    });
-  });
-
-  it('opens edit modal when edit icon is pressed', async () => {
-    mockAsyncStorageWithItems([{ name: 'item1', value: 'value1', timestamp: 1, encrypted: false }]);
-
-    renderHomeScreen({ user: mockUser, itemsReload: 0 });
-
-    await waitFor(() => {
-      expect(screen.getByText('item1')).toBeTruthy();
-    });
-
-    fireEvent.press(screen.getByTestId('create-outline'));
-
-    await waitFor(() => {
-      expect(screen.getByText('Save')).toBeTruthy();
+      await waitFor(() => {
+        expect(screen.getByText('Save')).toBeTruthy();
+      });
     });
   });
 
   it('saves a new item and logs add_item analytics event', async () => {
+    setFirestoreClientForTesting(mockFirestore);
+    (auth as any).mockImplementation(() => ({
+      currentUser: mockUser,
+      useEmulator: jest.fn(),
+    }));
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
     await waitFor(() => {
@@ -308,21 +335,37 @@ describe('HomeScreen - Rendering Tests', () => {
     fireEvent.changeText(screen.getByPlaceholderText('Name'), 'new-item');
     fireEvent.changeText(screen.getByPlaceholderText('Value'), 'new-value');
 
-    mockAsyncStorageWithItems([
-      { name: 'new-item', value: 'new-value', timestamp: 1, encrypted: false },
-    ]);
-
     await act(async () => {
       fireEvent.press(screen.getByText('Save'));
     });
 
     await waitFor(() => {
       expect(mockLogEvent).toHaveBeenCalledWith('add_item', { name: 'new-item' });
+      expect(screen.getByText('new-item')).toBeTruthy();
+    });
+
+    const savedDoc = await mockFirestore.collection('Items').doc(`${mockUser.uid}_new-item`).get();
+    expect(savedDoc.exists).toBe(true);
+    expect(savedDoc.data()).toMatchObject({
+      name: 'new-item',
+      userId: mockUser.uid,
+      encrypted: true,
     });
   });
 
   it('edits an existing item and logs edit_item analytics event', async () => {
-    mockAsyncStorageWithItems([{ name: 'item1', value: 'value1', timestamp: 1, encrypted: false }]);
+    setFirestoreClientForTesting(mockFirestore);
+    (auth as any).mockImplementation(() => ({
+      currentUser: mockUser,
+      useEmulator: jest.fn(),
+    }));
+    await mockFirestore.collection('Items').doc(`${mockUser.uid}_item1`).set({
+      name: 'item1',
+      value: 'dmFsdWUx',
+      timestamp: 1,
+      userId: mockUser.uid,
+      encrypted: true,
+    });
 
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 

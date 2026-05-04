@@ -160,22 +160,26 @@ export default function HomeScreen({ route }: any) {
         <AddItemModal
           item={selectedItem}
           saveItem={async (old: AListItem, item: AListItem) => {
+            const itemWithUser = {
+              ...item,
+              userId: item.userId ?? user?.uid,
+            };
             if (old.name) {
               analytics()
                 .logEvent('edit_item', {
-                  name: item.name,
+                  name: itemWithUser.name,
                 })
                 .then((_) => console.log('item edit logged'))
                 .catch((_) => console.error("Couldn't log edit item event"));
             } else {
               analytics()
                 .logEvent('add_item', {
-                  name: item.name,
+                  name: itemWithUser.name,
                 })
                 .then((_) => console.log('add item logged'))
                 .catch((_) => console.log('add item log failed'));
             }
-            await replaceItem(old, item);
+            await replaceItem(old, itemWithUser);
             await loadItemsFromLocalStorage(searchText);
           }}
           hideModal={hideModal}

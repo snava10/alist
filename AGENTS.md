@@ -83,3 +83,8 @@ type UserSettings = { userId: string; backup: BackupCadence; membership: Members
 ## Formatting
 
 - After every change run: npm run format
+
+## Testing
+
+- Run tests: npm test
+- Run test coverage: npm run test:coverage
