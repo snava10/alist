@@ -28,7 +28,7 @@ type FirestoreDocRef = {
   get: () => Promise<FirestoreDocSnapshot>;
   set: (data: FirestoreDocData) => Promise<void>;
   update: (data: Partial<FirestoreDocData>) => Promise<void>;
-  delete?: () => Promise<void>;
+  delete: () => Promise<void>;
   ref?: {
     delete: () => Promise<void>;
   };
@@ -248,14 +248,10 @@ export async function replaceItem(old: AListItem, newItem: AListItem, timestamp:
 }
 
 export async function removeItem(item: AListItem) {
-  if (item) {
-    if (item.userId) {
-      await getFirestoreClient()
-        .collection('Items')
-        .doc(getItemDocId(item.name, item.userId))
-        .delete();
-    }
+  if (!item.userId) {
+    return;
   }
+  await getFirestoreClient().collection('Items').doc(getItemDocId(item.name, item.userId)).delete();
 }
 
 /**
