@@ -202,7 +202,7 @@ export async function removeItem(item: AListItem) {
       await getFirestoreClient()
         .collection('Items')
         .doc(getItemDocId(item.name, item.userId))
-        .delete?.();
+        .delete();
     }
   }
 }
