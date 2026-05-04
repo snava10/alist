@@ -395,10 +395,25 @@ describe('HomeScreen - Rendering Tests', () => {
   });
 
   it('clears search via backspace icon', async () => {
-    mockAsyncStorageWithItems([
-      { name: 'apple', value: 'v1', timestamp: 1, encrypted: false },
-      { name: 'banana', value: 'v2', timestamp: 2, encrypted: false },
-    ]);
+    setFirestoreClientForTesting(mockFirestore);
+    (auth as any).mockImplementation(() => ({
+      currentUser: mockUser,
+      useEmulator: jest.fn(),
+    }));
+    await mockFirestore.collection('Items').doc(`${mockUser.uid}_apple`).set({
+      name: 'apple',
+      value: 'dmFsdWUx',
+      timestamp: 1,
+      userId: mockUser.uid,
+      encrypted: true,
+    });
+    await mockFirestore.collection('Items').doc(`${mockUser.uid}_banana`).set({
+      name: 'banana',
+      value: 'dmFsdWUx',
+      timestamp: 1,
+      userId: mockUser.uid,
+      encrypted: true,
+    });
 
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
@@ -413,11 +428,6 @@ describe('HomeScreen - Rendering Tests', () => {
       expect(screen.getByTestId('backspace-outline')).toBeTruthy();
     });
 
-    mockAsyncStorageWithItems([
-      { name: 'apple', value: 'v1', timestamp: 1, encrypted: false },
-      { name: 'banana', value: 'v2', timestamp: 2, encrypted: false },
-    ]);
-
     fireEvent.press(screen.getByTestId('backspace-outline'));
 
     await waitFor(() => {
@@ -426,7 +436,18 @@ describe('HomeScreen - Rendering Tests', () => {
   });
 
   it('renders confirmation modal with item name', async () => {
-    mockAsyncStorageWithItems([{ name: 'item1', value: 'value1', timestamp: 1, encrypted: false }]);
+    setFirestoreClientForTesting(mockFirestore);
+    (auth as any).mockImplementation(() => ({
+      currentUser: mockUser,
+      useEmulator: jest.fn(),
+    }));
+    await mockFirestore.collection('Items').doc(`${mockUser.uid}_item1`).set({
+      name: 'item1',
+      value: 'dmFsdWUx',
+      timestamp: 1,
+      userId: mockUser.uid,
+      encrypted: true,
+    });
 
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
@@ -442,11 +463,27 @@ describe('HomeScreen - Rendering Tests', () => {
   });
 
   it('renders multiple items in list', async () => {
-    mockAsyncStorageWithItems([
+    setFirestoreClientForTesting(mockFirestore);
+    (auth as any).mockImplementation(() => ({
+      currentUser: mockUser,
+      useEmulator: jest.fn(),
+    }));
+
+    const items = [
       { name: 'item1', value: 'value1', timestamp: 1, encrypted: false },
       { name: 'item2', value: 'value2', timestamp: 2, encrypted: false },
       { name: 'item3', value: 'value3', timestamp: 3, encrypted: false },
-    ]);
+    ];
+
+    for (const item of items) {
+      await mockFirestore.collection('Items').doc(`${mockUser.uid}_${item.name}`).set({
+        name: item.name,
+        value: 'dmFsdWUx',
+        timestamp: 1,
+        userId: mockUser.uid,
+        encrypted: true,
+      });
+    }
 
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
@@ -458,10 +495,20 @@ describe('HomeScreen - Rendering Tests', () => {
   });
 
   it('shows search bar when items exist', async () => {
-    mockAsyncStorageWithItems([{ name: 'item1', value: 'value1', timestamp: 1, encrypted: false }]);
+    setFirestoreClientForTesting(mockFirestore);
+    (auth as any).mockImplementation(() => ({
+      currentUser: mockUser,
+      useEmulator: jest.fn(),
+    }));
+    await mockFirestore.collection('Items').doc(`${mockUser.uid}_item1`).set({
+      name: 'item1',
+      value: 'dmFsdWUx',
+      timestamp: 1,
+      userId: mockUser.uid,
+      encrypted: true,
+    });
 
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
-
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Search...')).toBeTruthy();
     });
