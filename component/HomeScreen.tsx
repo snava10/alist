@@ -29,7 +29,6 @@ export default function HomeScreen({ route }: any) {
   const [searchText, setSearchText] = useState('');
 
   const loadItemsFromLocalStorage = async (st: string) => {
-    console.log('Loading items');
     try {
       const userId = auth().currentUser?.uid ?? '';
       const items = await getItems(userId, st);

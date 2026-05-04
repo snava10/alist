@@ -87,6 +87,11 @@ describe('HomeScreen - Rendering Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFirestore = new MockFirestore();
+    setFirestoreClientForTesting(mockFirestore);
+    (auth as any).mockImplementation(() => ({
+      currentUser: null,
+      useEmulator: jest.fn(),
+    }));
     (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([]);
     (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([]);
   });
