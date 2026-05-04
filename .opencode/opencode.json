@@ -3,38 +3,45 @@
   "provider": {
     "ollama": {
       "npm": "@ai-sdk/openai-compatible",
-      "name": "Ollama Local",
+      "name": "Ollama",
       "options": {
-        "baseURL": "http://192.168.0.210:11434/v1"
+        "baseURL": "http://192.168.0.208:11434/v1"
       },
       "models": {
-        "qwen2.5-coder:7b": {
-          "name": "qwen2.5-coder:7b"
+        "llama3.1:8b": {
+          "name": "llama3.1:8b"
         },
-        "qwen2.5-coder:32b": {
-          "name": "qwen2.5-coder:32b"
-        },
-        "deepseek-coder:6.7b": {
-          "name": "deepseek-coder:6.7b"
+        "qwen2.5:32b-16K": {
+          "tools": true
         }
       }
     }
   },
-  "model": "ollama/deepseek-coder:6.7b",
+  "model": "ollama/qwen2.5:32b-16K",
   "tools": {
+    "edit": true,
     "write": true,
     "bash": true
   },
-  "default_agent": "code",
+  "default_agent": "build",
   "agent": {
+    "build": {
+      "mode": "primary",
+      "temperature": 0.1,
+      "prompt": "You are the build agent for this workspace. When the user asks for code changes, create or modify files in the workspace using the available edit/write tools instead of only describing commands or suggesting manual steps. Always write files using workspace-relative paths (for example, index.js) and never root-absolute paths like /index.js. If you invoke bash, include all required tool-call fields (including a description) and avoid malformed tool arguments. Read relevant files first, make the smallest correct change, and summarize what you changed after the tools run. Only fall back to textual instructions when a tool is unavailable or the user explicitly asks for guidance instead of edits.",
+      "permission": {
+        "edit": "ask",
+        "bash": "ask"
+      }
+    },
     "code-reviewer": {
       "description": "Reviews code for best practices and potential issues",
-      "model": "deepseek-coder:6.7b",
+      "mode": "subagent",
+      "model": "ollama/llama3.1:8b",
       "prompt": "You are a code reviewer. Focus on security, performance, and maintainability.",
-      "tools": {
-        // Disable file modification tools for review-only agent
-        "write": false,
-        "edit": false
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
       }
     }
   },
@@ -44,7 +51,7 @@
     }
   },
   "permission": {
-    "edit": "ask",
+    "edit": "allow",
     "bash": "ask"
   },
   "compaction": {
@@ -56,5 +63,5 @@
     "ignore": ["node_modules/**", "dist/**", ".git/**"]
   },
   "mcp": {},
-  "instructions": ["CONTRIBUTING.md", "docs/guidelines.md", ".cursor/rules/*.md"]
+  "instructions": ["AGENTS.md"]
 }

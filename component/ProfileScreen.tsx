@@ -223,6 +223,12 @@ export default function ProfileScreen({ route }: any) {
           item={null}
           acceptCallbackFn={async () => {
             console.log('Restoring from backup');
+            const currentUser = user as FirebaseAuthTypes.User;
+            // await restoreFromBackup(currentUser.uid);
+            await analytics().logEvent('backup_restore', {
+              provider: currentUser.providerId,
+              uid: currentUser.uid,
+            });
           }}
           rejectCallbackFn={() => {
             setShowRestoreFromBackupModal(false);
