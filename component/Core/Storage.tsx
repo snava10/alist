@@ -92,7 +92,7 @@ export function resetFirestoreClientForTesting() {
 }
 
 function getItemDocId(name: string, userId: string): string {
-  return `${userId}_${name.replace(' ', '')}`;
+  return `${encodeURIComponent(userId)}_${encodeURIComponent(name)}`;
 }
 
 /**
