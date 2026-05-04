@@ -1,4 +1,5 @@
 import {
+  addSearchIndexToItems,
   addTimestampToItems,
   backupLocalStorageToFirestore,
   clearLocalAsyncStorage,
@@ -23,6 +24,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 describe('Storage', () => {
   let mockFirestore: MockFirestore;
 
+  const buildSearchIndex = (name: string) => {
+    const normalized = name.trim().toLowerCase();
+    const tokens = new Set<string>();
+
+    for (let start = 0; start < normalized.length; start += 1) {
+      for (let end = start + 1; end <= normalized.length; end += 1) {
+        tokens.add(normalized.slice(start, end));
+      }
+    }
+
+    return [...tokens];
+  };
+
   beforeAll(async () => {
     await generateAndStoreKeys(true);
   });
@@ -46,6 +60,7 @@ describe('Storage', () => {
           ...item,
           value,
           encrypted: true,
+          searchIndex: buildSearchIndex(item.name),
         });
       })
     );
@@ -129,6 +144,24 @@ describe('Storage', () => {
     expect(storedDoc.exists).toBe(true);
     expect(stored?.encrypted).toBe(true);
     expect(stored?.value).not.toBe('secret');
+    expect(stored?.searchIndex).toContain('myitem');
+  });
+
+  it('adds search indexes to items that are missing them', async () => {
+    const encryptedValue = await encrypt('secret');
+    await mockFirestore.collection('Items').doc('u1_secret').set({
+      name: 'secret',
+      value: encryptedValue,
+      timestamp: 1,
+      userId: 'u1',
+      encrypted: true,
+    });
+
+    const result = await addSearchIndexToItems('u1');
+    const updated = await mockFirestore.collection('Items').doc('u1_secret').get();
+
+    expect(result).toHaveLength(1);
+    expect(updated.data()?.searchIndex).toContain('sec');
   });
 
   it('replaceItem removes the old firestore doc and saves the new one', async () => {

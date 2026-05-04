@@ -33,11 +33,13 @@ const mockCreateUserSettings = jest
   .fn()
   .mockResolvedValue({ userId: 'test', backup: 'DAILY', membership: 'FREE' });
 const mockAddTimestampToItems = jest.fn().mockResolvedValue([]);
+const mockAddSearchIndexToItems = jest.fn().mockResolvedValue([]);
 
 jest.mock('../Core/Storage', () => ({
   ...jest.requireActual('../Core/Storage'),
   createUserSettings: (...args: any[]) => mockCreateUserSettings(...args),
   addTimestampToItems: (...args: any[]) => mockAddTimestampToItems(...args),
+  addSearchIndexToItems: (...args: any[]) => mockAddSearchIndexToItems(...args),
 }));
 
 import React from 'react';
@@ -79,6 +81,37 @@ const mockAsyncStorageWithItems = (items: any[]) => {
   });
 };
 
+const buildSearchIndex = (name: string) => {
+  const normalized = name.trim().toLowerCase();
+  const tokens = new Set<string>();
+
+  for (let start = 0; start < normalized.length; start += 1) {
+    for (let end = start + 1; end <= normalized.length; end += 1) {
+      tokens.add(normalized.slice(start, end));
+    }
+  }
+
+  return [...tokens];
+};
+
+const seedFirestoreItem = async (
+  mockFirestore: MockFirestore,
+  userId: string,
+  item: { name: string; timestamp: number; value?: string }
+) => {
+  await mockFirestore
+    .collection('Items')
+    .doc(`${userId}_${item.name}`)
+    .set({
+      name: item.name,
+      value: item.value ?? 'dmFsdWUx',
+      timestamp: item.timestamp,
+      userId,
+      encrypted: true,
+      searchIndex: buildSearchIndex(item.name),
+    });
+};
+
 describe('HomeScreen - Rendering Tests', () => {
   const mockUser = { uid: 'test-user-123', isAnonymous: false };
   const mockAnonymousUser = { uid: 'anon-user', isAnonymous: true };
@@ -94,6 +127,7 @@ describe('HomeScreen - Rendering Tests', () => {
     }));
     (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([]);
     (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([]);
+    mockAddSearchIndexToItems.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -107,13 +141,7 @@ describe('HomeScreen - Rendering Tests', () => {
       useEmulator: jest.fn(),
     }));
 
-    await mockFirestore.collection('Items').doc(`${mockUser.uid}_item1`).set({
-      name: 'item1',
-      value: 'dmFsdWUx',
-      timestamp: 1,
-      userId: mockUser.uid,
-      encrypted: true,
-    });
+    await seedFirestoreItem(mockFirestore, mockUser.uid, { name: 'item1', timestamp: 1 });
 
     mockAsyncStorageWithItems([
       {
@@ -155,20 +183,8 @@ describe('HomeScreen - Rendering Tests', () => {
       useEmulator: jest.fn(),
     }));
 
-    await mockFirestore.collection('Items').doc(`${mockUser.uid}_apple`).set({
-      name: 'apple',
-      value: 'dmFsdWUx',
-      timestamp: 1,
-      userId: mockUser.uid,
-      encrypted: true,
-    });
-    await mockFirestore.collection('Items').doc(`${mockUser.uid}_banana`).set({
-      name: 'banana',
-      value: 'dmFsdWUx',
-      timestamp: 2,
-      userId: mockUser.uid,
-      encrypted: true,
-    });
+    await seedFirestoreItem(mockFirestore, mockUser.uid, { name: 'apple', timestamp: 1 });
+    await seedFirestoreItem(mockFirestore, mockUser.uid, { name: 'banana', timestamp: 2 });
 
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
@@ -192,13 +208,7 @@ describe('HomeScreen - Rendering Tests', () => {
       currentUser: mockUser,
       useEmulator: jest.fn(),
     }));
-    await mockFirestore.collection('Items').doc(`${mockUser.uid}_apple`).set({
-      name: 'apple',
-      value: 'dmFsdWUx',
-      timestamp: 1,
-      userId: mockUser.uid,
-      encrypted: true,
-    });
+    await seedFirestoreItem(mockFirestore, mockUser.uid, { name: 'apple', timestamp: 1 });
     mockAsyncStorageWithItems([{ name: 'apple', value: 'v1', timestamp: 1, encrypted: false }]);
 
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
@@ -238,13 +248,7 @@ describe('HomeScreen - Rendering Tests', () => {
         currentUser: mockUser,
         useEmulator: jest.fn(),
       }));
-      await mockFirestore.collection('Items').doc(`${mockUser.uid}_item1`).set({
-        name: 'item1',
-        value: 'dmFsdWUx',
-        timestamp: 1,
-        userId: mockUser.uid,
-        encrypted: true,
-      });
+      await seedFirestoreItem(mockFirestore, mockUser.uid, { name: 'item1', timestamp: 1 });
     });
     it('removes an item via confirmation modal', async () => {
       mockAsyncStorageWithItems([
@@ -364,13 +368,7 @@ describe('HomeScreen - Rendering Tests', () => {
       currentUser: mockUser,
       useEmulator: jest.fn(),
     }));
-    await mockFirestore.collection('Items').doc(`${mockUser.uid}_item1`).set({
-      name: 'item1',
-      value: 'dmFsdWUx',
-      timestamp: 1,
-      userId: mockUser.uid,
-      encrypted: true,
-    });
+    await seedFirestoreItem(mockFirestore, mockUser.uid, { name: 'item1', timestamp: 1 });
 
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
@@ -405,20 +403,8 @@ describe('HomeScreen - Rendering Tests', () => {
       currentUser: mockUser,
       useEmulator: jest.fn(),
     }));
-    await mockFirestore.collection('Items').doc(`${mockUser.uid}_apple`).set({
-      name: 'apple',
-      value: 'dmFsdWUx',
-      timestamp: 1,
-      userId: mockUser.uid,
-      encrypted: true,
-    });
-    await mockFirestore.collection('Items').doc(`${mockUser.uid}_banana`).set({
-      name: 'banana',
-      value: 'dmFsdWUx',
-      timestamp: 1,
-      userId: mockUser.uid,
-      encrypted: true,
-    });
+    await seedFirestoreItem(mockFirestore, mockUser.uid, { name: 'apple', timestamp: 1 });
+    await seedFirestoreItem(mockFirestore, mockUser.uid, { name: 'banana', timestamp: 1 });
 
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
@@ -446,13 +432,7 @@ describe('HomeScreen - Rendering Tests', () => {
       currentUser: mockUser,
       useEmulator: jest.fn(),
     }));
-    await mockFirestore.collection('Items').doc(`${mockUser.uid}_item1`).set({
-      name: 'item1',
-      value: 'dmFsdWUx',
-      timestamp: 1,
-      userId: mockUser.uid,
-      encrypted: true,
-    });
+    await seedFirestoreItem(mockFirestore, mockUser.uid, { name: 'item1', timestamp: 1 });
 
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
@@ -481,13 +461,7 @@ describe('HomeScreen - Rendering Tests', () => {
     ];
 
     for (const item of items) {
-      await mockFirestore.collection('Items').doc(`${mockUser.uid}_${item.name}`).set({
-        name: item.name,
-        value: 'dmFsdWUx',
-        timestamp: 1,
-        userId: mockUser.uid,
-        encrypted: true,
-      });
+      await seedFirestoreItem(mockFirestore, mockUser.uid, { name: item.name, timestamp: 1 });
     }
 
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
@@ -505,13 +479,7 @@ describe('HomeScreen - Rendering Tests', () => {
       currentUser: mockUser,
       useEmulator: jest.fn(),
     }));
-    await mockFirestore.collection('Items').doc(`${mockUser.uid}_item1`).set({
-      name: 'item1',
-      value: 'dmFsdWUx',
-      timestamp: 1,
-      userId: mockUser.uid,
-      encrypted: true,
-    });
+    await seedFirestoreItem(mockFirestore, mockUser.uid, { name: 'item1', timestamp: 1 });
 
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
     await waitFor(() => {

@@ -37,6 +37,7 @@ type FirestoreDocRef = {
 type FirestoreQuerySnapshot = {
   empty: boolean;
   docs: Array<{
+    id: string;
     data: () => FirestoreDocData;
     ref: {
       delete: () => Promise<void>;
@@ -44,15 +45,14 @@ type FirestoreQuerySnapshot = {
   }>;
 };
 
+type FirestoreQueryRef = {
+  where: (field: string, op: FirestoreWhereOperator, value: unknown) => FirestoreQueryRef;
+  get: () => Promise<FirestoreQuerySnapshot>;
+};
+
 type FirestoreCollectionRef = {
   doc: (id: string) => FirestoreDocRef;
-  where: (
-    field: string,
-    op: FirestoreWhereOperator,
-    value: unknown
-  ) => {
-    get: () => Promise<FirestoreQuerySnapshot>;
-  };
+  where: (field: string, op: FirestoreWhereOperator, value: unknown) => FirestoreQueryRef;
 };
 
 export type StorageFirestore = {
@@ -95,6 +95,43 @@ function getItemDocId(name: string, userId: string): string {
   return `${encodeURIComponent(userId)}_${encodeURIComponent(name)}`;
 }
 
+function normalizeSearchTerm(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function buildSearchIndex(name: string): string[] {
+  const normalized = normalizeSearchTerm(name);
+  const tokens = new Set<string>();
+
+  for (let start = 0; start < normalized.length; start += 1) {
+    for (let end = start + 1; end <= normalized.length; end += 1) {
+      const token = normalized.slice(start, end);
+      if (token) {
+        tokens.add(token);
+      }
+    }
+  }
+
+  return [...tokens];
+}
+
+async function mapFirestoreDataToItem(data: FirestoreDocData): Promise<AListItem> {
+  const raw = validateFirestoreItem(data);
+  const item: AListItem = {
+    name: raw.name,
+    value: raw.value,
+    timestamp: raw.timestamp,
+    userId: raw.userId,
+    ...(raw.encrypted !== undefined && { encrypted: raw.encrypted }),
+  };
+
+  if (item.encrypted) {
+    item.value = await decrypt(item.value);
+  }
+
+  return item;
+}
+
 /**
  * Fetches an item from Firestore for a given user and item name.
  * @param name The name of the item (not prefixed)
@@ -105,18 +142,11 @@ export async function getItem(name: string, userId: string): Promise<AListItem |
   if (!doc.exists) {
     return null;
   }
-  const raw = validateFirestoreItem(doc.data());
-  let item: AListItem = {
-    name: raw.name,
-    value: raw.value,
-    timestamp: raw.timestamp,
-    userId: raw.userId,
-    ...(raw.encrypted !== undefined && { encrypted: raw.encrypted }),
-  };
-  if (item.encrypted) {
-    item.value = await decrypt(item.value);
+  const data = doc.data();
+  if (!data) {
+    return null;
   }
-  return item;
+  return mapFirestoreDataToItem(data);
 }
 
 export async function addTimestampToItems(userid: string): Promise<void[]> {
@@ -142,22 +172,7 @@ export async function getAllItems(userId: string): Promise<Array<AListItem>> {
     .where('userId', '==', userId)
     .get();
   if (querySnapshot.empty) return [];
-  return Promise.all(
-    querySnapshot.docs.map(async (doc) => {
-      const raw = validateFirestoreItem(doc.data());
-      const item: AListItem = {
-        name: raw.name,
-        value: raw.value,
-        timestamp: raw.timestamp,
-        userId: raw.userId,
-        ...(raw.encrypted !== undefined && { encrypted: raw.encrypted }),
-      };
-      if (item.encrypted) {
-        item.value = await decrypt(item.value);
-      }
-      return item;
-    })
-  );
+  return Promise.all(querySnapshot.docs.map((doc) => mapFirestoreDataToItem(doc.data())));
 }
 
 export async function getItems(
@@ -165,13 +180,20 @@ export async function getItems(
   filter: string | null = null
 ): Promise<Array<AListItem>> {
   console.log(`Get items for user: ${userId}`);
-  // Fetch all items for the user from Firestore
-  const allItems = await getAllItems(userId);
-  if (filter === '' || filter === null) {
-    return allItems;
+  const normalizedFilter = normalizeSearchTerm(filter ?? '');
+  if (!normalizedFilter) {
+    return getAllItems(userId);
   }
-  // Filter items by name (case-insensitive)
-  return allItems.filter((item) => item.name.toLowerCase().includes(filter.toLowerCase()));
+
+  const querySnapshot = await getFirestoreClient()
+    .collection('Items')
+    .where('userId', '==', userId)
+    .where('searchIndex', 'array-contains', normalizedFilter)
+    .get();
+
+  if (querySnapshot.empty) return [];
+
+  return Promise.all(querySnapshot.docs.map((doc) => mapFirestoreDataToItem(doc.data())));
 }
 
 /**
@@ -183,9 +205,38 @@ export async function saveItem(item: AListItem) {
   if (!item.userId) {
     throw new Error('saveItem requires item.userId');
   }
-  const res = { ...item, encrypted: true };
+  const res = {
+    ...item,
+    encrypted: true,
+    searchIndex: buildSearchIndex(item.name),
+  };
   res.value = await encrypt(item.value);
   await getFirestoreClient().collection('Items').doc(getItemDocId(item.name, item.userId)).set(res);
+}
+
+export async function addSearchIndexToItems(userId: string): Promise<void[]> {
+  const querySnapshot = await getFirestoreClient()
+    .collection('Items')
+    .where('userId', '==', userId)
+    .get();
+
+  if (querySnapshot.empty) {
+    return [];
+  }
+
+  return Promise.all(
+    querySnapshot.docs
+      .filter((doc) => {
+        const searchIndex = doc.data().searchIndex;
+        return !Array.isArray(searchIndex) || searchIndex.length === 0;
+      })
+      .map((doc) =>
+        getFirestoreClient()
+          .collection('Items')
+          .doc(doc.id)
+          .update({ searchIndex: buildSearchIndex(validateFirestoreItem(doc.data()).name) })
+      )
+  );
 }
 
 export async function replaceItem(old: AListItem, newItem: AListItem, timestamp: boolean = true) {

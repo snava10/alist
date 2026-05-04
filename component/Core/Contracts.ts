@@ -35,6 +35,7 @@ export const FirestoreItemContract = z
     timestamp: z.number(),
     userId: z.string().min(1),
     encrypted: z.boolean().optional(),
+    searchIndex: z.array(z.string().min(1)).optional(),
   })
   .strict();
 
