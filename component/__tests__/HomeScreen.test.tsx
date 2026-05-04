@@ -46,7 +46,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import auth from '@react-native-firebase/auth';
 import HomeScreen from '../HomeScreen';
+import { resetFirestoreClientForTesting, setFirestoreClientForTesting } from '../Core/Storage';
+import { MockFirestore } from '../Core/__tests__/MockFirestore';
 
 const Stack = createNativeStackNavigator();
 
@@ -79,14 +82,34 @@ const mockAsyncStorageWithItems = (items: any[]) => {
 describe('HomeScreen - Rendering Tests', () => {
   const mockUser = { uid: 'test-user-123', isAnonymous: false };
   const mockAnonymousUser = { uid: 'anon-user', isAnonymous: true };
+  let mockFirestore: MockFirestore;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFirestore = new MockFirestore();
     (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([]);
     (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([]);
   });
 
+  afterEach(() => {
+    resetFirestoreClientForTesting();
+  });
+
   it('renders items', async () => {
+    setFirestoreClientForTesting(mockFirestore);
+    (auth as any).mockImplementation(() => ({
+      currentUser: mockUser,
+      useEmulator: jest.fn(),
+    }));
+
+    await mockFirestore.collection('Items').doc(`${mockUser.uid}_item1`).set({
+      name: 'item1',
+      value: 'dmFsdWUx',
+      timestamp: 1,
+      userId: mockUser.uid,
+      encrypted: true,
+    });
+
     mockAsyncStorageWithItems([
       {
         name: 'item1',
@@ -121,38 +144,56 @@ describe('HomeScreen - Rendering Tests', () => {
   });
 
   it('filters items with search text', async () => {
-    mockAsyncStorageWithItems([
-      { name: 'apple', value: 'v1', timestamp: 1, encrypted: false },
-      { name: 'banana', value: 'v2', timestamp: 2, encrypted: false },
-    ]);
+    setFirestoreClientForTesting(mockFirestore);
+    (auth as any).mockImplementation(() => ({
+      currentUser: mockUser,
+      useEmulator: jest.fn(),
+    }));
+
+    await mockFirestore.collection('Items').doc(`${mockUser.uid}_apple`).set({
+      name: 'apple',
+      value: 'dmFsdWUx',
+      timestamp: 1,
+      userId: mockUser.uid,
+      encrypted: true,
+    });
+    await mockFirestore.collection('Items').doc(`${mockUser.uid}_banana`).set({
+      name: 'banana',
+      value: 'dmFsdWUx',
+      timestamp: 2,
+      userId: mockUser.uid,
+      encrypted: true,
+    });
 
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
     await waitFor(() => {
       expect(screen.getByText('apple')).toBeTruthy();
+      expect(screen.getByText('banana')).toBeTruthy();
     });
 
     const searchInput = screen.getByPlaceholderText('Search...');
     fireEvent.changeText(searchInput, 'apple');
 
-    // Mock filtered results
-    (AsyncStorage.multiGet as jest.Mock).mockImplementation((keys) =>
-      Promise.resolve(
-        keys
-          .filter((k: string) => k.includes('apple'))
-          .map((k: string) => [
-            k,
-            JSON.stringify({ name: 'apple', value: 'v1', timestamp: 1, encrypted: false }),
-          ])
-      )
-    );
-
     await waitFor(() => {
       expect(screen.getByText('apple')).toBeTruthy();
+      expect(screen.queryByText('banana')).toBeNull();
     });
   });
 
   it('clears search text', async () => {
+    setFirestoreClientForTesting(mockFirestore);
+    (auth as any).mockImplementation(() => ({
+      currentUser: mockUser,
+      useEmulator: jest.fn(),
+    }));
+    await mockFirestore.collection('Items').doc(`${mockUser.uid}_apple`).set({
+      name: 'apple',
+      value: 'dmFsdWUx',
+      timestamp: 1,
+      userId: mockUser.uid,
+      encrypted: true,
+    });
     mockAsyncStorageWithItems([{ name: 'apple', value: 'v1', timestamp: 1, encrypted: false }]);
 
     renderHomeScreen({ user: mockUser, itemsReload: 0 });

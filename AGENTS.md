@@ -79,3 +79,7 @@ type UserSettings = { userId: string; backup: BackupCadence; membership: Members
 - Do not overwrite unrelated user changes.
 - If a tool is unavailable, explain the blocker briefly and then provide the manual command.
 - Never commit Google services config files (`google-services.json`, `GoogleService-Info.plist`) with real credentials.
+
+## Formatting
+
+- After every change run: npm run format

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 type FirestoreDoc = Record<string, any>;
 
 type FirestoreData = {
