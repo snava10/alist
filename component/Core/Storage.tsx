@@ -142,17 +142,22 @@ export async function getAllItems(userId: string): Promise<Array<AListItem>> {
     .where('userId', '==', userId)
     .get();
   if (querySnapshot.empty) return [];
-  return querySnapshot.docs.map((doc) => {
-    const raw = validateFirestoreItem(doc.data());
-    const item: AListItem = {
-      name: raw.name,
-      value: raw.value,
-      timestamp: raw.timestamp,
-      userId: raw.userId,
-      ...(raw.encrypted !== undefined && { encrypted: raw.encrypted }),
-    };
-    return item;
-  });
+  return Promise.all(
+    querySnapshot.docs.map(async (doc) => {
+      const raw = validateFirestoreItem(doc.data());
+      const item: AListItem = {
+        name: raw.name,
+        value: raw.value,
+        timestamp: raw.timestamp,
+        userId: raw.userId,
+        ...(raw.encrypted !== undefined && { encrypted: raw.encrypted }),
+      };
+      if (item.encrypted) {
+        item.value = await decrypt(item.value);
+      }
+      return item;
+    })
+  );
 }
 
 export async function getItems(
