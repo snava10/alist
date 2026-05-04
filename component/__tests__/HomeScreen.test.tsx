@@ -49,7 +49,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import HomeScreen from '../HomeScreen';
 import { resetFirestoreClientForTesting, setFirestoreClientForTesting } from '../Core/Storage';
-import { MockFirestore } from '../Core/__tests__/MockFirestore';
+import { MockFirestore } from '../Core/MockFirestore';
 
 const Stack = createNativeStackNavigator();
 
@@ -583,12 +583,19 @@ describe('HomeScreen - Rendering Tests', () => {
   });
 
   it('does not call createUserSettings when user is null', async () => {
+    setFirestoreClientForTesting(mockFirestore);
+    (auth as any).mockImplementation(() => ({
+      currentUser: null,
+      useEmulator: jest.fn(),
+    }));
+
     renderHomeScreen({ user: null, itemsReload: 0 });
 
     await waitFor(() => {
-      expect(mockAddTimestampToItems).toHaveBeenCalled();
+      expect(screen.getByText(/to add a new item/)).toBeTruthy();
     });
 
     expect(mockCreateUserSettings).not.toHaveBeenCalled();
+    expect(mockAddTimestampToItems).not.toHaveBeenCalled();
   });
 });

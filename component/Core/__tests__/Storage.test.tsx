@@ -17,7 +17,7 @@ import {
 } from '../Storage';
 import { BackupCadence, MembershipType, type AListItem } from '../DataModel';
 import { encrypt, generateAndStoreKeys } from '../Security';
-import { MockFirestore } from './MockFirestore';
+import { MockFirestore } from '../MockFirestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 describe('Storage', () => {
