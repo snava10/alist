@@ -64,7 +64,7 @@ export default function ProfileScreen({ route }: any) {
         }
       >
         <Text style={{ fontWeight: 'bold', fontSize: 20 }}>{displayName ?? ''}</Text>
-        <Text>{user?.uid}</Text>
+        {__DEV__ && user?.uid ? <Text>Debug UID: {user.uid}</Text> : null}
       </View>
     );
   };
