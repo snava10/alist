@@ -14,6 +14,7 @@ export let PRIVATE_TEST_KEY: string | null = null;
 export let PUBLIC_TEST_KEY: string | null = null;
 
 export async function encrypt(value: string): Promise<string> {
+  console.log('Encrypting value ', value);
   try {
     const keyPair = await getRSAKeys();
     if (!keyPair) {

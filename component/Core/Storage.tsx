@@ -7,6 +7,11 @@ import { decrypt, encrypt } from './Security';
 import { validateUserSettings, validateFirestoreItem } from './Contracts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+function isInvalidEncryptedPayloadError(error: unknown): boolean {
+  const message = String(error);
+  return message.includes('Encrypted message length is invalid');
+}
+
 type FirestoreDocData = Record<string, unknown>;
 type FirestoreWhereOperator =
   | '=='
@@ -100,6 +105,7 @@ function normalizeSearchTerm(value: string): string {
 }
 
 function buildSearchIndex(name: string): string[] {
+  console.log(`Building search index ${name}`);
   const normalized = normalizeSearchTerm(name);
   const tokens = new Set<string>();
 
@@ -126,7 +132,18 @@ async function mapFirestoreDataToItem(data: FirestoreDocData): Promise<AListItem
   };
 
   if (item.encrypted) {
-    item.value = await decrypt(item.value);
+    try {
+      item.value = await decrypt(item.value);
+    } catch (error) {
+      if (isInvalidEncryptedPayloadError(error)) {
+        console.warn(
+          `Skipping decrypt for item "${item.name}" because payload is not valid encrypted text.`
+        );
+        item.encrypted = false;
+      } else {
+        throw error;
+      }
+    }
   }
 
   return item;
@@ -202,6 +219,7 @@ export async function getItems(
  * @param item AListItem to save
  */
 export async function saveItem(item: AListItem) {
+  console.log(`Saving ${JSON.stringify(item)}`);
   if (!item.userId) {
     throw new Error('saveItem requires item.userId');
   }
@@ -211,7 +229,15 @@ export async function saveItem(item: AListItem) {
     searchIndex: buildSearchIndex(item.name),
   };
   res.value = await encrypt(item.value);
-  await getFirestoreClient().collection('Items').doc(getItemDocId(item.name, item.userId)).set(res);
+  console.log(`Encrypted result ${res.value}`);
+  await getFirestoreClient()
+    .collection('Items')
+    .doc(getItemDocId(item.name, item.userId))
+    .set(res)
+    .catch((e) => {
+      console.error(e);
+      throw e;
+    });
 }
 
 export async function addSearchIndexToItems(userId: string): Promise<void[]> {
@@ -351,10 +377,18 @@ export async function backupLocalStorageToFirestore(): Promise<AListItem[]> {
 
 async function maybeDecrypt(item: AListItem): Promise<AListItem> {
   if (item.encrypted) {
-    return decrypt(item.value).then((value) => {
-      const res = { ...item, value: value };
-      return res;
-    });
+    try {
+      const value = await decrypt(item.value);
+      return { ...item, value };
+    } catch (error) {
+      if (isInvalidEncryptedPayloadError(error)) {
+        console.warn(
+          `Skipping local decrypt for item "${item.name}" because payload is not valid encrypted text.`
+        );
+        return { ...item, encrypted: false };
+      }
+      throw error;
+    }
   } else {
     console.debug('Item not encrypted ', JSON.stringify(item));
     await saveItem(item);

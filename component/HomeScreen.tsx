@@ -159,6 +159,7 @@ export default function HomeScreen({ route }: any) {
         <AddItemModal
           item={selectedItem}
           saveItem={async (old: AListItem, item: AListItem) => {
+            console.log(`Saving ${JSON.stringify(item)}`);
             const itemWithUser = {
               ...item,
               userId: item.userId ?? user?.uid,
