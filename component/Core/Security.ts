@@ -72,7 +72,8 @@ export async function getRSAKeys(): Promise<KeyPair | null> {
 }
 
 export async function generateAndStoreKeys(testing: boolean = false): Promise<KeyPair> {
-  const keypair = forge.pki.rsa.generateKeyPair({ bits: RSA_KEY_SIZE });
+  const bits = testing ? 512 : RSA_KEY_SIZE;
+  const keypair = forge.pki.rsa.generateKeyPair({ bits });
   const publicPem = forge.pki.publicKeyToPem(keypair.publicKey);
   const privatePem = forge.pki.privateKeyToPem(keypair.privateKey);
 
