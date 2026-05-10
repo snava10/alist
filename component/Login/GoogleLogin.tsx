@@ -31,7 +31,7 @@ async function onGoogleButtonPress() {
       const user: FirebaseAuthTypes.User = auth().currentUser as FirebaseAuthTypes.User;
       return linkWithCredential(user, googleCredential).catch((error) => {
         console.error(error);
-        auth().signInWithCredential(googleCredential);
+        return auth().signInWithCredential(googleCredential);
       });
     }
     // Sign-in the user with the credential
@@ -57,12 +57,10 @@ export default function GoogleLogin({ callbackFn }: any) {
                 callbackFn();
               } else {
                 console.error('Error: User credentials are null');
-                callbackFn();
               }
             })
             .catch((error) => {
-              console.log('Error ' + error);
-              callbackFn();
+              console.error('Google sign-in error: ' + error);
             })
         }
       />

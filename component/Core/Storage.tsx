@@ -97,7 +97,9 @@ export function resetFirestoreClientForTesting() {
 }
 
 function getItemDocId(name: string, userId: string): string {
-  return `${encodeURIComponent(userId)}_${encodeURIComponent(name)}`;
+  const safeUserId = encodeURIComponent(userId.trim().replace(/\s+/g, '-'));
+  const safeName = encodeURIComponent(name.trim().replace(/\s+/g, '-'));
+  return `${safeUserId}_${safeName}`;
 }
 
 function normalizeSearchTerm(value: string): string {
@@ -105,19 +107,13 @@ function normalizeSearchTerm(value: string): string {
 }
 
 function buildSearchIndex(name: string): string[] {
-  console.log(`Building search index ${name}`);
-  const normalized = normalizeSearchTerm(name);
+  const words = name.split(' ').map((w) => w.toLocaleLowerCase());
   const tokens = new Set<string>();
-
-  for (let start = 0; start < normalized.length; start += 1) {
-    for (let end = start + 1; end <= normalized.length; end += 1) {
-      const token = normalized.slice(start, end);
-      if (token) {
-        tokens.add(token);
-      }
+  for (const word of words) {
+    for (let i = 1; i <= word.length; i++) {
+      tokens.add(word.slice(0, i));
     }
   }
-
   return [...tokens];
 }
 
