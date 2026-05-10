@@ -61,6 +61,7 @@ export default function GoogleLogin({ callbackFn }: any) {
             })
             .catch((error) => {
               console.error('Google sign-in error: ' + error);
+              callbackFn(error);
             })
         }
       />

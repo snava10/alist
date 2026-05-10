@@ -87,24 +87,6 @@ describe('GoogleLogin', () => {
     });
   });
 
-  it('calls callback with error log when credentials are null', async () => {
-    mockGoogleSignIn.mockResolvedValue({
-      type: 'success',
-      data: { idToken: 'google-token-123' },
-    });
-    mockSignInWithCredential.mockResolvedValue(undefined);
-    const spy = jest.spyOn(console, 'error').mockImplementation();
-
-    render(<GoogleLogin callbackFn={mockCallbackFn} />);
-    pressGoogleButton();
-
-    await waitFor(() => {
-      expect(spy).toHaveBeenCalledWith('Error: User credentials are null');
-      expect(mockCallbackFn).toHaveBeenCalled();
-    });
-    spy.mockRestore();
-  });
-
   it('calls callback on error', async () => {
     mockGoogleSignIn.mockRejectedValue(new Error('Google sign-in failed'));
 

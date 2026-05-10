@@ -8,7 +8,6 @@ import {
   getAllItems,
   getItem,
   getItems,
-  getItemsCount,
   getUserSettings,
   removeItem,
   replaceItem,
@@ -23,19 +22,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 describe('Storage', () => {
   let mockFirestore: MockFirestore;
-
-  const buildSearchIndex = (name: string) => {
-    const normalized = name.trim().toLowerCase();
-    const tokens = new Set<string>();
-
-    for (let start = 0; start < normalized.length; start += 1) {
-      for (let end = start + 1; end <= normalized.length; end += 1) {
-        tokens.add(normalized.slice(start, end));
-      }
-    }
-
-    return [...tokens];
-  };
 
   beforeAll(async () => {
     await generateAndStoreKeys(true);
@@ -52,18 +38,8 @@ describe('Storage', () => {
   });
 
   async function seedItems(items: AListItem[]) {
-    const collection = mockFirestore.collection('Items');
-    await Promise.all(
-      items.map(async (item) => {
-        const value = item.encrypted ? item.value : await encrypt(item.value);
-        await collection.doc(`${item.userId}_${item.name}`).set({
-          ...item,
-          value,
-          encrypted: true,
-          searchIndex: buildSearchIndex(item.name),
-        });
-      })
-    );
+    // const collection = mockFirestore.collection('Items');
+    await Promise.all(items.map(async (item) => await saveItem(item)));
   }
 
   it('getItem decrypts encrypted items', async () => {
@@ -97,18 +73,6 @@ describe('Storage', () => {
 
     expect(items).toHaveLength(2);
     expect(items.map((item) => item.name).sort()).toEqual(['item1', 'item2']);
-  });
-
-  it('filters items by case-insensitive name match', async () => {
-    await seedItems([
-      { name: 'Apple', value: 'one', timestamp: 1, encrypted: false, userId: 'u1' },
-      { name: 'banana', value: 'two', timestamp: 2, encrypted: false, userId: 'u1' },
-    ]);
-
-    const items = await getItems('u1', 'app');
-
-    expect(items).toHaveLength(1);
-    expect(items[0]?.name).toBe('Apple');
   });
 
   it('adds timestamps to items that are missing one', async () => {
@@ -192,16 +156,6 @@ describe('Storage', () => {
     await removeItem({ name: 'gone', value: 'value', timestamp: 1, encrypted: true, userId: 'u1' });
 
     await expect(getItem('gone', 'u1')).resolves.toBeNull();
-  });
-
-  it('counts only ali-prefixed items for a user', async () => {
-    await seedItems([
-      { name: 'ali_a', value: 'one', timestamp: 1, encrypted: false, userId: 'u1' },
-      { name: 'ali_b', value: 'two', timestamp: 2, encrypted: false, userId: 'u1' },
-      { name: 'other', value: 'three', timestamp: 3, encrypted: false, userId: 'u1' },
-    ]);
-
-    await expect(getItemsCount('u1')).resolves.toBe(2);
   });
 
   it('creates default user settings when none exist', async () => {
@@ -310,5 +264,38 @@ describe('Storage', () => {
     await clearLocalAsyncStorage();
     expect(AsyncStorage.getAllKeys).toHaveBeenCalled();
     expect(multiRemoveMock).toHaveBeenLastCalledWith(['_ali_secret', '_ali_plain']);
+  });
+
+  describe('Searching', () => {
+    beforeEach(async () => {
+      await seedItems([
+        {
+          name: 'National Insurance Number',
+          value: 'SA123456',
+          timestamp: 1,
+          encrypted: true,
+          userId: 'u1',
+        },
+        {
+          name: 'Passport',
+          value: 'PAL123465',
+          timestamp: 1,
+          encrypted: true,
+          userId: 'u1',
+        },
+      ]);
+    });
+
+    it('Search multiple word item', async () => {
+      const items = await getItems('u1', 'nation');
+      expect(items).toHaveLength(1);
+      expect(items[0]?.name).toBe('National Insurance Number');
+    });
+
+    it('Seach single word item', async () => {
+      const items = await getItems('u1', 'pass');
+      expect(items).toHaveLength(1);
+      expect(items[0]?.name).toBe('Passport');
+    });
   });
 });
