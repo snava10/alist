@@ -8,7 +8,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ConfirmationModal from './ConfirmationModal';
 import { FirebaseAuthTypes } from '@react-native-firebase/auth';
-import { deleteItems, restoreFromBackup } from './Core/Storage';
+import { deleteItems } from './Core/Storage';
 import analytics from '@react-native-firebase/analytics';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 
@@ -64,6 +64,7 @@ export default function ProfileScreen({ route }: any) {
         }
       >
         <Text style={{ fontWeight: 'bold', fontSize: 20 }}>{displayName ?? ''}</Text>
+        {__DEV__ && user?.uid ? <Text>Debug UID: {user.uid}</Text> : null}
       </View>
     );
   };
@@ -222,18 +223,11 @@ export default function ProfileScreen({ route }: any) {
           item={null}
           acceptCallbackFn={async () => {
             console.log('Restoring from backup');
-            await restoreFromBackup(user.uid).then((x) => {
-              setShowRestoreFromBackupModal(false);
-              analytics()
-                .logEvent('backup_restore', {
-                  uid: user.uid,
-                  provider: user.providerId,
-                  displayName: user.displayName ?? '',
-                })
-                .catch((_) => console.log('backup log failed'));
-              console.info('Restored ', x, ' items');
-              // This is needed otherwise the items won't show up on the Home screen.
-              setTimeout(() => navigation.navigate('Home', { itemsReload: x }), 1000);
+            const currentUser = user as FirebaseAuthTypes.User;
+            // await restoreFromBackup(currentUser.uid);
+            await analytics().logEvent('backup_restore', {
+              provider: currentUser.providerId,
+              uid: currentUser.uid,
             });
           }}
           rejectCallbackFn={() => {

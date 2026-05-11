@@ -10,7 +10,11 @@ export interface KeyPair {
   private: string;
 }
 
+export let PRIVATE_TEST_KEY: string | null = null;
+export let PUBLIC_TEST_KEY: string | null = null;
+
 export async function encrypt(value: string): Promise<string> {
+  console.log('Encrypting value ', value);
   try {
     const keyPair = await getRSAKeys();
     if (!keyPair) {
@@ -21,7 +25,7 @@ export async function encrypt(value: string): Promise<string> {
     return forge.util.encode64(encrypted);
   } catch (e) {
     console.error('Failed to encrypt value', e);
-    throw 'Failed to encrypt value';
+    throw `Failed to encrypt value: ${e}`;
   }
 }
 
@@ -37,11 +41,18 @@ export async function decrypt(hash: string): Promise<string> {
     return forge.util.decodeUtf8(decrypted);
   } catch (e) {
     console.error('Failed to decrypt value ', e);
-    throw 'Failed to decrypt value';
+    throw `Failed to decrypt value: ${e}`;
   }
 }
 
 export async function getRSAKeys(): Promise<KeyPair | null> {
+  if (PRIVATE_TEST_KEY && PUBLIC_TEST_KEY) {
+    return {
+      public: PUBLIC_TEST_KEY,
+      private: PRIVATE_TEST_KEY,
+    };
+  }
+
   const publicKey = await SecureStore.getItemAsync(PUBLIC_KEY_ALIAS);
   const privateKey = await SecureStore.getItemAsync(PRIVATE_KEY_ALIAS);
 
@@ -60,13 +71,19 @@ export async function getRSAKeys(): Promise<KeyPair | null> {
   }
 }
 
-async function generateAndStoreKeys(): Promise<KeyPair> {
-  const keypair = forge.pki.rsa.generateKeyPair({ bits: RSA_KEY_SIZE });
+export async function generateAndStoreKeys(testing: boolean = false): Promise<KeyPair> {
+  const bits = testing ? 512 : RSA_KEY_SIZE;
+  const keypair = forge.pki.rsa.generateKeyPair({ bits });
   const publicPem = forge.pki.publicKeyToPem(keypair.publicKey);
   const privatePem = forge.pki.privateKeyToPem(keypair.privateKey);
 
-  await SecureStore.setItemAsync(PRIVATE_KEY_ALIAS, privatePem);
-  await SecureStore.setItemAsync(PUBLIC_KEY_ALIAS, publicPem);
+  if (!testing) {
+    await SecureStore.setItemAsync(PRIVATE_KEY_ALIAS, privatePem);
+    await SecureStore.setItemAsync(PUBLIC_KEY_ALIAS, publicPem);
+  } else {
+    PRIVATE_TEST_KEY = privatePem;
+    PUBLIC_TEST_KEY = publicPem;
+  }
 
   return { public: publicPem, private: privatePem };
 }

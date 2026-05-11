@@ -84,6 +84,12 @@ describe('Firestore Contracts', () => {
       expect(() => validateFirestoreItem({ ...validItem, encrypted: true })).not.toThrow();
     });
 
+    it('accepts item with search index', () => {
+      expect(() =>
+        validateFirestoreItem({ ...validItem, searchIndex: ['p', 'pa', 'pas', 'pass'] })
+      ).not.toThrow();
+    });
+
     it('rejects missing name', () => {
       const { name: _name, ...noName } = validItem;
       expect(() => validateFirestoreItem(noName)).toThrow(ZodError);
@@ -120,6 +126,10 @@ describe('Firestore Contracts', () => {
 
     it('rejects non-boolean encrypted', () => {
       expect(() => validateFirestoreItem({ ...validItem, encrypted: 'yes' })).toThrow(ZodError);
+    });
+
+    it('rejects non-array search index', () => {
+      expect(() => validateFirestoreItem({ ...validItem, searchIndex: 'pass' })).toThrow(ZodError);
     });
   });
 
@@ -174,6 +184,7 @@ describe('Firestore Contracts', () => {
       const firestoreDoc = {
         ...localItem,
         value: Buffer.from(localItem.value).toString('base64'),
+        searchIndex: ['w', 'wi', 'wifi'],
       };
       expect(() => validateFirestoreItem(firestoreDoc)).not.toThrow();
 
@@ -182,8 +193,9 @@ describe('Firestore Contracts', () => {
         ...firestoreDoc,
         value: Buffer.from(firestoreDoc.value, 'base64').toString(),
       };
+      const { searchIndex: _searchIndex, ...localReadBack } = readBack;
       expect(readBack.value).toBe(localItem.value);
-      expect(() => validateLocalItem(readBack)).not.toThrow();
+      expect(() => validateLocalItem(localReadBack)).not.toThrow();
     });
 
     it('contract rejects data drift — missing required field from backend', () => {

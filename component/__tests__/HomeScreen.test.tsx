@@ -12,15 +12,6 @@ jest.mock('expo-secure-store', () => ({
   deleteItemAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../Core/Security', () => ({
-  encrypt: jest.fn().mockResolvedValue('encrypted-value'),
-  decrypt: jest.fn().mockResolvedValue('decrypted-value'),
-  getRSAKeys: jest.fn().mockResolvedValue({
-    public: 'public-key',
-    private: 'private-key',
-  }),
-}));
-
 const mockLogEvent = jest.fn().mockResolvedValue(undefined);
 jest.mock('@react-native-firebase/analytics', () => ({
   __esModule: true,
@@ -33,11 +24,13 @@ const mockCreateUserSettings = jest
   .fn()
   .mockResolvedValue({ userId: 'test', backup: 'DAILY', membership: 'FREE' });
 const mockAddTimestampToItems = jest.fn().mockResolvedValue([]);
+const mockAddSearchIndexToItems = jest.fn().mockResolvedValue([]);
 
 jest.mock('../Core/Storage', () => ({
   ...jest.requireActual('../Core/Storage'),
   createUserSettings: (...args: any[]) => mockCreateUserSettings(...args),
   addTimestampToItems: (...args: any[]) => mockAddTimestampToItems(...args),
+  addSearchIndexToItems: (...args: any[]) => mockAddSearchIndexToItems(...args),
 }));
 
 import React from 'react';
@@ -46,7 +39,16 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import auth from '@react-native-firebase/auth';
 import HomeScreen from '../HomeScreen';
+import { generateAndStoreKeys } from '../Core/Security';
+import {
+  resetFirestoreClientForTesting,
+  saveItem,
+  setFirestoreClientForTesting,
+} from '../Core/Storage';
+import { MockFirestore } from '../Core/MockFirestore';
+import { AListItem } from '../Core/DataModel';
 
 const Stack = createNativeStackNavigator();
 
@@ -76,85 +78,108 @@ const mockAsyncStorageWithItems = (items: any[]) => {
   });
 };
 
-describe('HomeScreen - Rendering Tests', () => {
-  const mockUser = { uid: 'test-user-123', isAnonymous: false };
-  const mockAnonymousUser = { uid: 'anon-user', isAnonymous: true };
+const mockUser = { uid: 'test-user-123', isAnonymous: false };
+const mockAnonymousUser = { uid: 'anon-user', isAnonymous: true };
 
-  beforeEach(() => {
+const seededItems: AListItem[] = [
+  {
+    name: 'apple',
+    timestamp: 1,
+    userId: mockUser.uid,
+    value: 'apple value',
+    encrypted: true,
+  },
+  {
+    name: 'banana',
+    timestamp: 1,
+    userId: mockUser.uid,
+    value: 'banana value',
+    encrypted: true,
+  },
+  {
+    name: 'National Insurance Number',
+    timestamp: 1,
+    userId: mockUser.uid,
+    value: 'SA12346Y',
+    encrypted: true,
+  },
+  {
+    name: 'Passport',
+    timestamp: 1,
+    userId: mockUser.uid,
+    value: 'PAL123456',
+    encrypted: true,
+  },
+];
+
+async function seedDatabase(mockFirestore: MockFirestore) {
+  setFirestoreClientForTesting(mockFirestore);
+  await Promise.all(seededItems.map((item) => saveItem(item)));
+}
+
+describe('HomeScreen - Rendering Tests', () => {
+  let mockFirestore: MockFirestore;
+
+  beforeAll(async () => {
+    await generateAndStoreKeys(true);
+  });
+
+  beforeEach(async () => {
     jest.clearAllMocks();
+    mockFirestore = new MockFirestore();
+    setFirestoreClientForTesting(mockFirestore);
+    (auth as any).mockImplementation(() => ({
+      currentUser: mockUser,
+      useEmulator: jest.fn(),
+    }));
     (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([]);
     (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([]);
+    await seedDatabase(mockFirestore);
+  });
+
+  afterEach(() => {
+    resetFirestoreClientForTesting();
   });
 
   it('renders items', async () => {
-    mockAsyncStorageWithItems([
-      {
-        name: 'item1',
-        value: 'value1',
-        timestamp: 1,
-        userId: mockUser.uid,
-        encrypted: false,
-      },
-    ]);
-
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
-
     await waitFor(() => {
-      expect(screen.getByText('item1')).toBeTruthy();
+      expect(screen.getByText('apple')).toBeTruthy();
+      expect(screen.getByText('apple value')).toBeTruthy();
+      expect(screen.getByText('banana')).toBeTruthy();
+      expect(screen.getByText('banana value')).toBeTruthy();
+      expect(screen.getByText('National Insurance Number')).toBeTruthy();
+      expect(screen.getByText('SA12346Y')).toBeTruthy();
+      expect(screen.getByText('Passport')).toBeTruthy();
+      expect(screen.getByText('PAL123456')).toBeTruthy();
     });
   });
 
   it('renders empty state when no items exist', async () => {
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
-
     await waitFor(() => {
       expect(screen.getByText(/to add a new item/)).toBeTruthy();
     });
   });
 
-  it('renders with anonymous user', async () => {
-    renderHomeScreen({ user: mockAnonymousUser, itemsReload: 0 });
-
-    await waitFor(() => {
-      expect(screen.getByText(/to add a new item/)).toBeTruthy();
-    });
-  });
-
-  it('filters items with search text', async () => {
-    mockAsyncStorageWithItems([
-      { name: 'apple', value: 'v1', timestamp: 1, encrypted: false },
-      { name: 'banana', value: 'v2', timestamp: 2, encrypted: false },
-    ]);
-
+  it('render items then filters with search text', async () => {
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
     await waitFor(() => {
       expect(screen.getByText('apple')).toBeTruthy();
+      expect(screen.getByText('banana')).toBeTruthy();
     });
 
     const searchInput = screen.getByPlaceholderText('Search...');
     fireEvent.changeText(searchInput, 'apple');
 
-    // Mock filtered results
-    (AsyncStorage.multiGet as jest.Mock).mockImplementation((keys) =>
-      Promise.resolve(
-        keys
-          .filter((k: string) => k.includes('apple'))
-          .map((k: string) => [
-            k,
-            JSON.stringify({ name: 'apple', value: 'v1', timestamp: 1, encrypted: false }),
-          ])
-      )
-    );
-
     await waitFor(() => {
       expect(screen.getByText('apple')).toBeTruthy();
+      expect(screen.getByDisplayValue('apple')).toBeTruthy();
     });
   });
 
   it('clears search text', async () => {
-    mockAsyncStorageWithItems([{ name: 'apple', value: 'v1', timestamp: 1, encrypted: false }]);
-
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
     await waitFor(() => {
@@ -175,90 +200,87 @@ describe('HomeScreen - Rendering Tests', () => {
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
     await waitFor(() => {
-      expect(screen.getByText(/to add a new item/)).toBeTruthy();
+      expect(screen.getByTestId('add-circle')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getAllByTestId('add-circle')[1]!);
+    fireEvent.press(screen.getByTestId('add-circle'));
 
     await waitFor(() => {
       expect(screen.getByText('Save')).toBeTruthy();
     });
   });
 
-  it('removes an item via confirmation modal', async () => {
-    mockAsyncStorageWithItems([{ name: 'item1', value: 'value1', timestamp: 1, encrypted: false }]);
+  describe('confirmation modal testing', () => {
+    it('removes an item via confirmation modal', async () => {
+      renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
-    renderHomeScreen({ user: mockUser, itemsReload: 0 });
+      await waitFor(() => {
+        expect(screen.getByText('apple')).toBeTruthy();
+        expect(screen.getAllByTestId('create-outline')).toHaveLength(4);
+      });
 
-    await waitFor(() => {
-      expect(screen.getByText('item1')).toBeTruthy();
+      // Press the delete icon on the item
+      fireEvent.press(screen.getAllByTestId('trash-outline')[0]!);
+
+      await waitFor(() => {
+        expect(screen.getByText('Yes')).toBeTruthy();
+      });
+
+      fireEvent.press(screen.getByText('Yes'));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Yes')).toBeNull();
+      });
     });
 
-    // Press the delete icon on the item
-    fireEvent.press(screen.getByTestId('trash-outline'));
+    it('cancels item removal via confirmation modal', async () => {
+      renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
-    await waitFor(() => {
-      expect(screen.getByText('Yes')).toBeTruthy();
+      await waitFor(() => {
+        expect(screen.getByText('apple')).toBeTruthy();
+      });
+
+      fireEvent.press(screen.getAllByTestId('trash-outline')[0]!);
+
+      await waitFor(() => {
+        expect(screen.getByText('No')).toBeTruthy();
+      });
+
+      fireEvent.press(screen.getByText('No'));
+
+      await waitFor(() => {
+        expect(screen.getByText('apple')).toBeTruthy();
+      });
     });
 
-    // Clear storage to simulate item being removed
-    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([]);
-    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([]);
-    (AsyncStorage.removeItem as jest.Mock).mockResolvedValue(undefined);
+    it('opens edit modal when edit icon is pressed', async () => {
+      renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
-    fireEvent.press(screen.getByText('Yes'));
+      await waitFor(() => {
+        expect(screen.getByText('apple')).toBeTruthy();
+      });
 
-    await waitFor(() => {
-      expect(screen.getByText(/to add a new item/)).toBeTruthy();
-    });
-  });
+      fireEvent.press(screen.getAllByTestId('create-outline')[0]!);
 
-  it('cancels item removal via confirmation modal', async () => {
-    mockAsyncStorageWithItems([{ name: 'item1', value: 'value1', timestamp: 1, encrypted: false }]);
-
-    renderHomeScreen({ user: mockUser, itemsReload: 0 });
-
-    await waitFor(() => {
-      expect(screen.getByText('item1')).toBeTruthy();
-    });
-
-    fireEvent.press(screen.getByTestId('trash-outline'));
-
-    await waitFor(() => {
-      expect(screen.getByText('No')).toBeTruthy();
-    });
-
-    fireEvent.press(screen.getByText('No'));
-
-    await waitFor(() => {
-      expect(screen.getByText('item1')).toBeTruthy();
-    });
-  });
-
-  it('opens edit modal when edit icon is pressed', async () => {
-    mockAsyncStorageWithItems([{ name: 'item1', value: 'value1', timestamp: 1, encrypted: false }]);
-
-    renderHomeScreen({ user: mockUser, itemsReload: 0 });
-
-    await waitFor(() => {
-      expect(screen.getByText('item1')).toBeTruthy();
-    });
-
-    fireEvent.press(screen.getByTestId('create-outline'));
-
-    await waitFor(() => {
-      expect(screen.getByText('Save')).toBeTruthy();
+      await waitFor(() => {
+        expect(screen.getByText('Save')).toBeTruthy();
+      });
     });
   });
 
   it('saves a new item and logs add_item analytics event', async () => {
+    setFirestoreClientForTesting(mockFirestore);
+    (auth as any).mockImplementation(() => ({
+      currentUser: mockUser,
+      useEmulator: jest.fn(),
+    }));
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
     await waitFor(() => {
-      expect(screen.getByText(/to add a new item/)).toBeTruthy();
+      expect(screen.getByTestId('add-circle')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getAllByTestId('add-circle')[1]!);
+    fireEvent.press(screen.getByTestId('add-circle'));
 
     await waitFor(() => {
       expect(screen.getByText('Save')).toBeTruthy();
@@ -267,29 +289,32 @@ describe('HomeScreen - Rendering Tests', () => {
     fireEvent.changeText(screen.getByPlaceholderText('Name'), 'new-item');
     fireEvent.changeText(screen.getByPlaceholderText('Value'), 'new-value');
 
-    mockAsyncStorageWithItems([
-      { name: 'new-item', value: 'new-value', timestamp: 1, encrypted: false },
-    ]);
-
     await act(async () => {
       fireEvent.press(screen.getByText('Save'));
     });
 
     await waitFor(() => {
       expect(mockLogEvent).toHaveBeenCalledWith('add_item', { name: 'new-item' });
+      expect(screen.getByText('new-item')).toBeTruthy();
+    });
+
+    const savedDoc = await mockFirestore.collection('Items').doc(`${mockUser.uid}_new-item`).get();
+    expect(savedDoc.exists).toBe(true);
+    expect(savedDoc.data()).toMatchObject({
+      name: 'new-item',
+      userId: mockUser.uid,
+      encrypted: true,
     });
   });
 
   it('edits an existing item and logs edit_item analytics event', async () => {
-    mockAsyncStorageWithItems([{ name: 'item1', value: 'value1', timestamp: 1, encrypted: false }]);
-
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
     await waitFor(() => {
-      expect(screen.getByText('item1')).toBeTruthy();
+      expect(screen.getByText('apple')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByTestId('create-outline'));
+    fireEvent.press(screen.getAllByTestId('create-outline')[0]!);
 
     await waitFor(() => {
       expect(screen.getByText('Save')).toBeTruthy();
@@ -297,25 +322,16 @@ describe('HomeScreen - Rendering Tests', () => {
 
     fireEvent.changeText(screen.getByPlaceholderText('Value'), 'updated-value');
 
-    mockAsyncStorageWithItems([
-      { name: 'item1', value: 'updated-value', timestamp: 1, encrypted: false },
-    ]);
-
     await act(async () => {
       fireEvent.press(screen.getByText('Save'));
     });
 
     await waitFor(() => {
-      expect(mockLogEvent).toHaveBeenCalledWith('edit_item', { name: 'item1' });
+      expect(mockLogEvent).toHaveBeenCalledWith('edit_item', { name: 'apple' });
     });
   });
 
   it('clears search via backspace icon', async () => {
-    mockAsyncStorageWithItems([
-      { name: 'apple', value: 'v1', timestamp: 1, encrypted: false },
-      { name: 'banana', value: 'v2', timestamp: 2, encrypted: false },
-    ]);
-
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
     await waitFor(() => {
@@ -329,11 +345,6 @@ describe('HomeScreen - Rendering Tests', () => {
       expect(screen.getByTestId('backspace-outline')).toBeTruthy();
     });
 
-    mockAsyncStorageWithItems([
-      { name: 'apple', value: 'v1', timestamp: 1, encrypted: false },
-      { name: 'banana', value: 'v2', timestamp: 2, encrypted: false },
-    ]);
-
     fireEvent.press(screen.getByTestId('backspace-outline'));
 
     await waitFor(() => {
@@ -342,42 +353,21 @@ describe('HomeScreen - Rendering Tests', () => {
   });
 
   it('renders confirmation modal with item name', async () => {
-    mockAsyncStorageWithItems([{ name: 'item1', value: 'value1', timestamp: 1, encrypted: false }]);
-
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
 
     await waitFor(() => {
-      expect(screen.getByText('item1')).toBeTruthy();
+      expect(screen.getByText('apple')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByTestId('trash-outline'));
+    fireEvent.press(screen.getAllByTestId('trash-outline')[0]!);
 
     await waitFor(() => {
-      expect(screen.getByText(/Are you sure you wish to delete item1/)).toBeTruthy();
-    });
-  });
-
-  it('renders multiple items in list', async () => {
-    mockAsyncStorageWithItems([
-      { name: 'item1', value: 'value1', timestamp: 1, encrypted: false },
-      { name: 'item2', value: 'value2', timestamp: 2, encrypted: false },
-      { name: 'item3', value: 'value3', timestamp: 3, encrypted: false },
-    ]);
-
-    renderHomeScreen({ user: mockUser, itemsReload: 0 });
-
-    await waitFor(() => {
-      expect(screen.getByText('item1')).toBeTruthy();
-      expect(screen.getByText('item2')).toBeTruthy();
-      expect(screen.getByText('item3')).toBeTruthy();
+      expect(screen.getByText(/Are you sure you wish to delete apple/)).toBeTruthy();
     });
   });
 
   it('shows search bar when items exist', async () => {
-    mockAsyncStorageWithItems([{ name: 'item1', value: 'value1', timestamp: 1, encrypted: false }]);
-
     renderHomeScreen({ user: mockUser, itemsReload: 0 });
-
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Search...')).toBeTruthy();
     });
@@ -452,12 +442,18 @@ describe('HomeScreen - Rendering Tests', () => {
   });
 
   it('does not call createUserSettings when user is null', async () => {
+    (auth as any).mockImplementation(() => ({
+      currentUser: null,
+      useEmulator: jest.fn(),
+    }));
+
     renderHomeScreen({ user: null, itemsReload: 0 });
 
     await waitFor(() => {
-      expect(mockAddTimestampToItems).toHaveBeenCalled();
+      expect(screen.getByText(/to add a new item/)).toBeTruthy();
     });
 
     expect(mockCreateUserSettings).not.toHaveBeenCalled();
+    expect(mockAddTimestampToItems).not.toHaveBeenCalled();
   });
 });

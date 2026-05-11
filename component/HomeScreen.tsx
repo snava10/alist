@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, View, Text, TextInput } from 'react-native';
 import AddItemModal from './AddItemModal';
 import ConfirmationModal from './ConfirmationModal';
+import auth from '@react-native-firebase/auth';
 import {
   addTimestampToItems,
   createUserSettings,
@@ -28,9 +29,9 @@ export default function HomeScreen({ route }: any) {
   const [searchText, setSearchText] = useState('');
 
   const loadItemsFromLocalStorage = async (st: string) => {
-    console.log('Loading items from local storage');
     try {
-      const items = await getItems(st);
+      const userId = auth().currentUser?.uid ?? '';
+      const items = await getItems(userId, st);
       console.log('Items ', items);
       setAListItems(items);
       route.params.itemsReload = 0;
@@ -78,12 +79,14 @@ export default function HomeScreen({ route }: any) {
           .then(() => console.log('User settings created'))
           .catch((error) => console.log('User settings ', error));
       }
-      addTimestampToItems()
-        .then(() => {
-          console.log('Add timestamps executed');
-          setOneOffCorrections(true);
-        })
-        .catch((error) => console.log('Add timestamps ', error));
+      if (user?.uid) {
+        addTimestampToItems(user.uid)
+          .then(() => {
+            console.log('Add timestamps executed');
+            setOneOffCorrections(true);
+          })
+          .catch((error) => console.log('Add timestamps ', error));
+      }
     }
   }, [oneOffCorrections]);
 
@@ -156,22 +159,27 @@ export default function HomeScreen({ route }: any) {
         <AddItemModal
           item={selectedItem}
           saveItem={async (old: AListItem, item: AListItem) => {
+            console.log(`Saving ${JSON.stringify(item)}`);
+            const itemWithUser = {
+              ...item,
+              userId: item.userId ?? user?.uid,
+            };
             if (old.name) {
               analytics()
                 .logEvent('edit_item', {
-                  name: item.name,
+                  name: itemWithUser.name,
                 })
                 .then((_) => console.log('item edit logged'))
                 .catch((_) => console.error("Couldn't log edit item event"));
             } else {
               analytics()
                 .logEvent('add_item', {
-                  name: item.name,
+                  name: itemWithUser.name,
                 })
                 .then((_) => console.log('add item logged'))
                 .catch((_) => console.log('add item log failed'));
             }
-            await replaceItem(old, item);
+            await replaceItem(old, itemWithUser);
             await loadItemsFromLocalStorage(searchText);
           }}
           hideModal={hideModal}

@@ -1,94 +1,212 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BackupCadence, MembershipType, UserSettings, AListItem } from './DataModel';
 import firestore from '@react-native-firebase/firestore';
-import base64 from 'react-native-base64';
 import { EXPO_PUBLIC_FIREBASE_EMULATOR } from '@env';
 import auth from '@react-native-firebase/auth';
 import { Platform } from 'react-native';
 import { decrypt, encrypt } from './Security';
 import { validateUserSettings, validateFirestoreItem } from './Contracts';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-if (EXPO_PUBLIC_FIREBASE_EMULATOR === 'true') {
-  console.debug('Connecting to firebase emulator');
-  if (Platform.OS === 'android') {
-    console.debug('Operating System ', Platform.OS);
-    firestore().useEmulator('10.0.2.2', 8080);
-    auth().useEmulator('http://10.0.2.2:9099');
-  } else {
-    console.debug('Operating System ', Platform.OS);
-    firestore().useEmulator('127.0.0.1', 8080);
-    auth().useEmulator('http://127.0.0.1:9099');
-  }
+function isInvalidEncryptedPayloadError(error: unknown): boolean {
+  const message = String(error);
+  return message.includes('Encrypted message length is invalid');
 }
 
-export async function getItem(id: string): Promise<AListItem | null> {
-  const value = await AsyncStorage.getItem(id);
-  if (value === null) {
+type FirestoreDocData = Record<string, unknown>;
+type FirestoreWhereOperator =
+  | '=='
+  | '!='
+  | '<'
+  | '<='
+  | '>'
+  | '>='
+  | 'array-contains'
+  | 'in'
+  | 'not-in';
+
+type FirestoreDocSnapshot = {
+  exists?: boolean;
+  data: () => FirestoreDocData | undefined;
+};
+
+type FirestoreDocRef = {
+  get: () => Promise<FirestoreDocSnapshot>;
+  set: (data: FirestoreDocData) => Promise<void>;
+  update: (data: Partial<FirestoreDocData>) => Promise<void>;
+  delete: () => Promise<void>;
+  ref?: {
+    delete: () => Promise<void>;
+  };
+};
+
+type FirestoreQuerySnapshot = {
+  empty: boolean;
+  docs: Array<{
+    id: string;
+    data: () => FirestoreDocData;
+    ref: {
+      delete: () => Promise<void>;
+    };
+  }>;
+};
+
+type FirestoreQueryRef = {
+  where: (field: string, op: FirestoreWhereOperator, value: unknown) => FirestoreQueryRef;
+  get: () => Promise<FirestoreQuerySnapshot>;
+};
+
+type FirestoreCollectionRef = {
+  doc: (id: string) => FirestoreDocRef;
+  where: (field: string, op: FirestoreWhereOperator, value: unknown) => FirestoreQueryRef;
+};
+
+export type StorageFirestore = {
+  collection: (name: string) => FirestoreCollectionRef;
+  useEmulator?: (host: string, port: number) => void;
+};
+
+function createFirestoreClient(): StorageFirestore {
+  const client = firestore() as StorageFirestore;
+  if (EXPO_PUBLIC_FIREBASE_EMULATOR === 'true' && client.useEmulator) {
+    console.debug('Connecting to firebase emulator');
+    if (Platform.OS === 'android') {
+      console.debug('Operating System ', Platform.OS);
+      client.useEmulator('10.0.2.2', 8080);
+      auth().useEmulator('http://10.0.2.2:9099');
+    } else {
+      console.debug('Operating System ', Platform.OS);
+      client.useEmulator('127.0.0.1', 8080);
+      auth().useEmulator('http://127.0.0.1:9099');
+    }
+  }
+  return client;
+}
+
+let firestoreClient: StorageFirestore = createFirestoreClient();
+
+function getFirestoreClient(): StorageFirestore {
+  return firestoreClient;
+}
+
+export function setFirestoreClientForTesting(client: StorageFirestore) {
+  firestoreClient = client;
+}
+
+export function resetFirestoreClientForTesting() {
+  firestoreClient = createFirestoreClient();
+}
+
+function getItemDocId(name: string, userId: string): string {
+  const safeUserId = encodeURIComponent(userId.trim().replace(/\s+/g, '-'));
+  const safeName = encodeURIComponent(name.trim().replace(/\s+/g, '-'));
+  return `${safeUserId}_${safeName}`;
+}
+
+function normalizeSearchTerm(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function buildSearchIndex(name: string): string[] {
+  const words = name.split(' ').map((w) => w.toLocaleLowerCase());
+  const tokens = new Set<string>();
+  for (const word of words) {
+    for (let i = 1; i <= word.length; i++) {
+      tokens.add(word.slice(0, i));
+    }
+  }
+  return [...tokens];
+}
+
+async function mapFirestoreDataToItem(data: FirestoreDocData): Promise<AListItem> {
+  const raw = validateFirestoreItem(data);
+  const item: AListItem = {
+    name: raw.name,
+    value: raw.value,
+    timestamp: raw.timestamp,
+    userId: raw.userId,
+    ...(raw.encrypted !== undefined && { encrypted: raw.encrypted }),
+  };
+
+  if (item.encrypted) {
+    try {
+      item.value = await decrypt(item.value);
+    } catch (error) {
+      if (isInvalidEncryptedPayloadError(error)) {
+        console.warn(
+          `Skipping decrypt for item "${item.name}" because payload is not valid encrypted text.`
+        );
+        item.encrypted = false;
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  return item;
+}
+
+/**
+ * Fetches an item from Firestore for a given user and item name.
+ * @param name The name of the item (not prefixed)
+ * @param userId The user ID to scope the query
+ */
+export async function getItem(name: string, userId: string): Promise<AListItem | null> {
+  const doc = await getFirestoreClient().collection('Items').doc(getItemDocId(name, userId)).get();
+  if (!doc.exists) {
     return null;
   }
-  var res: AListItem | null = null;
-  try {
-    console.log('Value ', value);
-    res = await maybeDecrypt(JSON.parse(value) as AListItem);
-  } catch (e) {
-    console.error(e);
+  const data = doc.data();
+  if (!data) {
+    return null;
   }
-  return res;
+  return mapFirestoreDataToItem(data);
 }
 
-export async function addTimestampToItems(): Promise<void[]> {
+export async function addTimestampToItems(userid: string): Promise<void[]> {
   return Promise.all(
-    (await getAllItems())
+    (await getAllItems(userid))
       .filter((item) => !item.timestamp)
-      .map((item) => {
-        return replaceItem(item, { ...item, timestamp: Date.now() });
-      })
+      .map((item) =>
+        getFirestoreClient()
+          .collection('Items')
+          .doc(getItemDocId(item.name, userid))
+          .update({ timestamp: Date.now() })
+      )
   );
 }
 
-export async function getAllItems(): Promise<Array<AListItem>> {
-  const keys = await AsyncStorage.getAllKeys();
-  const kvp = await AsyncStorage.multiGet(keys.filter((k) => k.startsWith('_ali_')));
-  return Promise.all(
-    kvp
-      .filter((kvp) => kvp[1] !== null)
-      .map((kvp) => {
-        console.log('Item ', kvp[1]);
-        return maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem);
-      })
-  );
+/**
+ * Fetches all items for a user from Firestore.
+ * @param userId The user ID to scope the query
+ */
+export async function getAllItems(userId: string): Promise<Array<AListItem>> {
+  const querySnapshot = await getFirestoreClient()
+    .collection('Items')
+    .where('userId', '==', userId)
+    .get();
+  if (querySnapshot.empty) return [];
+  return Promise.all(querySnapshot.docs.map((doc) => mapFirestoreDataToItem(doc.data())));
 }
 
-export async function getItems(filter: string): Promise<Array<AListItem>> {
-  if (filter === '' || filter === null) {
-    return getAllItems();
+export async function getItems(
+  userId: string,
+  filter: string | null = null
+): Promise<Array<AListItem>> {
+  console.log(`Get items for user: ${userId}`);
+  const normalizedFilter = normalizeSearchTerm(filter ?? '');
+  if (!normalizedFilter) {
+    return getAllItems(userId);
   }
-  const keys = await AsyncStorage.getAllKeys();
-  const kvp = await AsyncStorage.multiGet(
-    keys.filter(
-      (k) => k.startsWith('_ali_') && k.substring(5).toLowerCase().includes(filter.toLowerCase())
-    )
-  );
-  return Promise.all(
-    kvp
-      .filter((kvp) => kvp[1] !== null)
-      .map((kvp) => {
-        return maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem);
-      })
-  );
-}
 
-async function maybeDecrypt(item: AListItem): Promise<AListItem> {
-  if (item.encrypted) {
-    return decrypt(item.value).then((value) => {
-      const res = { ...item, value: value };
-      return res;
-    });
-  } else {
-    console.debug('Item not encrypted ', JSON.stringify(item));
-    saveItem(item);
-  }
-  return item;
+  const querySnapshot = await getFirestoreClient()
+    .collection('Items')
+    .where('userId', '==', userId)
+    .where('searchIndex', 'array-contains', normalizedFilter)
+    .get();
+
+  if (querySnapshot.empty) return [];
+
+  return Promise.all(querySnapshot.docs.map((doc) => mapFirestoreDataToItem(doc.data())));
 }
 
 /**
@@ -97,9 +215,50 @@ async function maybeDecrypt(item: AListItem): Promise<AListItem> {
  * @param item AListItem to save
  */
 export async function saveItem(item: AListItem) {
-  const res = { ...item, encrypted: true };
+  console.log(`Saving ${JSON.stringify(item)}`);
+  if (!item.userId) {
+    throw new Error('saveItem requires item.userId');
+  }
+  const res = {
+    ...item,
+    encrypted: true,
+    searchIndex: buildSearchIndex(item.name),
+  };
   res.value = await encrypt(item.value);
-  await AsyncStorage.setItem('_ali_' + item.name, JSON.stringify(res));
+  console.log(`Encrypted result ${res.value}`);
+  await getFirestoreClient()
+    .collection('Items')
+    .doc(getItemDocId(item.name, item.userId))
+    .set(res)
+    .catch((e) => {
+      console.error(e);
+      throw e;
+    });
+}
+
+export async function addSearchIndexToItems(userId: string): Promise<void[]> {
+  const querySnapshot = await getFirestoreClient()
+    .collection('Items')
+    .where('userId', '==', userId)
+    .get();
+
+  if (querySnapshot.empty) {
+    return [];
+  }
+
+  return Promise.all(
+    querySnapshot.docs
+      .filter((doc) => {
+        const searchIndex = doc.data().searchIndex;
+        return !Array.isArray(searchIndex) || searchIndex.length === 0;
+      })
+      .map((doc) =>
+        getFirestoreClient()
+          .collection('Items')
+          .doc(doc.id)
+          .update({ searchIndex: buildSearchIndex(validateFirestoreItem(doc.data()).name) })
+      )
+  );
 }
 
 export async function replaceItem(old: AListItem, newItem: AListItem, timestamp: boolean = true) {
@@ -111,18 +270,35 @@ export async function replaceItem(old: AListItem, newItem: AListItem, timestamp:
 }
 
 export async function removeItem(item: AListItem) {
-  if (item) {
-    await AsyncStorage.removeItem('_ali_' + item.name);
+  if (!item.userId) {
+    return;
   }
+  await getFirestoreClient().collection('Items').doc(getItemDocId(item.name, item.userId)).delete();
 }
 
-export async function getItemsCount(): Promise<number> {
-  const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith('_ali_'));
-  return keys.length;
+/**
+ * Returns the count of ali-prefixed items for a user from Firestore.
+ * @param userId The user ID to scope the query
+ */
+export async function getItemsCount(userId: string): Promise<number> {
+  // Query Firestore for all items for the user
+  const querySnapshot = await getFirestoreClient()
+    .collection('Items')
+    .where('userId', '==', userId)
+    .get();
+  if (querySnapshot.empty) return 0;
+  // Only count items whose name starts with 'ali_'
+  return querySnapshot.docs.filter((doc) => {
+    const data = doc.data();
+    return data && typeof data.name === 'string' && data.name.startsWith('ali_');
+  }).length;
 }
 
 export async function getUserSettings(userId?: string): Promise<UserSettings | null> {
-  return firestore()
+  if (!userId) {
+    return null;
+  }
+  return getFirestoreClient()
     .collection('UserSettings')
     .doc(userId)
     .get()
@@ -142,7 +318,7 @@ export async function createUserSettings(userId: string): Promise<UserSettings> 
     membership: MembershipType.FREE,
   } as UserSettings;
   const validated = validateUserSettings(defaultSettings);
-  return firestore()
+  return getFirestoreClient()
     .collection('UserSettings')
     .doc(userId)
     .set(validated)
@@ -160,31 +336,8 @@ const _compareItems = (a: AListItem, b: AListItem) => a.name.localeCompare(b.nam
 //     .then(() => console.log("Item saved to firebase ", JSON.stringify(item)));
 // }
 
-export async function pullItems(userId: string): Promise<Array<AListItem>> {
-  console.log('Pulling items for user ', userId);
-  return firestore()
-    .collection('Items')
-    .where('userId', '==', userId)
-    .get()
-    .then((querySnapshot) => {
-      if (querySnapshot.empty) return [];
-      return querySnapshot.docs.map((d) => {
-        const raw = validateFirestoreItem(d.data());
-        console.log('Item pulled from firebase ', JSON.stringify(raw));
-        const item: AListItem = {
-          name: raw.name,
-          value: base64.decode(raw.value),
-          timestamp: raw.timestamp,
-          userId: raw.userId,
-          ...(raw.encrypted !== undefined && { encrypted: raw.encrypted }),
-        };
-        return item;
-      });
-    });
-}
-
 export async function deleteItems(userId: string): Promise<number> {
-  return firestore()
+  return getFirestoreClient()
     .collection('Items')
     .where('userId', '==', userId)
     .get()
@@ -205,20 +358,41 @@ export async function deleteItems(userId: string): Promise<number> {
     .then((result) => result.reduce((a, b) => a + b, 0));
 }
 
-export async function restoreFromBackup(userId: string): Promise<number> {
-  // Get all items.
-  const items = await pullItems(userId);
-  console.log('Items pulled from firebase ', JSON.stringify(items));
-  await AsyncStorage.clear();
-  items.forEach(async (item) => {
-    console.log('Restoring item ', JSON.stringify(item));
-    if (item.encrypted) {
-      console.log('Item is encrypted');
-      await AsyncStorage.setItem('_ali_' + item.name, JSON.stringify(item));
-    } else {
-      console.log('Item is not encrypted');
-      await saveItem(item);
+export async function backupLocalStorageToFirestore(): Promise<AListItem[]> {
+  const keys = await AsyncStorage.getAllKeys();
+  const kvp = await AsyncStorage.multiGet(keys.filter((k) => k.startsWith('_ali_')));
+  return Promise.all(
+    kvp
+      .filter((kvp) => kvp[1] !== null)
+      .map((kvp) => {
+        console.log('Item ', kvp[1]);
+        return maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem);
+      })
+  );
+}
+
+async function maybeDecrypt(item: AListItem): Promise<AListItem> {
+  if (item.encrypted) {
+    try {
+      const value = await decrypt(item.value);
+      return { ...item, value };
+    } catch (error) {
+      if (isInvalidEncryptedPayloadError(error)) {
+        console.warn(
+          `Skipping local decrypt for item "${item.name}" because payload is not valid encrypted text.`
+        );
+        return { ...item, encrypted: false };
+      }
+      throw error;
     }
-  });
-  return items.length;
+  } else {
+    console.debug('Item not encrypted ', JSON.stringify(item));
+    await saveItem(item);
+  }
+  return item;
+}
+
+export async function clearLocalAsyncStorage(): Promise<void> {
+  const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith('_ali_'));
+  return await AsyncStorage.multiRemove(keys);
 }

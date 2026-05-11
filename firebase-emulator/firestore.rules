@@ -2,12 +2,34 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // match /{document=**} {
-    //   allow read, write: if true;
-    // }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Items are stored at /Items/{encodedUserId}_{encodedItemName}
+    // and include userId in document data.
+    match /Items/{itemId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if
+        isSignedIn() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid;
+    }
+
+    // User settings are stored at /UserSettings/{userId}
+    match /UserSettings/{userId} {
+      allow create, read, update, delete: if isOwner(userId);
+    }
+
+    // Legacy profile documents.
     match /users/{userId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow read, update, delete: if isOwner(userId);
+      allow create: if isSignedIn();
     }
   }
 }

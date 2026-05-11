@@ -1,492 +1,301 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  getItem,
-  getAllItems,
-  getItems,
+  addSearchIndexToItems,
   addTimestampToItems,
-  replaceItem,
-  getItemsCount,
+  backupLocalStorageToFirestore,
+  clearLocalAsyncStorage,
   createUserSettings,
-  pullItems,
   deleteItems,
-  restoreFromBackup,
-  saveItem,
-  removeItem,
+  getAllItems,
+  getItem,
+  getItems,
   getUserSettings,
+  removeItem,
+  replaceItem,
+  resetFirestoreClientForTesting,
+  saveItem,
+  setFirestoreClientForTesting,
 } from '../Storage';
-import { decrypt, encrypt } from '../Security';
-
-jest.mock('@react-native-async-storage/async-storage', () => ({
-  getItem: jest.fn().mockResolvedValue(null),
-  getAllKeys: jest.fn().mockResolvedValue([]),
-  multiGet: jest.fn().mockResolvedValue([]),
-  setItem: jest.fn().mockResolvedValue(undefined),
-  removeItem: jest.fn().mockResolvedValue(undefined),
-  clear: jest.fn().mockResolvedValue(undefined),
-}));
-
-const mockDocGet = jest.fn().mockResolvedValue({ exists: false, data: () => undefined });
-const mockDocSet = jest.fn().mockResolvedValue(undefined);
-const mockWhereGet = jest.fn().mockResolvedValue({ empty: true, docs: [] });
-
-jest.mock('@react-native-firebase/firestore', () => ({
-  __esModule: true,
-  default: jest.fn(() => ({
-    collection: jest.fn(() => ({
-      doc: jest.fn(() => ({
-        get: mockDocGet,
-        set: mockDocSet,
-      })),
-      where: jest.fn(() => ({
-        get: mockWhereGet,
-      })),
-    })),
-    useEmulator: jest.fn(),
-  })),
-}));
-
-jest.mock('@react-native-firebase/auth', () => ({
-  __esModule: true,
-  default: jest.fn(() => ({
-    currentUser: null,
-    useEmulator: jest.fn(),
-  })),
-}));
-
-jest.mock('react-native-base64', () => ({
-  encode: jest.fn((data) => data),
-  decode: jest.fn((data) => data),
-}));
-
-jest.mock('../Security', () => ({
-  encrypt: jest.fn().mockResolvedValue('encrypted-value'),
-  decrypt: jest.fn().mockResolvedValue('decrypted-value'),
-  getRSAKeys: jest.fn().mockResolvedValue({
-    public: 'public-key',
-    private: 'private-key',
-  }),
-}));
+import { BackupCadence, MembershipType, type AListItem } from '../DataModel';
+import { encrypt, generateAndStoreKeys } from '../Security';
+import { MockFirestore } from '../MockFirestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 describe('Storage', () => {
+  let mockFirestore: MockFirestore;
+
+  beforeAll(async () => {
+    await generateAndStoreKeys(true);
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
-    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
-    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([]);
-    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([]);
-    mockDocGet.mockResolvedValue({ exists: false, data: () => undefined });
-    mockDocSet.mockResolvedValue(undefined);
-    mockWhereGet.mockResolvedValue({ empty: true, docs: [] });
+    mockFirestore = new MockFirestore();
+    setFirestoreClientForTesting(mockFirestore);
   });
 
-  it('getItem parses stored JSON and returns item', async () => {
-    const storedItem = { name: 'test', value: 'hello', timestamp: 1, encrypted: false };
-    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(storedItem));
-
-    const result = await getItem('_ali_test');
-    expect(result).not.toBeNull();
-    expect(result?.name).toBe('test');
-    // Non-encrypted items trigger saveItem (which encrypts them)
-    expect(AsyncStorage.setItem).toHaveBeenCalled();
+  afterAll(() => {
+    resetFirestoreClientForTesting();
   });
+
+  async function seedItems(items: AListItem[]) {
+    // const collection = mockFirestore.collection('Items');
+    await Promise.all(items.map(async (item) => await saveItem(item)));
+  }
 
   it('getItem decrypts encrypted items', async () => {
-    const storedItem = { name: 'secret', value: 'enc-data', timestamp: 1, encrypted: true };
-    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(storedItem));
+    await seedItems([
+      { name: 'secret', value: 'decrypted-value', timestamp: 1, encrypted: false, userId: 'u1' },
+    ]);
 
-    const result = await getItem('_ali_secret');
-    expect(result).not.toBeNull();
-    expect(decrypt).toHaveBeenCalledWith('enc-data');
-    expect(result?.value).toBe('decrypted-value');
+    const result = await getItem('secret', 'u1');
+
+    expect(result).toEqual({
+      name: 'secret',
+      value: 'decrypted-value',
+      timestamp: 1,
+      encrypted: true,
+      userId: 'u1',
+    });
   });
 
-  it('replaceItem removes old and saves new item', async () => {
-    const oldItem = { name: 'old', value: 'v1', timestamp: 1, encrypted: false };
-    const newItem = { name: 'new', value: 'v2', timestamp: 0, encrypted: false };
-
-    await replaceItem(oldItem, newItem);
-
-    expect(AsyncStorage.removeItem).toHaveBeenCalledWith('_ali_old');
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith('_ali_new', expect.any(String));
+  it('returns null when an item does not exist', async () => {
+    await expect(getItem('missing', 'u1')).resolves.toBeNull();
   });
 
-  it('getItemsCount returns count of ali-prefixed keys', async () => {
-    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_a', '_ali_b', 'other']);
+  it('retrieves all items for a user', async () => {
+    await seedItems([
+      { name: 'item1', value: 'one', timestamp: 1, encrypted: false, userId: 'u1' },
+      { name: 'item2', value: 'two', timestamp: 2, encrypted: false, userId: 'u1' },
+      { name: 'item3', value: 'three', timestamp: 3, encrypted: false, userId: 'u2' },
+    ]);
 
-    const count = await getItemsCount();
-    expect(count).toBe(2);
+    const items = await getAllItems('u1');
+
+    expect(items).toHaveLength(2);
+    expect(items.map((item) => item.name).sort()).toEqual(['item1', 'item2']);
   });
 
-  it('uses AsyncStorage for local persistence', async () => {
-    await getItem('test-key');
-    expect(AsyncStorage.getItem).toHaveBeenCalled();
+  it('adds timestamps to items that are missing one', async () => {
+    const originalNow = Date.now;
+    Date.now = jest.fn(() => 123456789);
+    try {
+      await seedItems([
+        { name: 'stamped', value: 'value', timestamp: 0, encrypted: false, userId: 'u1' },
+      ]);
+
+      const result = await addTimestampToItems('u1');
+      const updated = await getItem('stamped', 'u1');
+
+      expect(result).toHaveLength(1);
+      expect(updated?.timestamp).toBe(123456789);
+    } finally {
+      Date.now = originalNow;
+    }
   });
 
-  it('handles null item retrieval', async () => {
-    const item = await getItem('non-existent-key');
-    expect(item).toBeNull();
+  it('saveItem encrypts and stores using the user and item name as the doc id', async () => {
+    await saveItem({
+      name: 'myItem',
+      value: 'secret',
+      timestamp: 1,
+      encrypted: false,
+      userId: 'u1',
+    });
+
+    const storedDoc = await mockFirestore.collection('Items').doc('u1_myItem').get();
+    const stored = storedDoc.data();
+
+    expect(storedDoc.exists).toBe(true);
+    expect(stored?.encrypted).toBe(true);
+    expect(stored?.value).not.toBe('secret');
+    expect(stored?.searchIndex).toContain('myitem');
   });
 
-  it('retrieves all items', async () => {
-    const items = await getAllItems();
-    expect(Array.isArray(items)).toBe(true);
-  });
+  it('adds search indexes to items that are missing them', async () => {
+    const encryptedValue = await encrypt('secret');
+    await mockFirestore.collection('Items').doc('u1_secret').set({
+      name: 'secret',
+      value: encryptedValue,
+      timestamp: 1,
+      userId: 'u1',
+      encrypted: true,
+    });
 
-  it('filters items by search term', async () => {
-    const item1 = { name: 'apple', value: 'v1', timestamp: 1, encrypted: false };
-    const _item2 = { name: 'banana', value: 'v2', timestamp: 2, encrypted: false };
-    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_apple', '_ali_banana']);
-    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([['_ali_apple', JSON.stringify(item1)]]);
+    const result = await addSearchIndexToItems('u1');
+    const updated = await mockFirestore.collection('Items').doc('u1_secret').get();
 
-    const items = await getItems('apple');
-    expect(items).toHaveLength(1);
-    expect(items[0]!.name).toBe('apple');
-  });
-
-  it('returns all items for empty filter', async () => {
-    const items1 = await getItems('');
-    const items2 = await getItems('');
-    expect(Array.isArray(items1)).toBe(true);
-    expect(Array.isArray(items2)).toBe(true);
-  });
-
-  it('adds timestamps to items without timestamp', async () => {
-    const item = { name: 'notime', value: 'v', encrypted: false };
-    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_notime']);
-    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([['_ali_notime', JSON.stringify(item)]]);
-
-    const result = await addTimestampToItems();
     expect(result).toHaveLength(1);
-    // replaceItem calls removeItem then saveItem
-    expect(AsyncStorage.removeItem).toHaveBeenCalledWith('_ali_notime');
-    expect(AsyncStorage.setItem).toHaveBeenCalled();
+    expect(updated.data()?.searchIndex).toContain('sec');
   });
 
-  it('handles storage operations with invalid JSON', async () => {
-    (AsyncStorage.getItem as jest.Mock).mockResolvedValue('not-valid-json');
-    const item = await getItem('key');
-    expect(item).toBeNull();
-  });
-
-  it('uses correct storage key prefix', async () => {
-    await getAllItems();
-    expect(AsyncStorage.getAllKeys).toHaveBeenCalled();
-  });
-
-  it('processes multiple items correctly', async () => {
-    jest.spyOn(AsyncStorage, 'getAllKeys').mockResolvedValue(['_ali_1', '_ali_2']);
-    jest.spyOn(AsyncStorage, 'multiGet').mockResolvedValue([
-      ['_ali_1', null],
-      ['_ali_2', null],
+  it('replaceItem removes the old firestore doc and saves the new one', async () => {
+    await seedItems([
+      { name: 'old', value: 'old-value', timestamp: 1, encrypted: false, userId: 'u1' },
     ]);
 
-    const items = await getAllItems();
-    expect(Array.isArray(items)).toBe(true);
+    await replaceItem(
+      { name: 'old', value: 'old-value', timestamp: 1, encrypted: true, userId: 'u1' },
+      { name: 'new', value: 'new-value', timestamp: 5, encrypted: false, userId: 'u1' },
+      false
+    );
+
+    await expect(getItem('old', 'u1')).resolves.toBeNull();
+    await expect(getItem('new', 'u1')).resolves.toMatchObject({
+      name: 'new',
+      value: 'new-value',
+      timestamp: 5,
+      userId: 'u1',
+    });
   });
 
-  it('handles empty results across operations', async () => {
-    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([]);
-    const items = await getAllItems();
-    expect(items).toBeDefined();
-    expect(items).toHaveLength(0);
+  it('removeItem deletes from async storage and firestore', async () => {
+    await seedItems([
+      { name: 'gone', value: 'value', timestamp: 1, encrypted: false, userId: 'u1' },
+    ]);
 
-    // Empty firestore results
-    const pulled = await pullItems('no-user');
-    expect(pulled).toHaveLength(0);
-    const deleted = await deleteItems('no-user');
-    expect(deleted).toBe(0);
+    await removeItem({ name: 'gone', value: 'value', timestamp: 1, encrypted: true, userId: 'u1' });
+
+    await expect(getItem('gone', 'u1')).resolves.toBeNull();
   });
 
-  it('createUserSettings creates defaults for new user', async () => {
-    mockDocGet.mockResolvedValue({ data: () => undefined });
-    mockDocSet.mockResolvedValue(undefined);
-
+  it('creates default user settings when none exist', async () => {
     const settings = await createUserSettings('user123');
-    expect(settings.userId).toBe('user123');
-    expect(mockDocSet).toHaveBeenCalled();
-  });
 
-  it('createUserSettings returns existing settings', async () => {
-    const existing = { userId: 'user123', backup: 'DAILY', membership: 'FREE' };
-    mockDocGet.mockResolvedValue({ data: () => existing });
-
-    const settings = await createUserSettings('user123');
-    expect(settings).toEqual(existing);
-    expect(mockDocSet).not.toHaveBeenCalled();
-  });
-
-  it('pullItems retrieves items from firestore', async () => {
-    mockWhereGet.mockResolvedValue({
-      empty: false,
-      docs: [
-        {
-          data: () => ({
-            name: 'item1',
-            value: 'dmFsMQ==', // base64('val1')
-            timestamp: 1,
-            encrypted: false,
-            userId: 'u1',
-          }),
-        },
-      ],
+    expect(settings).toEqual({
+      userId: 'user123',
+      backup: BackupCadence.DAILY,
+      membership: MembershipType.FREE,
     });
 
-    const items = await pullItems('u1');
-    expect(items).toHaveLength(1);
-    expect(items[0]!.name).toBe('item1');
+    await expect(getUserSettings('user123')).resolves.toEqual(settings);
   });
 
-  it('deleteItems removes items from firestore', async () => {
-    const mockRefDelete = jest
-      .fn()
-      .mockResolvedValueOnce(undefined)
-      .mockRejectedValueOnce(new Error('fail'));
-    mockWhereGet.mockResolvedValue({
-      empty: false,
-      docs: [{ ref: { delete: mockRefDelete } }, { ref: { delete: mockRefDelete } }],
+  it('returns existing user settings without overwriting them', async () => {
+    await mockFirestore.collection('UserSettings').doc('user123').set({
+      userId: 'user123',
+      backup: BackupCadence.NONE,
+      membership: MembershipType.PREMIUM,
     });
+
+    await expect(createUserSettings('user123')).resolves.toEqual({
+      userId: 'user123',
+      backup: BackupCadence.NONE,
+      membership: MembershipType.PREMIUM,
+    });
+  });
+
+  it('deleteItems removes all items for a user and returns the count', async () => {
+    await seedItems([
+      { name: 'a', value: 'one', timestamp: 1, encrypted: false, userId: 'u1' },
+      { name: 'b', value: 'two', timestamp: 2, encrypted: false, userId: 'u1' },
+      { name: 'c', value: 'three', timestamp: 3, encrypted: false, userId: 'u2' },
+    ]);
 
     const count = await deleteItems('u1');
-    // First succeeds (1), second fails (0)
-    expect(count).toBe(1);
-    expect(mockRefDelete).toHaveBeenCalledTimes(2);
-  });
 
-  it('restoreFromBackup clears storage and restores items', async () => {
-    mockWhereGet.mockResolvedValue({
-      empty: false,
-      docs: [
-        {
-          data: () => ({
-            name: 'item1',
-            value: 'dmFsMQ==', // base64('val1')
-            timestamp: 1,
-            encrypted: true,
-            userId: 'u1',
-          }),
-        },
-        {
-          data: () => ({
-            name: 'item2',
-            value: 'dmFsMg==', // base64('val2')
-            timestamp: 2,
-            encrypted: false,
-            userId: 'u1',
-          }),
-        },
-      ],
-    });
-
-    const count = await restoreFromBackup('u1');
     expect(count).toBe(2);
-    expect(AsyncStorage.clear).toHaveBeenCalled();
+    await expect(getAllItems('u1')).resolves.toHaveLength(0);
+    await expect(getAllItems('u2')).resolves.toHaveLength(1);
   });
 
-  it('saveItem encrypts value and stores with _ali_ prefix', async () => {
-    const item = { name: 'myItem', value: 'secret', timestamp: 1, encrypted: false };
-    await saveItem(item);
-
-    expect(encrypt).toHaveBeenCalledWith('secret');
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-      '_ali_myItem',
-      expect.stringContaining('"encrypted":true')
-    );
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-      '_ali_myItem',
-      expect.stringContaining('"name":"myItem"')
-    );
-  });
-
-  it('removeItem with valid item calls AsyncStorage.removeItem', async () => {
-    const item = { name: 'toRemove', value: 'v', timestamp: 1, encrypted: false };
-    await removeItem(item);
-
-    expect(AsyncStorage.removeItem).toHaveBeenCalledWith('_ali_toRemove');
-  });
-
-  it('removeItem with null item does not call AsyncStorage.removeItem', async () => {
-    // @ts-expect-error testing null input
-    await removeItem(null);
-
-    expect(AsyncStorage.removeItem).not.toHaveBeenCalled();
-  });
-
-  it('replaceItem with timestamp=false does not override timestamp', async () => {
-    const oldItem = { name: 'old', value: 'v1', timestamp: 100, encrypted: false };
-    const newItem = { name: 'new', value: 'v2', timestamp: 100, encrypted: false };
-
-    await replaceItem(oldItem, newItem, false);
-
-    expect(AsyncStorage.removeItem).toHaveBeenCalledWith('_ali_old');
-    expect(AsyncStorage.setItem).toHaveBeenCalled();
-    const savedCall = (AsyncStorage.setItem as jest.Mock).mock.calls[0];
-    const savedItem = JSON.parse(savedCall[1]);
-    expect(savedItem.timestamp).toBe(100);
-  });
-
-  it('replaceItem with timestamp=true sets new timestamp', async () => {
-    const oldItem = { name: 'old', value: 'v1', timestamp: 100, encrypted: false };
-    const newItem = { name: 'new', value: 'v2', timestamp: 100, encrypted: false };
-    const before = Date.now();
-    await replaceItem(oldItem, newItem, true);
-    const after = Date.now();
-
-    const savedCall = (AsyncStorage.setItem as jest.Mock).mock.calls[0];
-    const savedItem = JSON.parse(savedCall[1]);
-    expect(savedItem.timestamp).toBeGreaterThanOrEqual(before);
-    expect(savedItem.timestamp).toBeLessThanOrEqual(after);
-  });
-
-  it('getUserSettings returns user settings from firestore', async () => {
-    const settings = { userId: 'u1', backup: 'DAILY', membership: 'FREE' };
-    mockDocGet.mockResolvedValue({ data: () => settings });
-
-    const result = await getUserSettings('u1');
-    expect(result).toEqual(settings);
-  });
-
-  it('getUserSettings returns null when no settings exist', async () => {
-    mockDocGet.mockResolvedValue({ data: () => undefined });
-
-    const result = await getUserSettings('u1');
-    expect(result).toBeNull();
-  });
-
-  it('getItems with null filter returns all items', async () => {
-    const item = { name: 'test', value: 'v', timestamp: 1, encrypted: false };
-    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_test']);
-    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([['_ali_test', JSON.stringify(item)]]);
-
-    // @ts-expect-error testing null input
-    const items = await getItems(null);
-    expect(items).toHaveLength(1);
-    expect(items[0]!.name).toBe('test');
-  });
-
-  it('maybeDecrypt saves unencrypted items (triggers encryption)', async () => {
-    const item = { name: 'plain', value: 'hello', timestamp: 1, encrypted: false };
-    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(item));
-
-    await getItem('_ali_plain');
-
-    expect(encrypt).toHaveBeenCalledWith('hello');
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-      '_ali_plain',
-      expect.stringContaining('"encrypted":true')
-    );
-  });
-
-  it('restoreFromBackup does not encrypt already-encrypted items', async () => {
-    mockWhereGet.mockResolvedValue({
-      empty: false,
-      docs: [
-        {
-          data: () => ({
-            name: 'enc',
-            value: 'ZW5jcnlwdGVkLWRhdGE=', // base64('encrypted-data')
-            timestamp: 1,
-            encrypted: true,
-            userId: 'u1',
-          }),
-        },
-      ],
-    });
-
-    const count = await restoreFromBackup('u1');
-    expect(count).toBe(1);
-    expect(AsyncStorage.clear).toHaveBeenCalled();
-    expect(encrypt).not.toHaveBeenCalled();
-  });
-
-  it('restoreFromBackup encrypts non-encrypted items via saveItem', async () => {
-    mockWhereGet.mockResolvedValue({
-      empty: false,
-      docs: [
-        {
-          data: () => ({
-            name: 'plain',
-            value: 'ZGF0YQ==', // base64('data')
-            timestamp: 1,
-            encrypted: false,
-            userId: 'u1',
-          }),
-        },
-      ],
-    });
-
-    const count = await restoreFromBackup('u1');
-    expect(count).toBe(1);
-    expect(AsyncStorage.clear).toHaveBeenCalled();
-    expect(encrypt).toHaveBeenCalledWith('ZGF0YQ==');
-  });
-
-  it('deleteItems returns 0 when all deletes fail', async () => {
-    const mockRefDelete = jest.fn().mockRejectedValue(new Error('fail'));
-    mockWhereGet.mockResolvedValue({
-      empty: false,
-      docs: [{ ref: { delete: mockRefDelete } }],
-    });
-
-    const count = await deleteItems('u1');
-    expect(count).toBe(0);
-  });
-
-  it('deleteItems returns correct count for all successful deletes', async () => {
-    const mockRefDelete = jest.fn().mockResolvedValue(undefined);
-    mockWhereGet.mockResolvedValue({
-      empty: false,
-      docs: [
-        { ref: { delete: mockRefDelete } },
-        { ref: { delete: mockRefDelete } },
-        { ref: { delete: mockRefDelete } },
-      ],
-    });
-
-    const count = await deleteItems('u1');
-    expect(count).toBe(3);
-  });
-
-  it('getAllItems filters out non-ali keys', async () => {
-    const item = { name: 'test', value: 'v', timestamp: 1, encrypted: false };
+  it('backupLocalStorageToFirestore decrypts encrypted local items and saves plain ones to firestore', async () => {
+    const encryptedValue = await encrypt('secret');
     (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([
-      '_ali_test',
-      'other_key',
-      'settings',
+      '_ali_secret',
+      '_ali_plain',
+      'not_an_ali_key',
     ]);
-    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([['_ali_test', JSON.stringify(item)]]);
-
-    const items = await getAllItems();
-    expect(items).toHaveLength(1);
-    expect(items[0]!.name).toBe('test');
-  });
-
-  it('getItems filters by case-insensitive search', async () => {
-    const item = { name: 'Apple', value: 'v1', timestamp: 1, encrypted: false };
-    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_Apple']);
-    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([['_ali_Apple', JSON.stringify(item)]]);
-
-    const items = await getItems('apple');
-    expect(items).toHaveLength(1);
-    expect(items[0]!.name).toBe('Apple');
-  });
-
-  it('pullItems decodes base64 values', async () => {
-    mockWhereGet.mockResolvedValue({
-      empty: false,
-      docs: [
-        {
-          data: () => ({
-            name: 'item1',
-            value: 'ZW5jb2RlZC12YWw=', // base64('encoded-val')
-            timestamp: 1,
-            encrypted: false,
-            userId: 'u1',
-          }),
-        },
+    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([
+      [
+        '_ali_secret',
+        JSON.stringify({
+          name: 'secret',
+          value: encryptedValue,
+          timestamp: 1,
+          encrypted: true,
+          userId: 'u1',
+        } satisfies AListItem),
       ],
+      [
+        '_ali_plain',
+        JSON.stringify({
+          name: 'plain',
+          value: 'visible',
+          timestamp: 2,
+          encrypted: false,
+          userId: 'u1',
+        } satisfies AListItem),
+      ],
+    ]);
+
+    const items = await backupLocalStorageToFirestore();
+    const storedPlain = await mockFirestore.collection('Items').doc('u1_plain').get();
+
+    expect(items).toEqual([
+      {
+        name: 'secret',
+        value: 'secret',
+        timestamp: 1,
+        encrypted: true,
+        userId: 'u1',
+      },
+      {
+        name: 'plain',
+        value: 'visible',
+        timestamp: 2,
+        encrypted: false,
+        userId: 'u1',
+      },
+    ]);
+    expect(AsyncStorage.multiGet).toHaveBeenCalledWith(['_ali_secret', '_ali_plain']);
+    expect(storedPlain.exists).toBe(true);
+    expect(storedPlain.data()?.encrypted).toBe(true);
+  });
+
+  it('clear local async storage', async () => {
+    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([
+      '_ali_secret',
+      '_ali_plain',
+      'not_an_ali_key',
+    ]);
+
+    let multiRemoveMock = AsyncStorage.multiRemove as jest.Mock;
+
+    await clearLocalAsyncStorage();
+    expect(AsyncStorage.getAllKeys).toHaveBeenCalled();
+    expect(multiRemoveMock).toHaveBeenLastCalledWith(['_ali_secret', '_ali_plain']);
+  });
+
+  describe('Searching', () => {
+    beforeEach(async () => {
+      await seedItems([
+        {
+          name: 'National Insurance Number',
+          value: 'SA123456',
+          timestamp: 1,
+          encrypted: true,
+          userId: 'u1',
+        },
+        {
+          name: 'Passport',
+          value: 'PAL123465',
+          timestamp: 1,
+          encrypted: true,
+          userId: 'u1',
+        },
+      ]);
     });
 
-    const items = await pullItems('u1');
-    expect(items).toHaveLength(1);
-    expect(items[0]!.value).toBe('ZW5jb2RlZC12YWw=');
+    it('Search multiple word item', async () => {
+      const items = await getItems('u1', 'nation');
+      expect(items).toHaveLength(1);
+      expect(items[0]?.name).toBe('National Insurance Number');
+    });
+
+    it('Seach single word item', async () => {
+      const items = await getItems('u1', 'pass');
+      expect(items).toHaveLength(1);
+      expect(items[0]?.name).toBe('Passport');
+    });
   });
 });

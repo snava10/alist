@@ -17,15 +17,15 @@ The protection layers listed below are ordered by **execution stage** — from t
 (developer's machine, on save / on commit) to the latest (CI Phase 3, after every other
 gate has passed):
 
-| Stage | Layer | Tool | Catches |
-|---|---|---|---|
-| Commit-time | TypeScript strict mode | `tsc` | Wrong types, implicit any, null bugs |
-| Commit-time | Linting + formatting | ESLint + Prettier + Husky | Style, dead code, commit-time enforcement |
-| CI Phase 1 | Unit tests | Jest + React Testing Library | Logic bugs |
-| CI Phase 2 | Mutation testing | Stryker | Fake / useless tests |
-| CI Phase 2 | Contract tests | Zod schemas | Data shape drift between app and backend |
-| CI Phase 2 | Architecture rules | dependency-cruiser | Broken module boundaries |
-| CI Phase 3 | E2E tests | Maestro (via EAS) | Navigation, state, real user flows |
+| Stage       | Layer                  | Tool                         | Catches                                   |
+| ----------- | ---------------------- | ---------------------------- | ----------------------------------------- |
+| Commit-time | TypeScript strict mode | `tsc`                        | Wrong types, implicit any, null bugs      |
+| Commit-time | Linting + formatting   | ESLint + Prettier + Husky    | Style, dead code, commit-time enforcement |
+| CI Phase 1  | Unit tests             | Jest + React Testing Library | Logic bugs                                |
+| CI Phase 2  | Mutation testing       | Stryker                      | Fake / useless tests                      |
+| CI Phase 2  | Contract tests         | Zod schemas                  | Data shape drift between app and backend  |
+| CI Phase 2  | Architecture rules     | dependency-cruiser           | Broken module boundaries                  |
+| CI Phase 3  | E2E tests              | Maestro (via EAS)            | Navigation, state, real user flows        |
 
 ---
 
@@ -165,6 +165,7 @@ npm install --save-dev @stryker-mutator/core @stryker-mutator/jest-runner @stryk
 ```
 
 **Thresholds explained:**
+
 - `high`: mutation score above this → green
 - `low`: mutation score below this → yellow warning
 - `break`: mutation score below this → pipeline fails
@@ -189,13 +190,15 @@ npm install zod
 import { z } from 'zod';
 
 // Define schemas that mirror your backend/Firestore document shapes exactly
-export const ItemContract = z.object({
-  name: z.string().min(1),
-  value: z.string(),
-  timestamp: z.number(),
-  userId: z.string().min(1),
-  encrypted: z.boolean().optional(),
-}).strict();
+export const ItemContract = z
+  .object({
+    name: z.string().min(1),
+    value: z.string(),
+    timestamp: z.number(),
+    userId: z.string().min(1),
+    encrypted: z.boolean().optional(),
+  })
+  .strict();
 
 // Export validators — these are what you call in tests and optionally at runtime
 export function validateItem(data: unknown) {
@@ -214,13 +217,17 @@ import { ZodError } from 'zod';
 
 describe('ItemContract', () => {
   it('accepts valid item', () => {
-    expect(() => validateItem({ name: 'pw', value: 'abc', timestamp: 1, userId: 'u1' })).not.toThrow();
+    expect(() =>
+      validateItem({ name: 'pw', value: 'abc', timestamp: 1, userId: 'u1' })
+    ).not.toThrow();
   });
   it('rejects missing name', () => {
     expect(() => validateItem({ value: 'abc', timestamp: 1, userId: 'u1' })).toThrow(ZodError);
   });
   it('rejects wrong type for timestamp', () => {
-    expect(() => validateItem({ name: 'pw', value: 'abc', timestamp: '2024', userId: 'u1' })).toThrow(ZodError);
+    expect(() =>
+      validateItem({ name: 'pw', value: 'abc', timestamp: '2024', userId: 'u1' })
+    ).toThrow(ZodError);
   });
 });
 ```
@@ -325,13 +332,13 @@ curl -Ls "https://get.maestro.mobile.dev" | bash
 appId: com.yourapp.id
 ---
 - launchApp
-- assertVisible: "Add Item"
-- tapOn: "Add Item"
+- assertVisible: 'Add Item'
+- tapOn: 'Add Item'
 - inputText:
-    id: "item-name-input"
-    text: "My Secret"
-- tapOn: "Save"
-- assertVisible: "My Secret"
+    id: 'item-name-input'
+    text: 'My Secret'
+- tapOn: 'Save'
+- assertVisible: 'My Secret'
 ```
 
 ### Run locally
@@ -478,15 +485,15 @@ Use this checklist when setting up the pipeline in a new project:
 
 ## What Each Layer Catches
 
-| Problem | Where it gets caught |
-|---|---|
-| Wrong types / null deref | TypeScript strict mode |
-| Dead code, style violations | ESLint |
-| Logic bugs | Unit tests |
-| Fake / coverage-padding tests | Mutation testing |
-| API / Firestore schema drift | Contract tests (Zod) |
-| Broken module boundaries | dependency-cruiser |
-| Navigation / state / real-use bugs | Maestro E2E |
+| Problem                            | Where it gets caught   |
+| ---------------------------------- | ---------------------- |
+| Wrong types / null deref           | TypeScript strict mode |
+| Dead code, style violations        | ESLint                 |
+| Logic bugs                         | Unit tests             |
+| Fake / coverage-padding tests      | Mutation testing       |
+| API / Firestore schema drift       | Contract tests (Zod)   |
+| Broken module boundaries           | dependency-cruiser     |
+| Navigation / state / real-use bugs | Maestro E2E            |
 
 ---
 
@@ -494,10 +501,10 @@ Use this checklist when setting up the pipeline in a new project:
 
 The plan mentioned these tools. They were evaluated and either replaced or deferred:
 
-| Plan Item | Status | Notes |
-|---|---|---|
-| Pact (contract testing) | Replaced | Zod schemas are sufficient for a Firebase-backed app without a separate backend team |
-| SonarQube / Qodana | Deferred | dependency-cruiser covers architecture rules; SonarQube adds value at larger team sizes |
-| Sentry (error monitoring) | Deferred | Useful for production; add when the app has real users |
-| Datadog / New Relic | Deferred | Add for performance monitoring at scale |
-| LaunchDarkly (feature flags) | Deferred | Add when shipping AI-generated features that need instant kill-switches |
+| Plan Item                    | Status   | Notes                                                                                   |
+| ---------------------------- | -------- | --------------------------------------------------------------------------------------- |
+| Pact (contract testing)      | Replaced | Zod schemas are sufficient for a Firebase-backed app without a separate backend team    |
+| SonarQube / Qodana           | Deferred | dependency-cruiser covers architecture rules; SonarQube adds value at larger team sizes |
+| Sentry (error monitoring)    | Deferred | Useful for production; add when the app has real users                                  |
+| Datadog / New Relic          | Deferred | Add for performance monitoring at scale                                                 |
+| LaunchDarkly (feature flags) | Deferred | Add when shipping AI-generated features that need instant kill-switches                 |
