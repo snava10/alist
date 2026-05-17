@@ -14,26 +14,100 @@ import {
   resetFirestoreClientForTesting,
   saveItem,
   setFirestoreClientForTesting,
+  type StorageFirestore,
 } from '../Storage';
 import { BackupCadence, MembershipType, type AListItem } from '../DataModel';
 import { encrypt, generateAndStoreKeys } from '../Security';
-import { MockFirestore } from '../MockFirestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { initializeApp, deleteApp, type FirebaseApp } from 'firebase/app';
+import {
+  collection,
+  connectFirestoreEmulator,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  getFirestore,
+  query,
+  setDoc,
+  terminate,
+  updateDoc,
+  where,
+  type Firestore,
+  type WhereFilterOp,
+  type QueryConstraint,
+} from 'firebase/firestore';
+import { randomUUID } from 'crypto';
+
+type FirestoreDocData = Record<string, unknown>;
+
+function createFirestoreClientAdapter(db: Firestore): StorageFirestore {
+  const buildQueryRef = (collectionName: string, constraints: QueryConstraint[] = []) => ({
+    where: (field: string, op: WhereFilterOp, value: unknown) =>
+      buildQueryRef(collectionName, [...constraints, where(field, op, value)]),
+    get: async () => {
+      const snapshot = await getDocs(query(collection(db, collectionName), ...constraints));
+      return {
+        empty: snapshot.empty,
+        docs: snapshot.docs.map((snapshotDoc) => ({
+          id: snapshotDoc.id,
+          data: () => (snapshotDoc.data() as FirestoreDocData) ?? {},
+          ref: {
+            delete: () => deleteDoc(snapshotDoc.ref),
+          },
+        })),
+      };
+    },
+  });
+
+  return {
+    collection: (collectionName: string) => ({
+      doc: (id: string) => ({
+        get: async () => {
+          const snapshot = await getDoc(doc(db, collectionName, id));
+          return {
+            exists: snapshot.exists(),
+            data: () => snapshot.data() as FirestoreDocData | undefined,
+          };
+        },
+        set: (data: FirestoreDocData) => setDoc(doc(db, collectionName, id), data),
+        update: (data: Partial<FirestoreDocData>) => updateDoc(doc(db, collectionName, id), data),
+        delete: () => deleteDoc(doc(db, collectionName, id)),
+      }),
+      where: (field: string, op: WhereFilterOp, value: unknown) =>
+        buildQueryRef(collectionName, [where(field, op, value)]),
+    }),
+  };
+}
 
 describe('Storage', () => {
-  let mockFirestore: MockFirestore;
+  let app: FirebaseApp;
+  let db: Firestore;
 
   beforeAll(async () => {
+    app = initializeApp({
+      projectId: `alist-test-project-${randomUUID()}`,
+    });
+    db = getFirestore(app);
+    connectFirestoreEmulator(db, '127.0.0.1', 8080);
+    setFirestoreClientForTesting(createFirestoreClientAdapter(db));
     await generateAndStoreKeys(true);
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
-    mockFirestore = new MockFirestore();
-    setFirestoreClientForTesting(mockFirestore);
+    const collectionsToClear = ['Items', 'UserSettings'];
+    await Promise.all(
+      collectionsToClear.map(async (collectionName) => {
+        const snapshot = await getDocs(collection(db, collectionName));
+        await Promise.all(snapshot.docs.map((itemDoc) => deleteDoc(itemDoc.ref)));
+      })
+    );
   });
 
-  afterAll(() => {
+  afterAll(async () => {
+    await terminate(db);
+    await deleteApp(app);
     resetFirestoreClientForTesting();
   });
 
@@ -102,10 +176,10 @@ describe('Storage', () => {
       userId: 'u1',
     });
 
-    const storedDoc = await mockFirestore.collection('Items').doc('u1_myItem').get();
+    const storedDoc = await getDoc(doc(db, 'Items', 'u1_myItem'));
     const stored = storedDoc.data();
 
-    expect(storedDoc.exists).toBe(true);
+    expect(storedDoc.exists()).toBe(true);
     expect(stored?.encrypted).toBe(true);
     expect(stored?.value).not.toBe('secret');
     expect(stored?.searchIndex).toContain('myitem');
@@ -113,7 +187,7 @@ describe('Storage', () => {
 
   it('adds search indexes to items that are missing them', async () => {
     const encryptedValue = await encrypt('secret');
-    await mockFirestore.collection('Items').doc('u1_secret').set({
+    await setDoc(doc(db, 'Items', 'u1_secret'), {
       name: 'secret',
       value: encryptedValue,
       timestamp: 1,
@@ -122,7 +196,7 @@ describe('Storage', () => {
     });
 
     const result = await addSearchIndexToItems('u1');
-    const updated = await mockFirestore.collection('Items').doc('u1_secret').get();
+    const updated = await getDoc(doc(db, 'Items', 'u1_secret'));
 
     expect(result).toHaveLength(1);
     expect(updated.data()?.searchIndex).toContain('sec');
@@ -171,7 +245,7 @@ describe('Storage', () => {
   });
 
   it('returns existing user settings without overwriting them', async () => {
-    await mockFirestore.collection('UserSettings').doc('user123').set({
+    await setDoc(doc(db, 'UserSettings', 'user123'), {
       userId: 'user123',
       backup: BackupCadence.NONE,
       membership: MembershipType.PREMIUM,
@@ -229,7 +303,7 @@ describe('Storage', () => {
     ]);
 
     const items = await backupLocalStorageToFirestore();
-    const storedPlain = await mockFirestore.collection('Items').doc('u1_plain').get();
+    const storedPlain = await getDoc(doc(db, 'Items', 'u1_plain'));
 
     expect(items).toEqual([
       {
@@ -248,7 +322,7 @@ describe('Storage', () => {
       },
     ]);
     expect(AsyncStorage.multiGet).toHaveBeenCalledWith(['_ali_secret', '_ali_plain']);
-    expect(storedPlain.exists).toBe(true);
+    expect(storedPlain.exists()).toBe(true);
     expect(storedPlain.data()?.encrypted).toBe(true);
   });
 

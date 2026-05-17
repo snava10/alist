@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "scripts": {
+    "start": "firebase emulators:start"
+  },
+  "dependencies": {
+    "firebase-tools": "^13.29.1"
+  }
+}

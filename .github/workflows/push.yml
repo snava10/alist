@@ -55,8 +55,18 @@ jobs:
         with:
           expo-token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Run tests
-        run: npm test -- --coverage --watchAll=false --coverageReporters=json-summary --coverageReporters=lcov
+      - name: Install firebase emulator dependencies
+        run: |
+          cd firebase-emulator
+          npm install
+
+      - name: Run tests (after Firebase Emulator)
+        run: |
+          cd firebase-emulator
+          npm run start -- --project alist-test --only firestore,auth &
+          sleep 10
+          cd ..
+          npm test -- --coverage --watchAll=false --coverageReporters=json-summary --coverageReporters=lcov
 
       - name: Post coverage to PR
         if: github.event_name == 'pull_request'
