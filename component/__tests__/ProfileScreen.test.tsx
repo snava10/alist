@@ -112,7 +112,7 @@ describe('ProfileScreen - Rendering Tests', () => {
     await waitFor(() => {
       expect(screen.getByText('Test User')).toBeTruthy();
       expect(screen.getByText('Export')).toBeTruthy();
-      expect(screen.getByText('Backup Old Data')).toBeTruthy();
+      expect(screen.getByText('Backup Old')).toBeTruthy();
       expect(screen.getByText('Log Out')).toBeTruthy();
       expect(screen.getByText('Delete Account')).toBeTruthy();
     });
@@ -136,7 +136,7 @@ describe('ProfileScreen - Rendering Tests', () => {
     renderProfileScreen({ user: anonymousUser });
 
     await waitFor(() => {
-      expect(screen.queryByText('Backup Old Data')).toBeNull();
+      expect(screen.queryByText('Backup Old')).toBeNull();
       expect(screen.queryByText('Log Out')).toBeNull();
     });
   });
@@ -270,7 +270,7 @@ describe('ProfileScreen - Rendering Tests', () => {
     renderProfileScreen({ user: mockUser });
 
     await waitFor(() => {
-      expect(screen.getByText('Backup Old Data')).toBeTruthy();
+      expect(screen.getByText('Backup Old')).toBeTruthy();
     });
     expect(screen.queryByText('Backup Restore')).toBeNull();
     expect(screen.queryByText('Backup')).toBeNull();
@@ -285,7 +285,7 @@ describe('ProfileScreen - Rendering Tests', () => {
     renderProfileScreen({ user: userWithNoName });
 
     await waitFor(() => {
-      expect(screen.getByText('Backup Old Data')).toBeTruthy();
+      expect(screen.getByText('Backup Old')).toBeTruthy();
     });
     expect(screen.queryByText('Test User')).toBeNull();
   });
@@ -299,7 +299,7 @@ describe('ProfileScreen - Rendering Tests', () => {
     renderProfileScreen({ user: userNoProvider });
 
     await waitFor(() => {
-      expect(screen.getByText('Backup Old Data')).toBeTruthy();
+      expect(screen.getByText('Backup Old')).toBeTruthy();
     });
     expect(screen.queryByText('Test User')).toBeNull();
   });
@@ -399,7 +399,7 @@ describe('ProfileScreen - Rendering Tests', () => {
     renderProfileScreen({ user: mockUser });
 
     await waitFor(() => {
-      expect(screen.getByText('Backup Old Data')).toBeTruthy();
+      expect(screen.getByText('Backup Old')).toBeTruthy();
     });
 
     await act(async () => {
@@ -407,25 +407,25 @@ describe('ProfileScreen - Rendering Tests', () => {
     });
 
     await waitFor(() => {
-      expect(screen.queryByText('Backup Old Data')).toBeNull();
+      expect(screen.queryByText('Backup Old')).toBeNull();
     });
   });
 
-  it('renders Backup Old Data for a logged-in user', async () => {
+  it('renders Backup Old for a logged-in user', async () => {
     renderProfileScreen({ user: mockUser });
 
     await waitFor(() => {
       expect(screen.getByText('Export')).toBeTruthy();
-      expect(screen.getByText('Backup Old Data')).toBeTruthy();
+      expect(screen.getByText('Backup Old')).toBeTruthy();
     });
   });
 
-  it('does not render Backup Old Data for an anonymous user', async () => {
+  it('does not render Backup Old for an anonymous user', async () => {
     const anonymousUser = { uid: 'anon-123', isAnonymous: true, displayName: null };
     renderProfileScreen({ user: anonymousUser });
 
     await waitFor(() => {
-      expect(screen.queryByText('Backup Old Data')).toBeNull();
+      expect(screen.queryByText('Backup Old')).toBeNull();
     });
   });
 
@@ -433,11 +433,11 @@ describe('ProfileScreen - Rendering Tests', () => {
     renderProfileScreen({ user: mockUser });
 
     await waitFor(() => {
-      expect(screen.getByText('Backup Old Data')).toBeTruthy();
+      expect(screen.getByText('Backup Old')).toBeTruthy();
     });
 
     await act(async () => {
-      fireEvent.press(screen.getByText('Backup Old Data'));
+      fireEvent.press(screen.getByText('Backup Old'));
     });
 
     await waitFor(() => {
@@ -469,11 +469,11 @@ describe('ProfileScreen - Rendering Tests', () => {
     renderProfileScreen({ user: mockUser });
 
     await waitFor(() => {
-      expect(screen.getByText('Backup Old Data')).toBeTruthy();
+      expect(screen.getByText('Backup Old')).toBeTruthy();
     });
 
     await act(async () => {
-      fireEvent.press(screen.getByText('Backup Old Data'));
+      fireEvent.press(screen.getByText('Backup Old'));
     });
 
     await waitFor(() => {
@@ -503,11 +503,11 @@ describe('ProfileScreen - Rendering Tests', () => {
     renderProfileScreen({ user: mockUser });
 
     await waitFor(() => {
-      expect(screen.getByText('Backup Old Data')).toBeTruthy();
+      expect(screen.getByText('Backup Old')).toBeTruthy();
     });
 
     await act(async () => {
-      fireEvent.press(screen.getByText('Backup Old Data'));
+      fireEvent.press(screen.getByText('Backup Old'));
     });
 
     await waitFor(() => {
