@@ -97,3 +97,16 @@ jest.mock('react-native-base64', () => ({
   encode: jest.fn((text) => text),
   decode: jest.fn((text) => text),
 }));
+
+// Mock expo-file-system legacy API (native code is unavailable in Node).
+// CsvExport tests configure these mocks per test.
+jest.mock('expo-file-system/legacy', () => ({
+  __esModule: true,
+  documentDirectory: 'file:///documents/',
+  writeAsStringAsync: jest.fn().mockResolvedValue(undefined),
+  StorageAccessFramework: {
+    requestDirectoryPermissionsAsync: jest.fn().mockResolvedValue({ granted: false }),
+    createFileAsync: jest.fn().mockResolvedValue('content://exported-file'),
+    writeAsStringAsync: jest.fn().mockResolvedValue(undefined),
+  },
+}));

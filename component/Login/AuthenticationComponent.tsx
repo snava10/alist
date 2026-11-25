@@ -1,5 +1,5 @@
 import { View, StyleSheet, Text, Pressable } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import FacebookLogin from './FacebookLogin';
 import GoogleLogin from './GoogleLogin';
 import globalStyles from '../Core/GlobalStyles';
@@ -10,7 +10,7 @@ export type AuthenticationComponentProps = {
   isLoggedIn: boolean;
   successCallbackFn: (user: FirebaseAuthTypes.User | null) => void;
   logOutFn: () => void;
-  continueAnonymousCallbackFn?: () => void;
+  continueAnonymousCallbackFn?: () => Promise<unknown> | void;
   deleteAccountFn: () => void;
   authProviders: {
     google?: boolean;
@@ -32,9 +32,30 @@ export default function AuthenticationComponent({
   deleteAccountFn,
 }: AuthenticationComponentProps) {
   const [_isLoggedIn, setIsLoggedIn] = useState(isLoggedIn);
+  const [anonymousError, setAnonymousError] = useState<string | null>(null);
+  const [isSigningInAnonymously, setIsSigningInAnonymously] = useState(false);
+  const isSigningInRef = useRef(false);
   useEffect(() => {
     setIsLoggedIn(isLoggedIn);
-  });
+  }, [isLoggedIn]);
+
+  const handleContinueAnonymous = async () => {
+    if (isSigningInRef.current || !continueAnonymousCallbackFn) {
+      return;
+    }
+    isSigningInRef.current = true;
+    setAnonymousError(null);
+    setIsSigningInAnonymously(true);
+    try {
+      await continueAnonymousCallbackFn();
+      setIsLoggedIn(true);
+    } catch {
+      setAnonymousError("Couldn't continue anonymously. Check your connection and try again.");
+    } finally {
+      isSigningInRef.current = false;
+      setIsSigningInAnonymously(false);
+    }
+  };
 
   return _isLoggedIn ? (
     <View style={{ flex: 1 }}>
@@ -88,20 +109,21 @@ export default function AuthenticationComponent({
               <View style={{ flex: 1, height: 1, backgroundColor: '#b0afac' }} />
             </View>
             <Pressable
+              disabled={isSigningInAnonymously}
               style={({ pressed }) => [
                 globalStyles.button,
                 { height: 40, width: 220 },
                 pressed ? globalStyles.button.primary.dark : globalStyles.button.primary.main,
               ]}
-              onPress={() => {
-                setIsLoggedIn(true);
-                if (continueAnonymousCallbackFn) {
-                  continueAnonymousCallbackFn();
-                }
-              }}
+              onPress={handleContinueAnonymous}
             >
               <Text style={globalStyles.button.text.default}>Continue anonymous</Text>
             </Pressable>
+            {anonymousError ? (
+              <Text testID="anonymous-sign-in-error" style={styles.error_text}>
+                {anonymousError}
+              </Text>
+            ) : null}
           </>
         ) : (
           <></>
@@ -116,5 +138,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignSelf: 'center',
+  },
+  error_text: {
+    color: 'red',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
+    width: 220,
   },
 });
