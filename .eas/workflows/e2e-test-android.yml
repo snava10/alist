@@ -35,3 +35,4 @@ jobs:
         - '.maestro/login_anonymous.yml'
         - '.maestro/home_add_item.yml'
         - '.maestro/navigate_to_profile.yml'
+        - '.maestro/email_login_export.yml'

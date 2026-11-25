@@ -1,0 +1,81 @@
+appId: com.acorn.alist
+---
+- launchApp:
+    appId: com.acorn.alist
+    clearState: true
+- tapOn:
+    text: ".*:8081"
+    optional: true
+- extendedWaitUntil:
+    visible: ".*Runtime version.*"
+    timeout: 60000
+    optional: true
+- tapOn:
+    text: "^Continue$"
+    optional: true
+- tapOn:
+    text: "Close"
+    optional: true
+- extendedWaitUntil:
+    visible: "Sign in with email"
+    timeout: 120000
+- assertVisible: "Sign in with email"
+- tapOn: "Email"
+- inputText: "test@alist.local"
+- hideKeyboard
+- tapOn: "Password"
+- inputText: "TestUser123!"
+- hideKeyboard
+- tapOn: "Sign in with email"
+- extendedWaitUntil:
+    visible: "Tap.*to add a new item"
+    timeout: 120000
+- tapOn: "Add item"
+- assertVisible: "Save"
+- tapOn: "Name"
+- inputText: "Email account"
+- hideKeyboard
+- tapOn: "Value"
+- inputText: "email-secret-1"
+- hideKeyboard
+- tapOn: "Save"
+- assertVisible: "Email account"
+- tapOn: "Add item"
+- assertVisible: "Save"
+- tapOn: "Name"
+- inputText: "Bank login"
+- hideKeyboard
+- tapOn: "Value"
+- inputText: 'bank, "vault" secret'
+- hideKeyboard
+- tapOn: "Save"
+- assertVisible: "Bank login"
+- tapOn: "Profile"
+- assertVisible: "Backup Old"
+- tapOn: "Backup Old"
+- assertVisible: ".*plain text.*"
+- tapOn: "Yes"
+- tapOn: "Documents"
+- tapOn: "Use this folder"
+- tapOn: "Allow"
+# No wait on the export status text here: it does not reliably appear
+# after the folder picker returns, even when the file is written. The
+# file itself in Files, checked below, is the verification; the wait on
+# the file name absorbs any write latency after "Allow".
+- launchApp:
+    appId: com.google.android.documentsui
+- tapOn: "Show roots"
+- extendedWaitUntil:
+    visible: "Recent"
+    timeout: 30000
+- tapOn:
+    text: "Documents"
+    index: 1
+- extendedWaitUntil:
+    visible: "Files from Documents"
+    timeout: 30000
+- tapOn: "Documents"
+- extendedWaitUntil:
+    visible: 'alist-export-.*\.csv'
+    timeout: 30000
+- assertVisible: 'alist-export-.*\.csv'

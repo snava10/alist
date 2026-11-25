@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, View, Text, TextInput } from 'react-native';
+import { FlatList, StyleSheet, View, Text, TextInput, Pressable } from 'react-native';
 import AddItemModal from './AddItemModal';
 import ConfirmationModal from './ConfirmationModal';
 import auth from '@react-native-firebase/auth';
@@ -187,12 +187,14 @@ export default function HomeScreen({ route }: any) {
           visible={modalVisible}
         />
       ) : (
-        <Ionicons
-          name="add-circle"
+        <Pressable
+          testID="add-item-button"
+          accessibilityLabel="Add item"
           style={styles.fab}
-          size={60}
           onPress={() => setModalVisible(true)}
-        />
+        >
+          <Ionicons name="add-circle" size={60} />
+        </Pressable>
       )}
       <ConfirmationModal
         message={'Are you sure you wish to delete ' + selectedItem?.name}

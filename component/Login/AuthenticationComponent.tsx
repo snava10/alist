@@ -4,6 +4,7 @@ import FacebookLogin from './FacebookLogin';
 import GoogleLogin from './GoogleLogin';
 import globalStyles from '../Core/GlobalStyles';
 import AppleLogin from './AppleLogin';
+import EmailLogin from './EmailLogin';
 import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 
 export type AuthenticationComponentProps = {
@@ -82,6 +83,11 @@ export default function AuthenticationComponent({
         {authProviders.facebook ? <FacebookLogin></FacebookLogin> : <></>}
         {authProviders.google ? <GoogleLogin callbackFn={successCallbackFn}></GoogleLogin> : <></>}
         {authProviders.apple ? <AppleLogin callbackFn={successCallbackFn}></AppleLogin> : <></>}
+        {authProviders.emailAndPassword ? (
+          <EmailLogin callbackFn={successCallbackFn}></EmailLogin>
+        ) : (
+          <></>
+        )}
         {authProviders.allowAnonymous ? (
           <>
             <View

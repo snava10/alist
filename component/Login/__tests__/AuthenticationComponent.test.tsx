@@ -149,6 +149,26 @@ describe('AuthenticationComponent', () => {
     expect(toJSON()).toBeTruthy();
   });
 
+  it('renders email and password login when enabled', () => {
+    const props = {
+      ...defaultProps,
+      authProviders: { ...defaultProps.authProviders, emailAndPassword: true },
+    };
+    render(<AuthenticationComponent {...props} />);
+    expect(screen.getByPlaceholderText('Email')).toBeTruthy();
+    expect(screen.getByText('Sign in with email')).toBeTruthy();
+  });
+
+  it('does not render email and password login when disabled', () => {
+    const props = {
+      ...defaultProps,
+      authProviders: { ...defaultProps.authProviders, emailAndPassword: false },
+    };
+    render(<AuthenticationComponent {...props} />);
+    expect(screen.queryByPlaceholderText('Email')).toBeNull();
+    expect(screen.queryByText('Sign in with email')).toBeNull();
+  });
+
   it('component receives all required callbacks', () => {
     const { toJSON } = render(<AuthenticationComponent {...defaultProps} />);
     expect(toJSON()).toBeTruthy();

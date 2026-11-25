@@ -1,7 +1,10 @@
 import * as forge from 'node-forge';
 import * as SecureStore from 'expo-secure-store';
 
-const RSA_KEY_SIZE = 2048;
+// 1024-bit keys keep first-use key generation fast in pure-JS node-forge.
+// This RSA scheme is being replaced, so the weaker size is intentional;
+// RSA-OAEP at this size caps values at 86 bytes.
+const RSA_KEY_SIZE = 1024;
 const PRIVATE_KEY_ALIAS = 'agus_list_rsa_private_key';
 const PUBLIC_KEY_ALIAS = 'agus_list_rsa_public_key';
 
@@ -40,7 +43,7 @@ export async function decrypt(hash: string): Promise<string> {
     const decrypted = privateKey.decrypt(decoded, 'RSA-OAEP');
     return forge.util.decodeUtf8(decrypted);
   } catch (e) {
-    console.error('Failed to decrypt value ', e);
+    console.warn('Failed to decrypt value ', e);
     throw `Failed to decrypt value: ${e}`;
   }
 }
