@@ -7,11 +7,6 @@ import { decrypt, encrypt } from './Security';
 import { validateUserSettings, validateFirestoreItem } from './Contracts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-function isInvalidEncryptedPayloadError(error: unknown): boolean {
-  const message = String(error);
-  return message.includes('Encrypted message length is invalid');
-}
-
 type FirestoreDocData = Record<string, unknown>;
 type FirestoreWhereOperator =
   | '=='
@@ -117,7 +112,7 @@ function buildSearchIndex(name: string): string[] {
   return [...tokens];
 }
 
-async function mapFirestoreDataToItem(data: FirestoreDocData): Promise<AListItem> {
+async function mapFirestoreDataToItem(data: FirestoreDocData): Promise<AListItem | null> {
   const raw = validateFirestoreItem(data);
   const item: AListItem = {
     name: raw.name,
@@ -130,15 +125,15 @@ async function mapFirestoreDataToItem(data: FirestoreDocData): Promise<AListItem
   if (item.encrypted) {
     try {
       item.value = await decrypt(item.value);
-    } catch (error) {
-      if (isInvalidEncryptedPayloadError(error)) {
-        console.warn(
-          `Skipping decrypt for item "${item.name}" because payload is not valid encrypted text.`
-        );
-        item.encrypted = false;
-      } else {
-        throw error;
-      }
+    } catch {
+      // The payload cannot be decrypted with the keys on this device
+      // (for example, it was encrypted under a key from a previous
+      // install or another device). Skip the item instead of failing
+      // the whole list, and leave the stored data untouched.
+      console.warn(
+        `Skipping item "${item.name}" because it could not be decrypted with the keys on this device.`
+      );
+      return null;
     }
   }
 
@@ -185,7 +180,10 @@ export async function getAllItems(userId: string): Promise<Array<AListItem>> {
     .where('userId', '==', userId)
     .get();
   if (querySnapshot.empty) return [];
-  return Promise.all(querySnapshot.docs.map((doc) => mapFirestoreDataToItem(doc.data())));
+  const items = await Promise.all(
+    querySnapshot.docs.map((doc) => mapFirestoreDataToItem(doc.data()))
+  );
+  return items.filter((item): item is AListItem => item !== null);
 }
 
 export async function getItems(
@@ -206,7 +204,10 @@ export async function getItems(
 
   if (querySnapshot.empty) return [];
 
-  return Promise.all(querySnapshot.docs.map((doc) => mapFirestoreDataToItem(doc.data())));
+  const items = await Promise.all(
+    querySnapshot.docs.map((doc) => mapFirestoreDataToItem(doc.data()))
+  );
+  return items.filter((item): item is AListItem => item !== null);
 }
 
 /**
@@ -361,7 +362,7 @@ export async function deleteItems(userId: string): Promise<number> {
 export async function backupLocalStorageToFirestore(): Promise<AListItem[]> {
   const keys = await AsyncStorage.getAllKeys();
   const kvp = await AsyncStorage.multiGet(keys.filter((k) => k.startsWith('_ali_')));
-  return Promise.all(
+  const items = await Promise.all(
     kvp
       .filter((kvp) => kvp[1] !== null)
       .map((kvp) => {
@@ -369,21 +370,19 @@ export async function backupLocalStorageToFirestore(): Promise<AListItem[]> {
         return maybeDecrypt(JSON.parse(kvp[1] as string) as AListItem);
       })
   );
+  return items.filter((item): item is AListItem => item !== null);
 }
 
-async function maybeDecrypt(item: AListItem): Promise<AListItem> {
+async function maybeDecrypt(item: AListItem): Promise<AListItem | null> {
   if (item.encrypted) {
     try {
       const value = await decrypt(item.value);
       return { ...item, value };
-    } catch (error) {
-      if (isInvalidEncryptedPayloadError(error)) {
-        console.warn(
-          `Skipping local decrypt for item "${item.name}" because payload is not valid encrypted text.`
-        );
-        return { ...item, encrypted: false };
-      }
-      throw error;
+    } catch {
+      console.warn(
+        `Skipping local item "${item.name}" because it could not be decrypted with the keys on this device.`
+      );
+      return null;
     }
   } else {
     console.debug('Item not encrypted ', JSON.stringify(item));

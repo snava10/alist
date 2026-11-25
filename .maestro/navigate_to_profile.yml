@@ -3,6 +3,18 @@ appId: com.acorn.alist
 - launchApp:
     appId: com.acorn.alist
     clearState: true
+- tapOn:
+    text: ".*:8081"
+    optional: true
+- extendedWaitUntil:
+    visible: ".*Runtime version.*"
+    timeout: 120000
+- tapOn:
+    text: "^Continue$"
+    optional: true
+- tapOn:
+    text: "Close"
+    optional: true
 - assertVisible: "Continue anonymous"
 - tapOn: "Continue anonymous"
 - tapOn: "Profile"

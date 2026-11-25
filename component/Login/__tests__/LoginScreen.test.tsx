@@ -60,6 +60,7 @@ describe('LoginScreen - Rendering Tests', () => {
       google: true,
       apple: true,
       facebook: true,
+      emailAndPassword: true,
       allowAnonymous: true,
     });
   });

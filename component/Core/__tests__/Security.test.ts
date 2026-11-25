@@ -1,3 +1,4 @@
+import * as forge from 'node-forge';
 import { encrypt, decrypt, getRSAKeys, KeyPair } from '../Security';
 
 jest.mock('expo-secure-store', () => ({
@@ -94,8 +95,9 @@ describe('Security', () => {
     expect(typeof decrypt).toBe('function');
   });
 
-  it('RSA key generation uses correct key size', () => {
-    expect(typeof getRSAKeys).toBe('function');
+  it('RSA key generation uses correct key size', async () => {
+    await getRSAKeys();
+    expect(forge.pki.rsa.generateKeyPair).toHaveBeenCalledWith({ bits: 1024 });
   });
 
   it('returns KeyPair from getRSAKeys', async () => {

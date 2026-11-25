@@ -17,6 +17,7 @@ import {
 } from '../Storage';
 import { BackupCadence, MembershipType, type AListItem } from '../DataModel';
 import { encrypt, generateAndStoreKeys } from '../Security';
+import * as forge from 'node-forge';
 import { MockFirestore } from '../MockFirestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -42,6 +43,23 @@ describe('Storage', () => {
     await Promise.all(items.map(async (item) => await saveItem(item)));
   }
 
+  async function encryptWithOtherKey(value: string): Promise<string> {
+    const otherKeyPair = forge.pki.rsa.generateKeyPair({ bits: 512 });
+    const publicKey = forge.pki.publicKeyFromPem(forge.pki.publicKeyToPem(otherKeyPair.publicKey));
+    return forge.util.encode64(publicKey.encrypt(forge.util.encodeUtf8(value), 'RSA-OAEP'));
+  }
+
+  async function seedRawItem(item: {
+    name: string;
+    value: string;
+    timestamp: number;
+    userId: string;
+    encrypted?: boolean;
+    searchIndex?: string[];
+  }) {
+    await mockFirestore.collection('Items').doc(`${item.userId}_${item.name}`).set(item);
+  }
+
   it('getItem decrypts encrypted items', async () => {
     await seedItems([
       { name: 'secret', value: 'decrypted-value', timestamp: 1, encrypted: false, userId: 'u1' },
@@ -60,6 +78,61 @@ describe('Storage', () => {
 
   it('returns null when an item does not exist', async () => {
     await expect(getItem('missing', 'u1')).resolves.toBeNull();
+  });
+
+  it('getItem returns null for an item encrypted under a different key', async () => {
+    const unreadableValue = await encryptWithOtherKey('other-secret');
+    await seedRawItem({
+      name: 'unreadable',
+      value: unreadableValue,
+      timestamp: 1,
+      userId: 'u1',
+      encrypted: true,
+    });
+
+    await expect(getItem('unreadable', 'u1')).resolves.toBeNull();
+  });
+
+  it('getAllItems skips items encrypted under a different key instead of throwing', async () => {
+    const unreadableValue = await encryptWithOtherKey('other-secret');
+    await seedRawItem({
+      name: 'unreadable',
+      value: unreadableValue,
+      timestamp: 1,
+      userId: 'u1',
+      encrypted: true,
+    });
+    await seedItems([
+      { name: 'readable', value: 'readable-value', timestamp: 2, encrypted: false, userId: 'u1' },
+    ]);
+
+    const items = await getAllItems('u1');
+
+    expect(items).toEqual([
+      {
+        name: 'readable',
+        value: 'readable-value',
+        timestamp: 2,
+        encrypted: true,
+        userId: 'u1',
+      },
+    ]);
+  });
+
+  it('getItems with a filter skips items encrypted under a different key', async () => {
+    const unreadableValue = await encryptWithOtherKey('other-secret');
+    await seedRawItem({
+      name: 'unreadable',
+      value: unreadableValue,
+      timestamp: 1,
+      userId: 'u1',
+      encrypted: true,
+      searchIndex: ['unread'],
+    });
+
+    const items = await getItems('u1', 'unread');
+
+    expect(items).toHaveLength(0);
   });
 
   it('retrieves all items for a user', async () => {
@@ -88,6 +161,35 @@ describe('Storage', () => {
 
       expect(result).toHaveLength(1);
       expect(updated?.timestamp).toBe(123456789);
+    } finally {
+      Date.now = originalNow;
+    }
+  });
+
+  it('addTimestampToItems does not fail and leaves undecryptable items untouched', async () => {
+    const originalNow = Date.now;
+    Date.now = jest.fn(() => 123456789);
+    try {
+      const unreadableValue = await encryptWithOtherKey('other-secret');
+      await seedRawItem({
+        name: 'unreadable',
+        value: unreadableValue,
+        timestamp: 0,
+        userId: 'u1',
+        encrypted: true,
+      });
+      await seedItems([
+        { name: 'stamped', value: 'value', timestamp: 0, encrypted: false, userId: 'u1' },
+      ]);
+
+      const result = await addTimestampToItems('u1');
+
+      expect(result).toHaveLength(1);
+      const updated = await getItem('stamped', 'u1');
+      expect(updated?.timestamp).toBe(123456789);
+      const untouched = await mockFirestore.collection('Items').doc('u1_unreadable').get();
+      expect(untouched.exists).toBe(true);
+      expect(untouched.data()?.value).toBe(unreadableValue);
     } finally {
       Date.now = originalNow;
     }
@@ -250,6 +352,47 @@ describe('Storage', () => {
     expect(AsyncStorage.multiGet).toHaveBeenCalledWith(['_ali_secret', '_ali_plain']);
     expect(storedPlain.exists).toBe(true);
     expect(storedPlain.data()?.encrypted).toBe(true);
+  });
+
+  it('backupLocalStorageToFirestore skips local items encrypted under a different key', async () => {
+    const unreadableValue = await encryptWithOtherKey('other-secret');
+    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue(['_ali_foreign', '_ali_plain']);
+    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([
+      [
+        '_ali_foreign',
+        JSON.stringify({
+          name: 'foreign',
+          value: unreadableValue,
+          timestamp: 1,
+          encrypted: true,
+          userId: 'u1',
+        } satisfies AListItem),
+      ],
+      [
+        '_ali_plain',
+        JSON.stringify({
+          name: 'plain',
+          value: 'visible',
+          timestamp: 2,
+          encrypted: false,
+          userId: 'u1',
+        } satisfies AListItem),
+      ],
+    ]);
+
+    const items = await backupLocalStorageToFirestore();
+
+    expect(items).toEqual([
+      {
+        name: 'plain',
+        value: 'visible',
+        timestamp: 2,
+        encrypted: false,
+        userId: 'u1',
+      },
+    ]);
+    const foreignDoc = await mockFirestore.collection('Items').doc('u1_foreign').get();
+    expect(foreignDoc.exists).toBe(false);
   });
 
   it('clear local async storage', async () => {
