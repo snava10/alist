@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ConfirmationModal from './ConfirmationModal';
 import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { deleteItems } from './Core/Storage';
+import { exportItemsToCsv } from './Core/CsvExport';
 import analytics from '@react-native-firebase/analytics';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 
@@ -22,7 +23,9 @@ export default function ProfileScreen({ route }: any) {
   const [modalMessage, setModalMessage] = useState(
     'Deleting your account will remove your credentials and all backups. The data will still be available in your phone. Do you wish to proceed?'
   );
-  const [showRestoreFromBackupModal, setShowRestoreFromBackupModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportStatus, setExportStatus] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   const navigation = useNavigation<NavigationType>();
 
@@ -90,8 +93,8 @@ export default function ProfileScreen({ route }: any) {
           <View
             style={{
               flex: 0.8,
-              flexDirection: 'row',
-              justifyContent: 'center',
+              flexDirection: 'column',
+              alignItems: 'center',
             }}
           >
             <View
@@ -106,19 +109,28 @@ export default function ProfileScreen({ route }: any) {
               }}
             >
               <View style={{ flex: 0.5, justifyContent: 'center' }}>
-                <Text style={globalStyles.profileTextLabel}>Backup</Text>
+                <Text style={globalStyles.profileTextLabel}>Export</Text>
               </View>
               <View style={{ flex: 0.5, justifyContent: 'center' }}>
                 <Pressable
+                  disabled={isExporting}
                   style={[globalStyles.button, globalStyles.button.primary.main]}
                   onPress={() => {
-                    setShowRestoreFromBackupModal(true);
+                    setShowExportModal(true);
                   }}
                 >
-                  <Text style={globalStyles.button.text.default}>Backup Restore</Text>
+                  <Text style={globalStyles.button.text.default}>Backup Old</Text>
                 </Pressable>
               </View>
             </View>
+            {exportStatus ? (
+              <Text
+                testID="export-status"
+                style={{ marginTop: 10, fontSize: 14, textAlign: 'center' }}
+              >
+                {exportStatus}
+              </Text>
+            ) : null}
           </View>
         </>
       ) : (
@@ -217,26 +229,36 @@ export default function ProfileScreen({ route }: any) {
       ) : (
         <></>
       )}
-      {isLoggedIn && showRestoreFromBackupModal ? (
+      {isLoggedIn && showExportModal ? (
         <ConfirmationModal
-          message="This will replace all your data with your latest backup. Would you like to proceed"
+          message="This will save all your items to a file in plain text. Anyone who can open the file can read them. The file will stay on your phone until you delete it. Do not email, upload, or share it. Delete it from Files and Trash after importing. Do you wish to proceed?"
           item={null}
           acceptCallbackFn={async () => {
-            console.log('Restoring from backup');
-            const currentUser = user as FirebaseAuthTypes.User;
-            // await restoreFromBackup(currentUser.uid);
-            await analytics().logEvent('backup_restore', {
-              provider: currentUser.providerId,
-              uid: currentUser.uid,
-            });
+            setShowExportModal(false);
+            setIsExporting(true);
+            setExportStatus('Exporting…');
+            try {
+              const currentUserId = auth().currentUser?.uid ?? user?.uid;
+              if (!currentUserId) {
+                throw new Error('No signed-in user.');
+              }
+              const result = await exportItemsToCsv(currentUserId);
+              setExportStatus(
+                `Exported ${result.exportedCount} item${result.exportedCount === 1 ? '' : 's'} to ${result.fileName}. This file contains your information in plain text. Delete it from Files after importing, and do not email or share it.`
+              );
+            } catch {
+              setExportStatus('Export failed. Please try again.');
+            } finally {
+              setIsExporting(false);
+            }
           }}
           rejectCallbackFn={() => {
-            setShowRestoreFromBackupModal(false);
+            setShowExportModal(false);
           }}
           hideModalFn={() => {
-            setShowRestoreFromBackupModal(false);
+            setShowExportModal(false);
           }}
-          visible={showRestoreFromBackupModal}
+          visible={showExportModal}
         ></ConfirmationModal>
       ) : (
         <></>

@@ -42,7 +42,10 @@ jest.mock('../Login/AppleLogin', () => ({
 jest.mock('../Core/Storage', () => ({
   ...jest.requireActual('../Core/Storage'),
   deleteItems: jest.fn().mockResolvedValue(3),
-  restoreFromBackup: jest.fn().mockResolvedValue(5),
+}));
+
+jest.mock('../Core/CsvExport', () => ({
+  exportItemsToCsv: jest.fn(),
 }));
 
 const mockLogEvent = jest.fn().mockResolvedValue(undefined);
@@ -60,6 +63,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import auth from '@react-native-firebase/auth';
 import { deleteItems } from '../Core/Storage';
+import { exportItemsToCsv } from '../Core/CsvExport';
 import { View, Text } from 'react-native';
 import ProfileScreen from '../ProfileScreen';
 
@@ -107,8 +111,8 @@ describe('ProfileScreen - Rendering Tests', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Test User')).toBeTruthy();
-      expect(screen.getByText('Backup')).toBeTruthy();
-      expect(screen.getByText('Backup Restore')).toBeTruthy();
+      expect(screen.getByText('Export')).toBeTruthy();
+      expect(screen.getByText('Backup Old Data')).toBeTruthy();
       expect(screen.getByText('Log Out')).toBeTruthy();
       expect(screen.getByText('Delete Account')).toBeTruthy();
     });
@@ -132,7 +136,7 @@ describe('ProfileScreen - Rendering Tests', () => {
     renderProfileScreen({ user: anonymousUser });
 
     await waitFor(() => {
-      expect(screen.queryByText('Backup')).toBeNull();
+      expect(screen.queryByText('Backup Old Data')).toBeNull();
       expect(screen.queryByText('Log Out')).toBeNull();
     });
   });
@@ -262,57 +266,14 @@ describe('ProfileScreen - Rendering Tests', () => {
     });
   });
 
-  it('opens restore from backup modal and accepts', async () => {
+  it('does not render a Backup Restore button', async () => {
     renderProfileScreen({ user: mockUser });
 
     await waitFor(() => {
-      expect(screen.getByText('Backup Restore')).toBeTruthy();
+      expect(screen.getByText('Backup Old Data')).toBeTruthy();
     });
-
-    await act(async () => {
-      fireEvent.press(screen.getByText('Backup Restore'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText(/replace all your data/)).toBeTruthy();
-      expect(screen.getByText('Yes')).toBeTruthy();
-    });
-
-    await act(async () => {
-      fireEvent.press(screen.getByText('Yes'));
-    });
-
-    // await waitFor(() => {
-    //   expect(restoreFromBackup).toHaveBeenCalledWith(mockUser.uid);
-    // });
-
-    await act(() => {
-      jest.advanceTimersByTime(1000);
-    });
-  });
-
-  it('dismisses restore from backup modal when No is pressed', async () => {
-    renderProfileScreen({ user: mockUser });
-
-    await waitFor(() => {
-      expect(screen.getByText('Backup Restore')).toBeTruthy();
-    });
-
-    await act(async () => {
-      fireEvent.press(screen.getByText('Backup Restore'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText(/replace all your data/)).toBeTruthy();
-    });
-
-    await act(async () => {
-      fireEvent.press(screen.getByText('No'));
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByText(/replace all your data/)).toBeNull();
-    });
+    expect(screen.queryByText('Backup Restore')).toBeNull();
+    expect(screen.queryByText('Backup')).toBeNull();
   });
 
   it('displays empty string when no displayName available anywhere', async () => {
@@ -324,7 +285,7 @@ describe('ProfileScreen - Rendering Tests', () => {
     renderProfileScreen({ user: userWithNoName });
 
     await waitFor(() => {
-      expect(screen.getByText('Backup')).toBeTruthy();
+      expect(screen.getByText('Backup Old Data')).toBeTruthy();
     });
     expect(screen.queryByText('Test User')).toBeNull();
   });
@@ -338,7 +299,7 @@ describe('ProfileScreen - Rendering Tests', () => {
     renderProfileScreen({ user: userNoProvider });
 
     await waitFor(() => {
-      expect(screen.getByText('Backup')).toBeTruthy();
+      expect(screen.getByText('Backup Old Data')).toBeTruthy();
     });
     expect(screen.queryByText('Test User')).toBeNull();
   });
@@ -428,15 +389,91 @@ describe('ProfileScreen - Rendering Tests', () => {
     });
   });
 
-  it('logs backup_restore analytics event on successful restore', async () => {
+  it('hides export section after logout', async () => {
+    const mockSignOut = jest.fn().mockResolvedValue(undefined);
+    (auth as unknown as jest.Mock).mockReturnValue({
+      currentUser: mockUser,
+      signOut: mockSignOut,
+    });
+
     renderProfileScreen({ user: mockUser });
 
     await waitFor(() => {
-      expect(screen.getByText('Backup Restore')).toBeTruthy();
+      expect(screen.getByText('Backup Old Data')).toBeTruthy();
     });
 
     await act(async () => {
-      fireEvent.press(screen.getByText('Backup Restore'));
+      fireEvent.press(screen.getByText('Log Out'));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Backup Old Data')).toBeNull();
+    });
+  });
+
+  it('renders Backup Old Data for a logged-in user', async () => {
+    renderProfileScreen({ user: mockUser });
+
+    await waitFor(() => {
+      expect(screen.getByText('Export')).toBeTruthy();
+      expect(screen.getByText('Backup Old Data')).toBeTruthy();
+    });
+  });
+
+  it('does not render Backup Old Data for an anonymous user', async () => {
+    const anonymousUser = { uid: 'anon-123', isAnonymous: true, displayName: null };
+    renderProfileScreen({ user: anonymousUser });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Backup Old Data')).toBeNull();
+    });
+  });
+
+  it('shows the export warning modal and exports nothing when No is pressed', async () => {
+    renderProfileScreen({ user: mockUser });
+
+    await waitFor(() => {
+      expect(screen.getByText('Backup Old Data')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Backup Old Data'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/save all your items to a file in plain text/)).toBeTruthy();
+      expect(screen.getByText('Yes')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('No'));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/save all your items to a file in plain text/)).toBeNull();
+    });
+    expect(exportItemsToCsv).not.toHaveBeenCalled();
+  });
+
+  it('exports to file and shows the file name and count when the warning is accepted', async () => {
+    (auth as unknown as jest.Mock).mockReturnValue({
+      currentUser: mockUser,
+      signOut: jest.fn(),
+    });
+    (exportItemsToCsv as jest.Mock).mockResolvedValue({
+      fileUri: 'file:///documents/alist-export-2026-11-25-10-20-30.csv',
+      fileName: 'alist-export-2026-11-25-10-20-30.csv',
+      exportedCount: 3,
+    });
+
+    renderProfileScreen({ user: mockUser });
+
+    await waitFor(() => {
+      expect(screen.getByText('Backup Old Data')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Backup Old Data'));
     });
 
     await waitFor(() => {
@@ -448,39 +485,41 @@ describe('ProfileScreen - Rendering Tests', () => {
     });
 
     await waitFor(() => {
-      expect(mockLogEvent).toHaveBeenCalledWith(
-        'backup_restore',
-        expect.objectContaining({
-          uid: mockUser.uid,
-          provider: mockUser.providerId,
-        })
+      expect(exportItemsToCsv).toHaveBeenCalledWith(mockUser.uid);
+      expect(screen.getByTestId('export-status')).toHaveTextContent(
+        'Exported 3 items to alist-export-2026-11-25-10-20-30.csv'
       );
-    });
-
-    await act(() => {
-      jest.advanceTimersByTime(1000);
+      expect(screen.getByTestId('export-status')).toHaveTextContent('Delete it from Files');
     });
   });
 
-  it('hides backup section after logout', async () => {
-    const mockSignOut = jest.fn().mockResolvedValue(undefined);
+  it('shows an error when the export fails', async () => {
     (auth as unknown as jest.Mock).mockReturnValue({
       currentUser: mockUser,
-      signOut: mockSignOut,
+      signOut: jest.fn(),
     });
+    (exportItemsToCsv as jest.Mock).mockRejectedValue(new Error('write failed'));
 
     renderProfileScreen({ user: mockUser });
 
     await waitFor(() => {
-      expect(screen.getByText('Backup')).toBeTruthy();
+      expect(screen.getByText('Backup Old Data')).toBeTruthy();
     });
 
     await act(async () => {
-      fireEvent.press(screen.getByText('Log Out'));
+      fireEvent.press(screen.getByText('Backup Old Data'));
     });
 
     await waitFor(() => {
-      expect(screen.queryByText('Backup')).toBeNull();
+      expect(screen.getByText('Yes')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Yes'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('export-status')).toHaveTextContent('Export failed');
     });
   });
 });

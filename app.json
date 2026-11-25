@@ -41,6 +41,10 @@
     "googleServicesFile": "./GoogleService-Info.plist",
     "usesAppleSignIn": true,
     "buildNumber": "2",
+    "infoPlist": {
+      "UIFileSharingEnabled": true,
+      "LSSupportsOpeningDocumentsInPlace": true
+    },
     "config": {
       "usesNonExemptEncryption": false
     }

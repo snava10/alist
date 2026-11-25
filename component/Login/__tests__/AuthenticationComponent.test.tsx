@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react-native';
 import AuthenticationComponent, { AuthenticationComponentProps } from '../AuthenticationComponent';
 
 jest.mock('../FacebookLogin', () => {
@@ -174,6 +174,59 @@ describe('AuthenticationComponent', () => {
 
     fireEvent.press(screen.getByText('Continue anonymous'));
     expect(mockAnonymousFn).toHaveBeenCalled();
+  });
+
+  it('shows the logged-in view only after anonymous sign-in succeeds', async () => {
+    mockAnonymousFn.mockResolvedValue(undefined);
+    render(<AuthenticationComponent {...defaultProps} />);
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Continue anonymous'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Log Out')).toBeTruthy();
+    });
+    expect(screen.queryByTestId('anonymous-sign-in-error')).toBeNull();
+  });
+
+  it('shows an error and stays logged out when anonymous sign-in fails', async () => {
+    mockAnonymousFn.mockRejectedValue(new Error('Failed to connect'));
+    render(<AuthenticationComponent {...defaultProps} />);
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Continue anonymous'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('anonymous-sign-in-error')).toHaveTextContent(
+        "Couldn't continue anonymously. Check your connection and try again."
+      );
+    });
+    expect(screen.queryByText('Log Out')).toBeNull();
+    expect(screen.getByText('Continue anonymous')).toBeTruthy();
+  });
+
+  it('does not call anonymous sign-in again while one is pending', async () => {
+    let resolveSignIn!: () => void;
+    mockAnonymousFn.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSignIn = resolve;
+        })
+    );
+    render(<AuthenticationComponent {...defaultProps} />);
+
+    fireEvent.press(screen.getByText('Continue anonymous'));
+    fireEvent.press(screen.getByText('Continue anonymous'));
+
+    expect(mockAnonymousFn).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      resolveSignIn();
+    });
+    await waitFor(() => {
+      expect(screen.getByText('Log Out')).toBeTruthy();
+    });
   });
 
   it('handles different configurations', () => {
