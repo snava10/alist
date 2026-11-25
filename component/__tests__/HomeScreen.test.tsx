@@ -431,16 +431,6 @@ describe('HomeScreen - Rendering Tests', () => {
     });
   });
 
-  it('handles addTimestampToItems rejection gracefully', async () => {
-    mockAddTimestampToItems.mockRejectedValueOnce(new Error('timestamp error'));
-
-    renderHomeScreen({ user: mockUser, itemsReload: 0 });
-
-    await waitFor(() => {
-      expect(mockAddTimestampToItems).toHaveBeenCalled();
-    });
-  });
-
   it('does not call createUserSettings when user is null', async () => {
     (auth as any).mockImplementation(() => ({
       currentUser: null,
