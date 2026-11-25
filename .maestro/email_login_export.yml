@@ -74,7 +74,12 @@ appId: com.acorn.alist
 - extendedWaitUntil:
     visible: "Files from Documents"
     timeout: 30000
-- tapOn: "Documents"
+- tapOn:
+    text: "Documents"
+    index: 2
+- extendedWaitUntil:
+    visible: "Files from Documents"
+    timeout: 30000
 - extendedWaitUntil:
     visible: 'alist-export-.*\.csv'
     timeout: 30000
