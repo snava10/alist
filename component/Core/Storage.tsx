@@ -48,6 +48,10 @@ type FirestoreQuerySnapshot = {
 type FirestoreQueryRef = {
   where: (field: string, op: FirestoreWhereOperator, value: unknown) => FirestoreQueryRef;
   get: () => Promise<FirestoreQuerySnapshot>;
+  onSnapshot: (
+    onNext: (snapshot: FirestoreQuerySnapshot) => void,
+    onError?: (error: unknown) => void
+  ) => () => void;
 };
 
 type FirestoreCollectionRef = {
@@ -171,6 +175,29 @@ export async function addTimestampToItems(userid: string): Promise<void[]> {
 }
 
 /**
+ * Maps one query snapshot to decrypted items. One unreadable document is
+ * skipped (and warned about) instead of failing the whole list: a bad
+ * document must never hide the rest of the vault, and a failed snapshot
+ * must never leave a stale list on screen.
+ */
+async function mapQueryDocsToItems(
+  docs: Array<{ data: () => FirestoreDocData }>
+): Promise<Array<AListItem>> {
+  const items: AListItem[] = [];
+  for (const doc of docs) {
+    try {
+      const item = await mapFirestoreDataToItem(doc.data());
+      if (item !== null) {
+        items.push(item);
+      }
+    } catch (error) {
+      console.warn('Skipping an item document that failed validation.', error);
+    }
+  }
+  return items;
+}
+
+/**
  * Fetches all items for a user from Firestore.
  * @param userId The user ID to scope the query
  */
@@ -180,10 +207,7 @@ export async function getAllItems(userId: string): Promise<Array<AListItem>> {
     .where('userId', '==', userId)
     .get();
   if (querySnapshot.empty) return [];
-  const items = await Promise.all(
-    querySnapshot.docs.map((doc) => mapFirestoreDataToItem(doc.data()))
-  );
-  return items.filter((item): item is AListItem => item !== null);
+  return mapQueryDocsToItems(querySnapshot.docs);
 }
 
 export async function getItems(
@@ -204,10 +228,36 @@ export async function getItems(
 
   if (querySnapshot.empty) return [];
 
-  const items = await Promise.all(
-    querySnapshot.docs.map((doc) => mapFirestoreDataToItem(doc.data()))
+  return mapQueryDocsToItems(querySnapshot.docs);
+}
+
+/**
+ * Live subscription to a user's items. The snapshot delivered after a
+ * local write already contains that write (latency compensation), so the
+ * list updates as soon as the write lands — no navigation or manual
+ * reload is needed to see a newly added item. Returns the unsubscribe
+ * function. A snapshot that fails to map keeps the previous list: the
+ * error is reported through `onError` instead of clearing the screen.
+ */
+export function subscribeToItems(
+  userId: string,
+  filter: string | null,
+  onItems: (items: AListItem[]) => void,
+  onError?: (error: unknown) => void
+): () => void {
+  const normalizedFilter = normalizeSearchTerm(filter ?? '');
+  let query = getFirestoreClient().collection('Items').where('userId', '==', userId);
+  if (normalizedFilter) {
+    query = query.where('searchIndex', 'array-contains', normalizedFilter);
+  }
+  return query.onSnapshot(
+    (snapshot) => {
+      mapQueryDocsToItems(snapshot.docs).then(onItems, onError);
+    },
+    (error) => {
+      onError?.(error);
+    }
   );
-  return items.filter((item): item is AListItem => item !== null);
 }
 
 /**

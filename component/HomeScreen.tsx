@@ -6,9 +6,9 @@ import auth from '@react-native-firebase/auth';
 import {
   addTimestampToItems,
   createUserSettings,
-  getItems,
   replaceItem,
   removeItem as storageRemoveItem,
+  subscribeToItems,
 } from './Core/Storage';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import globalStyles from './Core/GlobalStyles';
@@ -28,22 +28,10 @@ export default function HomeScreen({ route }: any) {
   const [confirmationModalVisible, setConfirmationModalVisible] = useState(false);
   const [searchText, setSearchText] = useState('');
 
-  const loadItemsFromLocalStorage = async (st: string) => {
-    try {
-      const userId = auth().currentUser?.uid ?? '';
-      const items = await getItems(userId, st);
-      console.log('Items ', items);
-      setAListItems(items);
-      route.params.itemsReload = 0;
-    } catch (e) {
-      console.log(e);
-    }
-  };
-
   const removeItem = async (item: AListItem | null) => {
     if (item !== null) {
+      // The subscription below delivers the post-delete snapshot.
       await storageRemoveItem(item);
-      loadItemsFromLocalStorage(searchText);
     }
   };
 
@@ -55,20 +43,25 @@ export default function HomeScreen({ route }: any) {
 
   const onSearchTextInput = (text: string) => {
     setSearchText(text);
-    loadItemsFromLocalStorage(text);
   };
 
   const clearSearchFn = () => {
     setSearchText('');
-    loadItemsFromLocalStorage('');
   };
 
   const insets = useSafeAreaInsets();
 
+  // Live subscription: the snapshot delivered after a local write already
+  // contains that write, so a newly added item appears without navigating
+  // away and back. Resubscribes when the search filter changes.
   useFocusEffect(
     React.useCallback(() => {
-      loadItemsFromLocalStorage(searchText);
-    }, [])
+      const userId = auth().currentUser?.uid ?? '';
+      const unsubscribe = subscribeToItems(userId, searchText, setAListItems, (error) => {
+        console.log(error);
+      });
+      return unsubscribe;
+    }, [searchText])
   );
 
   useEffect(() => {
@@ -179,8 +172,9 @@ export default function HomeScreen({ route }: any) {
                 .then((_) => console.log('add item logged'))
                 .catch((_) => console.log('add item log failed'));
             }
+            // The subscription delivers the updated list; no
+            // manual reload is needed to show the saved item.
             await replaceItem(old, itemWithUser);
-            await loadItemsFromLocalStorage(searchText);
           }}
           hideModal={hideModal}
           showModal={showModal}

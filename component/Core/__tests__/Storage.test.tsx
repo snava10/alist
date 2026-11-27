@@ -14,6 +14,7 @@ import {
   resetFirestoreClientForTesting,
   saveItem,
   setFirestoreClientForTesting,
+  subscribeToItems,
 } from '../Storage';
 import { BackupCadence, MembershipType, type AListItem } from '../DataModel';
 import { encrypt, generateAndStoreKeys } from '../Security';
@@ -439,6 +440,62 @@ describe('Storage', () => {
       const items = await getItems('u1', 'pass');
       expect(items).toHaveLength(1);
       expect(items[0]?.name).toBe('Passport');
+    });
+  });
+
+  describe('subscribeToItems', () => {
+    const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    it('delivers the initial items and updates after a save and a delete', async () => {
+      await seedItems([{ name: 'one', value: '1', timestamp: 1, encrypted: false, userId: 'u1' }]);
+      const seen: string[][] = [];
+      const unsubscribe = subscribeToItems('u1', null, (items) => {
+        seen.push(items.map((item) => item.name));
+      });
+      await flush();
+      expect(seen).toEqual([['one']]);
+
+      await saveItem({ name: 'two', value: '2', timestamp: 2, userId: 'u1' });
+      await flush();
+      expect(seen).toEqual([['one'], ['one', 'two']]);
+
+      await removeItem({ name: 'one', value: '1', timestamp: 1, userId: 'u1' });
+      await flush();
+      expect(seen).toEqual([['one'], ['one', 'two'], ['two']]);
+
+      unsubscribe();
+      await saveItem({ name: 'three', value: '3', timestamp: 3, userId: 'u1' });
+      expect(seen).toHaveLength(3);
+    });
+
+    it('only delivers items for the subscribed user and filter', async () => {
+      await seedItems([
+        { name: 'National Insurance Number', value: 'SA1', timestamp: 1, userId: 'u1' },
+        { name: 'Passport', value: 'PAL1', timestamp: 1, userId: 'u1' },
+        { name: 'other-user', value: 'x', timestamp: 1, userId: 'u2' },
+      ]);
+      const seen: string[][] = [];
+      const unsubscribe = subscribeToItems('u1', 'pass', (items) => {
+        seen.push(items.map((item) => item.name));
+      });
+      await flush();
+      expect(seen).toEqual([['Passport']]);
+      unsubscribe();
+    });
+  });
+
+  describe('getAllItems fault isolation', () => {
+    it('skips a malformed document and returns the readable items', async () => {
+      await seedItems([{ name: 'good', value: '1', timestamp: 1, encrypted: false, userId: 'u1' }]);
+      await seedRawItem({
+        name: 'bad',
+        // Missing timestamp: fails contract validation on read.
+        value: 'YmFzZTY0',
+        timestamp: undefined as unknown as number,
+        userId: 'u1',
+      });
+      const items = await getAllItems('u1');
+      expect(items.map((item) => item.name)).toEqual(['good']);
     });
   });
 });
