@@ -156,6 +156,23 @@ export function validateVaultItemDocument(data: unknown): VaultItemDocument {
   return VaultItemDocumentContract.parse(data);
 }
 
+// ── Decrypted Vault Payload ──
+
+/**
+ * Plaintext payload encrypted inside one vault item: the key and value
+ * together. Validated after AEAD decryption, before any caller sees it.
+ */
+export const VaultItemPayloadContract = z
+  .object({
+    name: z.string().min(1),
+    value: z.string(),
+  })
+  .strict();
+
+export function validateVaultItemPayload(data: unknown): { name: string; value: string } {
+  return VaultItemPayloadContract.parse(data);
+}
+
 export function validateUserSettings(data: unknown): UserSettings {
   return UserSettingsContract.parse(data);
 }

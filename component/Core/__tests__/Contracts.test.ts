@@ -7,6 +7,7 @@ import {
   validateFirestoreItem,
   validateLocalItem,
   validateVaultItemDocument,
+  validateVaultItemPayload,
   validateVaultProfile,
 } from '../Contracts';
 import { ZodError } from 'zod';
@@ -470,6 +471,26 @@ describe('Firestore Contracts', () => {
           userId: 'user-123',
           encrypted: true,
         })
+      ).toThrow(ZodError);
+    });
+  });
+
+  describe('VaultItemPayloadContract', () => {
+    it('accepts a decrypted name/value payload, including an empty value', () => {
+      expect(validateVaultItemPayload({ name: 'password', value: '' })).toEqual({
+        name: 'password',
+        value: '',
+      });
+    });
+
+    it('rejects an empty name and a non-string value', () => {
+      expect(() => validateVaultItemPayload({ name: '', value: 'x' })).toThrow(ZodError);
+      expect(() => validateVaultItemPayload({ name: 'password', value: 42 })).toThrow(ZodError);
+    });
+
+    it('rejects extra fields (strict)', () => {
+      expect(() =>
+        validateVaultItemPayload({ name: 'password', value: 'x', userId: 'user-123' })
       ).toThrow(ZodError);
     });
   });
