@@ -25,6 +25,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:contracts": "jest --testPathPattern='Contracts\\.test'",
+    "test:rules": "npx jest --config jest.rules.config.cjs --runInBand",
     "test:mutate": "npx stryker run --ignoreStatic",
     "deps:check": "depcruise --config .dependency-cruiser.cjs component App.tsx",
     "deps:graph": "mkdir -p reports && depcruise --config .dependency-cruiser.cjs --output-type dot component App.tsx | dot -T svg > reports/dependency-graph.svg",
@@ -81,6 +82,7 @@
   },
   "devDependencies": {
     "@babel/preset-typescript": "^7.28.5",
+    "@firebase/rules-unit-testing": "^6.0.0",
     "@stryker-mutator/core": "^9.6.0",
     "@stryker-mutator/jest-runner": "^9.6.0",
     "@stryker-mutator/typescript-checker": "^9.6.0",
@@ -100,6 +102,7 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.1.2",
     "expo-doctor": "^1.18.15",
+    "firebase": "^13.4.0",
     "husky": "^9.1.7",
     "jest": "^29.7.0",
     "jest-environment-node": "^29.7.0",

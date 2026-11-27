@@ -34,6 +34,23 @@ guide notes the export path defaults to the import directory when both
 flags are used, which would overwrite the deterministic baseline with
 whatever happened during a session.
 
+## Firestore rules tests
+
+```bash
+npm run test:rules
+```
+
+Requires a running Firestore emulator (`npm run firebase-emulator`
+in another terminal; the user's already-running emulator works too).
+The tests upload the contents of `firestore.rules` to that emulator
+before running, so they exercise exactly the file in this folder, and
+run `firestore.rules.test.ts` against it with
+`@firebase/rules-unit-testing`. The rules tests use a separate Jest
+config and do not run under `npm test`. Legacy `Items`/`UserSettings`
+rules are covered by regression cases in the same file and must stay
+unchanged until cutover. Note the tests clear Firestore data in the
+running emulator between cases.
+
 ## Default test user (emulator only)
 
 The seed creates one user, usable with the email and password sign-in form

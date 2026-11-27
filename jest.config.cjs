@@ -18,7 +18,7 @@ module.exports = {
       statements: 50,
     },
   },
-  testPathIgnorePatterns: ['/node_modules/', '/android/', '/ios/'],
+  testPathIgnorePatterns: ['/node_modules/', '/android/', '/ios/', '/firebase-emulator/'],
   moduleNameMapper: {
     '@expo/vector-icons/Ionicons': '<rootDir>/__mocks__/@expo/vector-icons/Ionicons.js',
     'expo-secure-store': '<rootDir>/__mocks__/expo-secure-store.js',

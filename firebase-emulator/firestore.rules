@@ -26,6 +26,92 @@ service cloud.firestore {
       allow create, read, update, delete: if isOwner(userId);
     }
 
+    // ── Vault (schema v2, Step 2 contracts) ─────────────────────────────
+    // Only ciphertext, wrapped keys, KDF parameters, and a verifier are
+    // stored. The shape checks below mirror the strict Zod contracts in
+    // component/Core/Contracts.ts; the app contracts remain the primary
+    // validation, these rules are defence in depth.
+
+    function isNonEmptyString(value) {
+      return value is string && value.size() > 0;
+    }
+
+    function optionalNonEmptyString(data, key) {
+      return !data.keys().hasAny([key]) || isNonEmptyString(data.get(key, null));
+    }
+
+    function isValidKdf(kdf) {
+      return kdf is map
+        && kdf.keys().hasOnly(['kdf', 'salt', 'iterations', 'dkLen', 'version'])
+        && kdf.kdf == 'pbkdf2-hmac-sha256'
+        && isNonEmptyString(kdf.salt)
+        && kdf.iterations is int && kdf.iterations > 0
+        && kdf.dkLen is int && kdf.dkLen > 0
+        && kdf.version == 1;
+    }
+
+    function isValidVaultProfile(data) {
+      return data.keys().hasOnly([
+          'userId', 'schemaVersion', 'kdf', 'verifier',
+          'wrappedVaultKey', 'wrappedVaultKeyNonce',
+          'biometricEnabled', 'biometricWrappedKey', 'biometricWrapNonce',
+        ])
+        && isNonEmptyString(data.userId)
+        && data.schemaVersion == 1
+        && isValidKdf(data.kdf)
+        && isNonEmptyString(data.verifier)
+        && data.biometricEnabled is bool
+        && optionalNonEmptyString(data, 'wrappedVaultKey')
+        && optionalNonEmptyString(data, 'wrappedVaultKeyNonce')
+        && optionalNonEmptyString(data, 'biometricWrappedKey')
+        && optionalNonEmptyString(data, 'biometricWrapNonce')
+        && data.keys().hasAny(['wrappedVaultKey']) == data.keys().hasAny(['wrappedVaultKeyNonce'])
+        && (!data.biometricEnabled
+          || data.keys().hasAll(['biometricWrappedKey', 'biometricWrapNonce']));
+    }
+
+    function isValidVaultItem(data, itemId) {
+      return data.keys().hasOnly([
+          'id', 'userId', 'ciphertext', 'nonce', 'wrappedItemKey', 'wrappedKeyNonce',
+          'algorithm', 'schemaVersion', 'version', 'createdAt', 'updatedAt', 'migratedFrom',
+        ])
+        && data.id == itemId
+        && data.id.matches('^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+        && isNonEmptyString(data.userId)
+        && isNonEmptyString(data.ciphertext)
+        && isNonEmptyString(data.nonce)
+        && isNonEmptyString(data.wrappedItemKey)
+        && isNonEmptyString(data.wrappedKeyNonce)
+        && data.algorithm == 'xchacha20-poly1305'
+        && data.schemaVersion == 2
+        && data.version is int && data.version >= 1
+        && data.createdAt is number && data.createdAt >= 0
+        && data.updatedAt is number && data.updatedAt >= 0
+        && optionalNonEmptyString(data, 'migratedFrom');
+    }
+
+    // Vault items (schema v2) are stored at /VaultItems/{uuid} with the
+    // name/value encrypted together. Document ID equals data.id.
+    match /VaultItems/{itemId} {
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && isValidVaultItem(request.resource.data, itemId);
+      allow read, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && isValidVaultItem(request.resource.data, itemId);
+    }
+
+    // Vault profiles hold KDF parameters, a password verifier, and wrapped
+    // key material only. One profile per user, keyed by user ID.
+    match /VaultProfiles/{userId} {
+      allow create, update: if isOwner(userId)
+        && request.resource.data.userId == userId
+        && isValidVaultProfile(request.resource.data);
+      allow read, delete: if isOwner(userId);
+    }
+
     // Legacy profile documents.
     match /users/{userId} {
       allow read, update, delete: if isOwner(userId);
