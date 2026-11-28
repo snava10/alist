@@ -1,37 +1,41 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, View, Text, TextInput, Pressable } from 'react-native';
 import AddItemModal from './AddItemModal';
 import ConfirmationModal from './ConfirmationModal';
-import auth from '@react-native-firebase/auth';
 import {
-  addTimestampToItems,
   createUserSettings,
-  replaceItem,
-  removeItem as storageRemoveItem,
-  subscribeToItems,
+  filterVaultItems,
+  removeVaultItem,
+  saveVaultItem,
+  subscribeToVaultItems,
 } from './Core/Storage';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import globalStyles from './Core/GlobalStyles';
 import analytics from '@react-native-firebase/analytics';
 import { EdgeInsets, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { AListItem } from './Core/DataModel';
+import { AListItem, VaultItem } from './Core/DataModel';
 import { AListItemComponent } from './AListItemComponent';
+import { useVaultContext } from './Core/VaultContext';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function HomeScreen({ route }: any) {
+  const vault = useVaultContext();
   const [oneOffCorrections, setOneOffCorrections] = useState(false);
   const [user, _] = useState(route.params.user);
-  const [alistItems, setAListItems] = useState([] as AListItem[]);
-  const [selectedItem, setSelectedItem] = useState(null as AListItem | null);
+  const [alistItems, setAListItems] = useState([] as VaultItem[]);
+  const [selectedItem, setSelectedItem] = useState(null as VaultItem | null);
   const [modalVisible, setModalVisible] = useState(false);
   const [confirmationModalVisible, setConfirmationModalVisible] = useState(false);
   const [searchText, setSearchText] = useState('');
 
-  const removeItem = async (item: AListItem | null) => {
+  const userId: string = vault.userId ?? user?.uid ?? '';
+
+  const removeItem = async (item: VaultItem | null) => {
     if (item !== null) {
+      vault.noteActivity();
       // The subscription below delivers the post-delete snapshot.
-      await storageRemoveItem(item);
+      await removeVaultItem(userId, item.id);
     }
   };
 
@@ -43,6 +47,7 @@ export default function HomeScreen({ route }: any) {
 
   const onSearchTextInput = (text: string) => {
     setSearchText(text);
+    vault.noteActivity();
   };
 
   const clearSearchFn = () => {
@@ -51,48 +56,50 @@ export default function HomeScreen({ route }: any) {
 
   const insets = useSafeAreaInsets();
 
-  // Live subscription: the snapshot delivered after a local write already
-  // contains that write, so a newly added item appears without navigating
-  // away and back. Search is client-side over the decrypted items below,
-  // so no plaintext search index is queried or written.
+  // Live vault subscription: the snapshot delivered after a local
+  // write already contains that write, so a newly added item appears
+  // without navigating away and back. Locking drops the subscription
+  // and clears the decrypted items.
   useFocusEffect(
     React.useCallback(() => {
-      const userId = auth().currentUser?.uid ?? '';
-      const unsubscribe = subscribeToItems(userId, null, setAListItems, (error) => {
-        console.log(error);
-      });
+      vault.noteActivity();
+      if (vault.locked || !vault.vaultKey || !userId) {
+        setAListItems([]);
+        return;
+      }
+      const unsubscribe = subscribeToVaultItems(
+        userId,
+        vault.vaultKey,
+        ({ items }) => {
+          setAListItems(items);
+          route.params.itemsReload = 0;
+        },
+        (error) => {
+          console.log(error);
+        }
+      );
       return unsubscribe;
-    }, [])
+    }, [vault, userId])
   );
 
-  const visibleItems = useMemo(() => {
-    const term = searchText.trim().toLowerCase();
-    if (!term) {
-      return alistItems;
-    }
-    return alistItems.filter((item) => item.name.toLowerCase().includes(term));
-  }, [alistItems, searchText]);
+  const visibleItems = filterVaultItems(alistItems, searchText);
 
   useEffect(() => {
-    console.info('Use Effect Invoked', alistItems);
     if (!oneOffCorrections) {
       if (user && !user.isAnonymous) {
         createUserSettings(user.uid)
           .then(() => console.log('User settings created'))
           .catch((error) => console.log('User settings ', error));
       }
-      if (user?.uid) {
-        addTimestampToItems(user.uid)
-          .then(() => {
-            console.log('Add timestamps executed');
-            setOneOffCorrections(true);
-          })
-          .catch((error) => console.log('Add timestamps ', error));
-      }
+      setOneOffCorrections(true);
     }
-  }, [oneOffCorrections]);
+  }, [oneOffCorrections, user]);
 
   const styles = getStyles(insets);
+
+  if (vault.locked || !vault.vaultKey) {
+    return <View style={styles.container} />;
+  }
 
   return (
     <View style={styles.container}>
@@ -123,16 +130,16 @@ export default function HomeScreen({ route }: any) {
               <AListItemComponent
                 item={item}
                 removeItem={(item: AListItem) => {
-                  setSelectedItem(item);
+                  setSelectedItem(item as VaultItem);
                   setConfirmationModalVisible(true);
                 }}
                 editItem={(item: AListItem) => {
-                  setSelectedItem(item);
+                  setSelectedItem(item as VaultItem);
                   setModalVisible(true);
                 }}
               ></AListItemComponent>
             )}
-            keyExtractor={(item, _) => item.name}
+            keyExtractor={(item) => item.id}
           />
         </View>
       ) : (
@@ -161,29 +168,31 @@ export default function HomeScreen({ route }: any) {
         <AddItemModal
           item={selectedItem}
           saveItem={async (old: AListItem, item: AListItem) => {
-            console.log(`Saving ${JSON.stringify(item)}`);
-            const itemWithUser = {
-              ...item,
-              userId: item.userId ?? user?.uid,
-            };
+            vault.noteActivity();
             if (old.name) {
               analytics()
-                .logEvent('edit_item', {
-                  name: itemWithUser.name,
-                })
+                .logEvent('edit_item')
                 .then((_) => console.log('item edit logged'))
                 .catch((_) => console.error("Couldn't log edit item event"));
             } else {
               analytics()
-                .logEvent('add_item', {
-                  name: itemWithUser.name,
-                })
+                .logEvent('add_item')
                 .then((_) => console.log('add item logged'))
                 .catch((_) => console.log('add item log failed'));
             }
+            const existingId = (old as VaultItem).id;
             // The subscription delivers the updated list; no
             // manual reload is needed to show the saved item.
-            await replaceItem(old, itemWithUser);
+            // Analytics carries no item name or content.
+            await saveVaultItem(
+              userId,
+              {
+                ...(existingId ? { id: existingId } : {}),
+                name: item.name,
+                value: item.value,
+              },
+              vault.vaultKey
+            );
           }}
           hideModal={hideModal}
           showModal={showModal}

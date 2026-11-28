@@ -61,10 +61,12 @@ module.exports = {
         'Use Core/Storage as the data access layer instead.',
       severity: 'error',
       from: {
-        path: '^component/(HomeScreen|ProfileScreen|AddItemModal|AListItem|ConfirmationModal)',
+        path: '^component/(HomeScreen|ProfileScreen|AddItemModal|AListItem|ConfirmationModal|LockScreen)',
       },
       to: {
-        path: '(Core/Vault|Core/VaultCrypto|@noble)',
+        // VaultContext (the provider) is the allowed surface; Vault
+        // (unlock logic) and VaultCrypto are not.
+        path: '(Core/Vault\\.ts|Core/VaultCrypto|@noble)',
       },
     },
 

@@ -39,6 +39,13 @@ export const VAULT_SCHEMA_VERSION = 2 as const;
 export const VAULT_PROFILE_SCHEMA_VERSION = 1 as const;
 
 /**
+ * Default inactivity delay before auto-lock. The middle of the 1 / 5 / 15
+ * minute options in the transformation plan; the vault provider allows
+ * callers to configure a different delay.
+ */
+export const DEFAULT_AUTO_LOCK_MS = 5 * 60 * 1000;
+
+/**
  * Versioned key-derivation parameters stored in the vault profile (a salt
  * is not secret). Version 1 is the PBKDF2-HMAC-SHA256 fallback recorded
  * in the transformation plan (decision D2): Argon2id is preferred, but

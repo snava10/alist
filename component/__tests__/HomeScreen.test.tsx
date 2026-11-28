@@ -3,7 +3,7 @@ jest.mock('expo-clipboard', () => ({
   setStringAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -14,11 +14,15 @@ import { MockFirestore } from '../Core/MockFirestore';
 import {
   setFirestoreClientForTesting,
   resetFirestoreClientForTesting,
-  saveItem,
+  saveVaultItem,
 } from '../Core/Storage';
-import { generateAndStoreKeys } from '../Core/Security';
+import { VaultProvider, useVaultContext } from '../Core/VaultContext';
+import { VaultProfileStore, unlockWithPassword } from '../Core/Vault';
+import { VaultProfile } from '../Core/DataModel';
 
 const Stack = createNativeStackNavigator();
+const PASSWORD = 'correct horse';
+const DEPS = { kdfIterations: 100 };
 
 const mockUser = {
   uid: 'u1',
@@ -28,12 +32,51 @@ const mockUser = {
   providerId: 'google.com',
 };
 
+let testStore: { store: VaultProfileStore; profiles: Map<string, VaultProfile> };
+
+function makeStore() {
+  const profiles = new Map<string, VaultProfile>();
+  const store: VaultProfileStore = {
+    getVaultProfile: async (userId: string) => profiles.get(userId) ?? null,
+    saveVaultProfile: async (profile: VaultProfile) => {
+      profiles.set(profile.userId, profile);
+    },
+  };
+  return { store, profiles };
+}
+
+function Unlocker({ children }: { children: React.ReactNode }) {
+  const vault = useVaultContext();
+  const started = useRef(false);
+  useEffect(() => {
+    if (!started.current) {
+      started.current = true;
+      void vault.unlockWithPassword(PASSWORD);
+    }
+  }, [vault]);
+  return <>{children}</>;
+}
+
+function HomeScreenWithVault(props: any) {
+  return (
+    <VaultProvider userId="u1" store={testStore.store} vaultDeps={DEPS}>
+      <Unlocker>
+        <HomeScreen {...props} />
+      </Unlocker>
+    </VaultProvider>
+  );
+}
+
 function renderHomeScreen() {
   return render(
     <SafeAreaProvider>
       <NavigationContainer>
         <Stack.Navigator>
-          <Stack.Screen name="Home" component={HomeScreen} initialParams={{ user: mockUser }} />
+          <Stack.Screen
+            name="Home"
+            component={HomeScreenWithVault}
+            initialParams={{ user: mockUser }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
@@ -65,6 +108,15 @@ class SnapshotOnlyFirestore {
   }
 }
 
+async function seedVaultItem(name: string, value: string) {
+  const { vaultKey } = await unlockWithPassword(PASSWORD, 'u1', testStore.store, DEPS);
+  await saveVaultItem('u1', { name, value }, vaultKey);
+}
+
+async function waitForUnlocked() {
+  await screen.findByTestId('add-item-button');
+}
+
 async function addItem(name: string, value: string) {
   fireEvent.press(screen.getByTestId('add-item-button'));
   fireEvent.changeText(screen.getByPlaceholderText('Name'), name);
@@ -75,16 +127,13 @@ async function addItem(name: string, value: string) {
 describe('HomeScreen', () => {
   let mockFirestore: MockFirestore;
 
-  beforeAll(async () => {
-    await generateAndStoreKeys(true);
-  });
-
   beforeEach(() => {
     jest.clearAllMocks();
     (auth as unknown as jest.Mock).mockReturnValue({
       currentUser: mockUser,
       useEmulator: jest.fn(),
     });
+    testStore = makeStore();
     mockFirestore = new MockFirestore();
     setFirestoreClientForTesting(mockFirestore as any);
   });
@@ -95,6 +144,7 @@ describe('HomeScreen', () => {
 
   it('shows a newly added item without navigating away and back', async () => {
     renderHomeScreen();
+    await waitForUnlocked();
     await waitFor(() => {
       expect(screen.queryByText('my-item')).toBeNull();
     });
@@ -114,6 +164,7 @@ describe('HomeScreen', () => {
     const staleBacked = new MockFirestore();
     setFirestoreClientForTesting(new SnapshotOnlyFirestore(staleBacked) as any);
     renderHomeScreen();
+    await waitForUnlocked();
     await waitFor(() => {
       expect(screen.queryByText('stale-item')).toBeNull();
     });
@@ -130,14 +181,10 @@ describe('HomeScreen', () => {
   });
 
   it('filters the list client-side as the search text changes', async () => {
-    await saveItem({
-      name: 'National Insurance',
-      value: 'SA1',
-      timestamp: 1,
-      userId: 'u1',
-    });
-    await saveItem({ name: 'Passport', value: 'P1', timestamp: 2, userId: 'u1' });
+    await seedVaultItem('National Insurance', 'SA1');
+    await seedVaultItem('Passport', 'P1');
     renderHomeScreen();
+    await waitForUnlocked();
     await waitFor(() => {
       expect(screen.getByText('Passport')).toBeTruthy();
     });
@@ -155,13 +202,9 @@ describe('HomeScreen', () => {
   });
 
   it('shows a newly added item when the list already has items', async () => {
-    await saveItem({
-      name: 'existing-item',
-      value: 'existing-value',
-      timestamp: 1,
-      userId: 'u1',
-    });
+    await seedVaultItem('existing-item', 'existing-value');
     renderHomeScreen();
+    await waitForUnlocked();
     await waitFor(() => {
       expect(screen.getByText('existing-item')).toBeTruthy();
     });

@@ -8,6 +8,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import LoginScreen, { LoginScreenProperties } from './component/Login/LoginScreen';
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import LockScreen from './component/LockScreen';
+import { VaultProvider, useVaultContext } from './component/Core/VaultContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -50,7 +52,7 @@ export default function App() {
             <>
               <Stack.Screen
                 name="Home Tab"
-                component={HomeTabScreen}
+                component={VaultGatedTabs}
                 initialParams={{
                   user: user,
                   anonymous,
@@ -72,6 +74,25 @@ export default function App() {
       </NavigationContainer>
     </SafeAreaProvider>
   );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function VaultGatedTabs(props: any) {
+  const userId = props.route.params.user?.uid as string;
+  return (
+    <VaultProvider userId={userId}>
+      <VaultGate {...props} />
+    </VaultProvider>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function VaultGate(props: any) {
+  const vault = useVaultContext();
+  if (vault.locked) {
+    return <LockScreen />;
+  }
+  return <HomeTabScreen {...props} />;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
