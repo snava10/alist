@@ -92,6 +92,18 @@ describe('VaultCrypto known-answer vectors', () => {
     );
   });
 
+  it('falls back to the JS KDF with identical output when native derivation fails', async () => {
+    const salt = randomBytes(SALT_LENGTH);
+    const params = { iterations: 100, dkLen: 32 };
+    const expected = await deriveMasterKey('password', salt, params);
+    (globalThis as unknown as Record<string, unknown>).__RNQC_PBKDF2_FAIL__ = true;
+    try {
+      expect(await deriveMasterKey('password', salt, params)).toEqual(expected);
+    } finally {
+      delete (globalThis as unknown as Record<string, unknown>).__RNQC_PBKDF2_FAIL__;
+    }
+  });
+
   it('agrees with Node crypto PBKDF2 at 1000 iterations', async () => {
     const salt = utf8ToBytes('salt');
     const derived = await deriveMasterKey('password', salt, { iterations: 1000, dkLen: 32 });

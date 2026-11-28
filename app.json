@@ -33,7 +33,8 @@
     "@react-native-firebase/app",
     "./plugins/withFirebaseConfigure",
     "./plugins/withFmtFix",
-    "expo-web-browser"
+    "expo-web-browser",
+    "react-native-quick-crypto"
   ],
   "ios": {
     "supportsTablet": true,

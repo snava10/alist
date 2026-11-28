@@ -23,6 +23,7 @@ module.exports = {
     '@expo/vector-icons/Ionicons': '<rootDir>/__mocks__/@expo/vector-icons/Ionicons.js',
     'expo-secure-store': '<rootDir>/__mocks__/expo-secure-store.js',
     'expo-crypto': '<rootDir>/__mocks__/expo-crypto.js',
+    'react-native-quick-crypto': '<rootDir>/__mocks__/react-native-quick-crypto.js',
   },
   transformIgnorePatterns: [
     'node_modules/(?!(react-native|@react-native|@react-navigation|expo|@expo|@noble|expo-secure-store|expo-modules-core|react-native-vector-icons|@react-native-firebase)/)',

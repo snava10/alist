@@ -3,6 +3,7 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import { utf8ToBytes } from '@noble/hashes/utils.js';
 import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
 import { bytesToUtf8 } from '@noble/ciphers/utils.js';
+import { pbkdf2 as nativePbkdf2 } from 'react-native-quick-crypto';
 import * as Crypto from 'expo-crypto';
 import { decode as base64Decode, encode as base64Encode } from 'base-64';
 import { KdfParams, VaultItemDocument } from './DataModel';
@@ -25,19 +26,33 @@ import { validateVaultItemPayload } from './Contracts';
  *   `getRandomValues`. It exposes no PBKDF2 API, so the KDF cannot come
  *   from it; the KDF comes from `@noble/hashes` instead.
  *
- * KDF spike decision (transformation plan decision D2): Argon2id is
- * preferred but is NOT used. The Argon2 implementation in
- * `@noble/hashes` is experimental and explicitly outside the Cure53
- * audit scope; `react-native-argon2` 2.0.1 is unmaintained (React Native
- * 0.60–0.63, published four years ago); the only newer Expo binding,
- * `@sonnetstationsolutions/expo-argon2` 0.1.1, is unaudited, has a
- * single maintainer, and targets Expo 56 / React Native 0.85 while this
- * project is on Expo 55. The recorded PBKDF2 fallback is therefore used,
- * with versioned parameters in the vault profile (Step 2) so the KDF can
- * be upgraded later without re-encrypting everything. Pure-JS PBKDF2 at
- * 600,000 iterations is unmeasured on low-end devices: Step 5 must
- * derive off the render path with unlock progress shown, and a device
- * benchmark is a follow-up before release.
+ * KDF spike decision (transformation plan decision D2), revised by the
+ * native-KDF spike: Argon2id is preferred but is NOT used. The Argon2
+ * implementation in `@noble/hashes` is experimental and explicitly
+ * outside the Cure53 audit scope; `react-native-argon2` 2.0.1 is
+ * unmaintained (React Native 0.60–0.63, published four years ago); the
+ * only newer Expo binding, `@sonnetstationsolutions/expo-argon2` 0.1.1,
+ * is unaudited, has a single maintainer, and targets Expo 56 / React
+ * Native 0.85 while this project is on Expo 55. The recorded PBKDF2
+ * fallback is therefore used, with versioned parameters in the vault
+ * profile (Step 2) so the KDF can be upgraded later without
+ * re-encrypting everything.
+ *
+ * Implementation review for the PBKDF2 computation itself: pure-JS
+ * PBKDF2 at 600,000 iterations measured over 4 minutes without
+ * finishing on the emulator (Hermes), while the same work takes
+ * ~0.4s in Node — so derivation runs natively via
+ * `react-native-quick-crypto` 1.1.10 (Margelo, actively maintained;
+ * releases through Oct 2026 bundling static OpenSSL 3.6.x with
+ * verified libsodium sources; pure C++/JSI Nitro modules, New
+ * Architecture, installed through its Expo config plugin). No
+ * independent third-party audit of that library itself was located;
+ * its primitives are OpenSSL/libsodium and it is well-tested per its
+ * README. `@noble/hashes` PBKDF2 remains as the fallback when the
+ * native module is unavailable (stale dev build, tests without the
+ * mock); both paths produce identical output for identical inputs,
+ * verified by known-answer vectors and cross-implementation tests.
+ * A device benchmark of the native path is part of this spike.
  */
 
 export class VaultCryptoError extends Error {
@@ -108,9 +123,34 @@ export function newItemId(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+/** Derive with the native module (OpenSSL via Nitro/JSI). */
+function deriveWithNative(
+  password: string,
+  salt: Uint8Array,
+  iterations: number,
+  dkLen: number
+): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    try {
+      nativePbkdf2(password, salt, iterations, dkLen, 'sha256', (err, derivedKey) => {
+        if (err || !derivedKey) {
+          reject(err ?? new Error('Native key derivation failed'));
+          return;
+        }
+        resolve(new Uint8Array(derivedKey));
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
 /**
  * Derive the master key from a master password and per-account salt.
- * The async variant keeps long derivations off the render path.
+ * Derivation runs natively when the native module is linked; when it
+ * is unavailable (stale dev build, or a host without it), derivation
+ * falls back to the pure-JS implementation with identical output.
+ * The async variants keep long derivations off the render path.
  */
 export async function deriveMasterKey(
   password: string,
@@ -133,12 +173,16 @@ export async function deriveMasterKey(
     throw new VaultCryptoError('KDF derived key length is invalid');
   }
   try {
-    return await pbkdf2Async(sha256, utf8ToBytes(password), salt, {
-      c: params.iterations,
-      dkLen: params.dkLen,
-    });
+    return await deriveWithNative(password, salt, params.iterations, params.dkLen);
   } catch {
-    throw new VaultCryptoError('Failed to derive the master key');
+    try {
+      return await pbkdf2Async(sha256, utf8ToBytes(password), salt, {
+        c: params.iterations,
+        dkLen: params.dkLen,
+      });
+    } catch {
+      throw new VaultCryptoError('Failed to derive the master key');
+    }
   }
 }
 
