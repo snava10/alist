@@ -51,6 +51,24 @@ module.exports = {
     },
 
     // ──────────────────────────────────────────────
+    // RULE 2b: UI components cannot import the vault or crypto layers
+    // They go through Core/Storage (and the vault provider, from Step 8)
+    // ──────────────────────────────────────────────
+    {
+      name: 'no-direct-vault-or-crypto-from-screens',
+      comment:
+        'Screens and UI components must not import the vault or crypto layers directly. ' +
+        'Use Core/Storage as the data access layer instead.',
+      severity: 'error',
+      from: {
+        path: '^component/(HomeScreen|ProfileScreen|AddItemModal|AListItem|ConfirmationModal)',
+      },
+      to: {
+        path: '(Core/Vault|Core/VaultCrypto|@noble)',
+      },
+    },
+
+    // ──────────────────────────────────────────────
     // RULE 3: Login modules cannot access Firestore directly
     // Auth modules handle authentication only; data goes through Core/Storage
     // ──────────────────────────────────────────────
@@ -76,13 +94,13 @@ module.exports = {
       name: 'datamodel-must-be-pure',
       comment:
         'DataModel defines types and enums only. ' +
-        'It must not import Storage, Security, or Firebase.',
+        'It must not import Storage, Security, Vault, or Firebase.',
       severity: 'error',
       from: {
         path: '^component/Core/DataModel',
       },
       to: {
-        path: '(Core/Storage|Core/Security|@react-native-firebase|@react-native-async-storage)',
+        path: '(Core/Storage|Core/Security|Core/Vault|Core/VaultCrypto|@react-native-firebase|@react-native-async-storage)',
       },
     },
     {
@@ -95,7 +113,7 @@ module.exports = {
         path: '^component/Core/GlobalStyles',
       },
       to: {
-        path: '(Core/Storage|Core/Security|Core/DataModel|@react-native-firebase|@react-native-async-storage)',
+        path: '(Core/Storage|Core/Security|Core/Vault|Core/VaultCrypto|Core/DataModel|@react-native-firebase|@react-native-async-storage)',
       },
     },
 

@@ -1,10 +1,27 @@
-import { BackupCadence, MembershipType, UserSettings, AListItem, VaultProfile } from './DataModel';
+import {
+  BackupCadence,
+  MembershipType,
+  UserSettings,
+  AListItem,
+  QuarantineRecord,
+  VAULT_ALGORITHM,
+  VAULT_SCHEMA_VERSION,
+  VaultItem,
+  VaultItemDocument,
+  VaultProfile,
+} from './DataModel';
 import firestore from '@react-native-firebase/firestore';
 import { EXPO_PUBLIC_FIREBASE_EMULATOR } from '@env';
 import auth from '@react-native-firebase/auth';
 import { Platform } from 'react-native';
 import { decrypt, encrypt } from './Security';
-import { validateUserSettings, validateFirestoreItem, validateVaultProfile } from './Contracts';
+import {
+  validateUserSettings,
+  validateFirestoreItem,
+  validateVaultItemDocument,
+  validateVaultProfile,
+} from './Contracts';
+import { decryptVaultItem, encryptVaultItem, newItemId, VAULT_KEY_LENGTH } from './VaultCrypto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type FirestoreDocData = Record<string, unknown>;
@@ -118,6 +135,240 @@ export async function getVaultProfile(userId: string): Promise<VaultProfile | nu
 export async function saveVaultProfile(profile: VaultProfile): Promise<void> {
   const validated = validateVaultProfile(profile);
   await getFirestoreClient().collection('VaultProfiles').doc(validated.userId).set(validated);
+}
+
+// ── Vault items (schema v2) ───────────────────────────────────────────────
+// Vault reads and writes require the in-memory vault key held by the
+// vault provider; without it they fail closed. Each document is
+// fault-isolated: one undecryptable or malformed document is
+// quarantined and the rest of the vault still loads.
+
+export class VaultLockedError extends Error {
+  constructor(message = 'The vault is locked') {
+    super(message);
+    this.name = 'VaultLockedError';
+  }
+}
+
+function requireVaultKey(key: Uint8Array | null | undefined): Uint8Array {
+  if (!(key instanceof Uint8Array) || key.length !== VAULT_KEY_LENGTH) {
+    throw new VaultLockedError();
+  }
+  return key;
+}
+
+/** Lists raw vault documents for a user, without decrypting them. */
+export async function listVaultItemDocuments(userId: string): Promise<{
+  documents: VaultItemDocument[];
+  malformedDocIds: string[];
+}> {
+  const querySnapshot = await getFirestoreClient()
+    .collection('VaultItems')
+    .where('userId', '==', userId)
+    .get();
+  const documents: VaultItemDocument[] = [];
+  const malformedDocIds: string[] = [];
+  for (const doc of querySnapshot.docs) {
+    try {
+      documents.push(validateVaultItemDocument(doc.data()));
+    } catch {
+      malformedDocIds.push(doc.id);
+    }
+  }
+  return { documents, malformedDocIds };
+}
+
+export async function getVaultItemDocument(
+  userId: string,
+  itemId: string
+): Promise<VaultItemDocument | null> {
+  const doc = await getFirestoreClient().collection('VaultItems').doc(itemId).get();
+  if (!doc.exists) {
+    return null;
+  }
+  const data = doc.data();
+  if (!data) {
+    return null;
+  }
+  try {
+    const validated = validateVaultItemDocument(data);
+    return validated.userId === userId ? validated : null;
+  } catch {
+    return null;
+  }
+}
+
+export type SaveVaultItemInput = {
+  id?: string;
+  name: string;
+  value: string;
+  /**
+   * Original time for a brand-new item (migration preserving a legacy
+   * timestamp). Ignored on edits, where updatedAt is always now.
+   */
+  timestamp?: number;
+  migratedFrom?: string;
+};
+
+/**
+ * Encrypts and writes one vault item. A new item gets a random UUID and
+ * version 1; an existing item keeps its ID and creation time with an
+ * incremented version. The write is validated against the vault
+ * contract before it reaches Firestore.
+ */
+export async function saveVaultItem(
+  userId: string,
+  input: SaveVaultItemInput,
+  vaultKey: Uint8Array | null | undefined
+): Promise<VaultItem> {
+  const key = requireVaultKey(vaultKey);
+  if (!userId) {
+    throw new Error('saveVaultItem requires userId');
+  }
+  if (!input.name) {
+    throw new Error('saveVaultItem requires a name');
+  }
+  if (input.timestamp !== undefined && (!Number.isFinite(input.timestamp) || input.timestamp < 0)) {
+    throw new Error('saveVaultItem requires a valid timestamp');
+  }
+  const now = Date.now();
+  const existing = input.id ? await getVaultItemDocument(userId, input.id) : null;
+  const id = existing?.id ?? newItemId();
+  const version = existing ? existing.version + 1 : 1;
+  const createdAt = existing?.createdAt ?? input.timestamp ?? now;
+  const updatedAt = existing ? now : (input.timestamp ?? now);
+  const migratedFrom = input.migratedFrom ?? existing?.migratedFrom;
+  const encrypted = encryptVaultItem(key, id, version, input.name, input.value);
+  const document: VaultItemDocument = {
+    id,
+    userId,
+    ...encrypted,
+    algorithm: VAULT_ALGORITHM,
+    schemaVersion: VAULT_SCHEMA_VERSION,
+    version,
+    createdAt,
+    updatedAt,
+    ...(migratedFrom !== undefined ? { migratedFrom } : {}),
+  };
+  const validated = validateVaultItemDocument(document);
+  await getFirestoreClient().collection('VaultItems').doc(id).set(validated);
+  return {
+    id,
+    name: input.name,
+    value: input.value,
+    timestamp: updatedAt,
+    userId,
+    version,
+    updatedAt,
+  };
+}
+
+function sortVaultItems(items: VaultItem[]): VaultItem[] {
+  return [...items].sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
+}
+
+function decryptDocuments(
+  documents: VaultItemDocument[],
+  malformedDocIds: string[],
+  vaultKey: Uint8Array,
+  now: number
+): { items: VaultItem[]; quarantined: QuarantineRecord[] } {
+  const quarantined: QuarantineRecord[] = malformedDocIds.map((legacyDocId) => ({
+    legacyDocId,
+    reason: 'malformed-document',
+    at: now,
+  }));
+  const items: VaultItem[] = [];
+  for (const document of documents) {
+    try {
+      const { name, value } = decryptVaultItem(vaultKey, document);
+      items.push({
+        id: document.id,
+        name,
+        value,
+        timestamp: document.updatedAt,
+        userId: document.userId,
+        version: document.version,
+        updatedAt: document.updatedAt,
+      });
+    } catch {
+      quarantined.push({ legacyDocId: document.id, reason: 'undecryptable', at: now });
+    }
+  }
+  return { items: sortVaultItems(items), quarantined };
+}
+
+/**
+ * One-shot vault read. Each document is fault-isolated: one
+ * undecryptable or malformed document is quarantined (by document ID
+ * only) and the rest of the vault still loads.
+ */
+export async function getVaultItems(
+  userId: string,
+  vaultKey: Uint8Array | null | undefined
+): Promise<{ items: VaultItem[]; quarantined: QuarantineRecord[] }> {
+  const key = requireVaultKey(vaultKey);
+  const now = Date.now();
+  const { documents, malformedDocIds } = await listVaultItemDocuments(userId);
+  return decryptDocuments(documents, malformedDocIds, key, now);
+}
+
+/** Re-sync report: Firestore count vs decrypted count, with quarantine details. */
+export async function restoreFromFirestore(
+  userId: string,
+  vaultKey: Uint8Array | null | undefined
+): Promise<{
+  firestoreTotal: number;
+  decrypted: number;
+  quarantined: number;
+  items: VaultItem[];
+  quarantinedItems: QuarantineRecord[];
+}> {
+  const key = requireVaultKey(vaultKey);
+  const now = Date.now();
+  const { documents, malformedDocIds } = await listVaultItemDocuments(userId);
+  const { items, quarantined } = decryptDocuments(documents, malformedDocIds, key, now);
+  return {
+    firestoreTotal: documents.length + malformedDocIds.length,
+    decrypted: items.length,
+    quarantined: quarantined.length,
+    items,
+    quarantinedItems: quarantined,
+  };
+}
+
+/** Client-side search over decrypted items, after unlock. No server-side index. */
+export function filterVaultItems(items: VaultItem[], query: string | null): VaultItem[] {
+  const term = (query ?? '').trim().toLowerCase();
+  if (!term) {
+    return [...items];
+  }
+  return items.filter((item) => item.name.toLowerCase().includes(term));
+}
+
+export async function removeVaultItem(userId: string, itemId: string): Promise<void> {
+  const existing = await getVaultItemDocument(userId, itemId);
+  if (!existing) {
+    return;
+  }
+  await getFirestoreClient().collection('VaultItems').doc(itemId).delete();
+}
+
+export async function deleteVaultItems(userId: string): Promise<number> {
+  const querySnapshot = await getFirestoreClient()
+    .collection('VaultItems')
+    .where('userId', '==', userId)
+    .get();
+  if (querySnapshot.empty) return 0;
+  const results = await Promise.all(
+    querySnapshot.docs.map((doc) =>
+      doc.ref
+        .delete()
+        .then(() => 1)
+        .catch(() => 0)
+    )
+  );
+  return results.reduce((a, b) => a + b, 0);
 }
 
 function getItemDocId(name: string, userId: string): string {

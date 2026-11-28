@@ -5,12 +5,21 @@ import {
   clearLocalAsyncStorage,
   createUserSettings,
   deleteItems,
+  deleteVaultItems,
+  filterVaultItems,
   getAllItems,
   getItem,
   getItems,
   getUserSettings,
+  getVaultItemDocument,
+  getVaultItems,
   getVaultProfile,
+  listVaultItemDocuments,
+  removeVaultItem,
+  restoreFromFirestore,
+  saveVaultItem,
   saveVaultProfile,
+  VaultLockedError,
   removeItem,
   replaceItem,
   resetFirestoreClientForTesting,
@@ -18,8 +27,15 @@ import {
   setFirestoreClientForTesting,
   subscribeToItems,
 } from '../Storage';
-import { BackupCadence, MembershipType, type AListItem, type VaultProfile } from '../DataModel';
+import {
+  BackupCadence,
+  MembershipType,
+  type AListItem,
+  type VaultItemDocument,
+  type VaultProfile,
+} from '../DataModel';
 import { encrypt, generateAndStoreKeys } from '../Security';
+import { encryptVaultItem, newItemId, randomBytes, VAULT_KEY_LENGTH } from '../VaultCrypto';
 import { ZodError } from 'zod';
 import * as forge from 'node-forge';
 import { MockFirestore } from '../MockFirestore';
@@ -558,6 +574,236 @@ describe('Storage', () => {
         .doc('u1')
         .set({ userId: 'u1', schemaVersion: 99 });
       await expect(getVaultProfile('u1')).rejects.toThrow(ZodError);
+    });
+  });
+
+  describe('Vault items', () => {
+    const vaultKey = randomBytes(VAULT_KEY_LENGTH);
+
+    async function seedVaultDocument(document: VaultItemDocument): Promise<void> {
+      await mockFirestore.collection('VaultItems').doc(document.id).set(document);
+    }
+
+    async function seedForeignEncrypted(
+      name: string,
+      value: string,
+      userId: string
+    ): Promise<string> {
+      const otherKey = randomBytes(VAULT_KEY_LENGTH);
+      const id = newItemId();
+      const encrypted = encryptVaultItem(otherKey, id, 1, name, value);
+      await seedVaultDocument({
+        id,
+        userId,
+        ...encrypted,
+        algorithm: 'xchacha20-poly1305',
+        schemaVersion: 2,
+        version: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      return id;
+    }
+
+    it('saves an item encrypted and reads it back decrypted', async () => {
+      const saved = await saveVaultItem(
+        'u1',
+        { name: 'secret', value: 'decrypted-value' },
+        vaultKey
+      );
+      expect(saved.version).toBe(1);
+      expect(saved.name).toBe('secret');
+      expect(saved.value).toBe('decrypted-value');
+      expect(saved.timestamp).toBe(saved.updatedAt);
+
+      const stored = await getVaultItemDocument('u1', saved.id);
+      expect(stored).not.toBeNull();
+      expect(stored?.ciphertext).not.toContain('decrypted-value');
+      expect(stored?.userId).toBe('u1');
+      expect(stored?.algorithm).toBe('xchacha20-poly1305');
+      expect(stored?.schemaVersion).toBe(2);
+
+      const { items, quarantined } = await getVaultItems('u1', vaultKey);
+      expect(items).toEqual([saved]);
+      expect(quarantined).toEqual([]);
+    });
+
+    it('increments the version and preserves creation time on edit', async () => {
+      const nowSpy = jest.spyOn(Date, 'now');
+      nowSpy.mockReturnValueOnce(1000).mockReturnValueOnce(2000);
+      try {
+        const created = await saveVaultItem('u1', { name: 'secret', value: 'one' }, vaultKey);
+        const edited = await saveVaultItem(
+          'u1',
+          { id: created.id, name: 'secret', value: 'two' },
+          vaultKey
+        );
+        expect(edited.id).toBe(created.id);
+        expect(edited.version).toBe(2);
+        expect(edited.value).toBe('two');
+        const stored = await getVaultItemDocument('u1', created.id);
+        expect(stored?.createdAt).toBe(1000);
+        expect(stored?.updatedAt).toBe(2000);
+      } finally {
+        nowSpy.mockRestore();
+      }
+    });
+
+    it('preserves a caller-supplied timestamp for a brand-new item', async () => {
+      const saved = await saveVaultItem(
+        'u1',
+        { name: 'old', value: 'v', timestamp: 500 },
+        vaultKey
+      );
+      expect(saved.timestamp).toBe(500);
+      const stored = await getVaultItemDocument('u1', saved.id);
+      expect(stored?.createdAt).toBe(500);
+      expect(stored?.updatedAt).toBe(500);
+    });
+
+    it('stores migratedFrom and preserves it on edit', async () => {
+      const saved = await saveVaultItem(
+        'u1',
+        { name: 'migrated', value: 'v', migratedFrom: 'u1_old' },
+        vaultKey
+      );
+      expect((await getVaultItemDocument('u1', saved.id))?.migratedFrom).toBe('u1_old');
+      await saveVaultItem('u1', { id: saved.id, name: 'migrated', value: 'v2' }, vaultKey);
+      expect((await getVaultItemDocument('u1', saved.id))?.migratedFrom).toBe('u1_old');
+    });
+
+    it('fails closed without a vault key', async () => {
+      await expect(saveVaultItem('u1', { name: 'x', value: 'y' }, null)).rejects.toThrow(
+        VaultLockedError
+      );
+      await expect(saveVaultItem('u1', { name: 'x', value: 'y' }, randomBytes(31))).rejects.toThrow(
+        VaultLockedError
+      );
+      await expect(getVaultItems('u1', undefined)).rejects.toThrow(VaultLockedError);
+      await expect(restoreFromFirestore('u1', null)).rejects.toThrow(VaultLockedError);
+    });
+
+    it('rejects empty names, missing users, and invalid timestamps without writing', async () => {
+      await expect(saveVaultItem('u1', { name: '', value: 'y' }, vaultKey)).rejects.toThrow();
+      await expect(saveVaultItem('', { name: 'x', value: 'y' }, vaultKey)).rejects.toThrow();
+      await expect(
+        saveVaultItem('u1', { name: 'x', value: 'y', timestamp: -1 }, vaultKey)
+      ).rejects.toThrow();
+      const { documents } = await listVaultItemDocuments('u1');
+      expect(documents).toEqual([]);
+    });
+
+    it('returns items newest first and quarantines undecryptable documents', async () => {
+      await saveVaultItem('u1', { name: 'newer', value: 'n', timestamp: 200 }, vaultKey);
+      await saveVaultItem('u1', { name: 'older', value: 'o', timestamp: 100 }, vaultKey);
+      const foreignId = await seedForeignEncrypted('foreign', 'secret', 'u1');
+      const { items, quarantined } = await getVaultItems('u1', vaultKey);
+      expect(items.map((item) => item.name)).toEqual(['newer', 'older']);
+      expect(quarantined).toEqual([
+        expect.objectContaining({ legacyDocId: foreignId, reason: 'undecryptable' }),
+      ]);
+    });
+
+    it('quarantines malformed documents in reads and restore reports', async () => {
+      await saveVaultItem('u1', { name: 'good', value: 'v' }, vaultKey);
+      await mockFirestore
+        .collection('VaultItems')
+        .doc('bad-doc')
+        .set({ userId: 'u1', ciphertext: 'x' });
+      const { items, quarantined } = await getVaultItems('u1', vaultKey);
+      expect(items.map((item) => item.name)).toEqual(['good']);
+      expect(quarantined).toEqual([
+        expect.objectContaining({ legacyDocId: 'bad-doc', reason: 'malformed-document' }),
+      ]);
+
+      const report = await restoreFromFirestore('u1', vaultKey);
+      expect(report.firestoreTotal).toBe(2);
+      expect(report.decrypted).toBe(1);
+      expect(report.quarantined).toBe(1);
+      expect(report.items.map((item) => item.name)).toEqual(['good']);
+      expect(report.quarantinedItems.map((record) => [record.legacyDocId, record.reason])).toEqual([
+        ['bad-doc', 'malformed-document'],
+      ]);
+    });
+
+    it('restoreFromFirestore reports counts with no quarantine when all decrypt', async () => {
+      await saveVaultItem('u1', { name: 'a', value: '1' }, vaultKey);
+      await saveVaultItem('u1', { name: 'b', value: '2' }, vaultKey);
+      const report = await restoreFromFirestore('u1', vaultKey);
+      expect(report.firestoreTotal).toBe(2);
+      expect(report.decrypted).toBe(2);
+      expect(report.quarantined).toBe(0);
+      expect(report.quarantinedItems).toEqual([]);
+    });
+
+    it('getVaultItemDocument returns null for missing, foreign, and malformed docs', async () => {
+      const saved = await saveVaultItem('u1', { name: 'mine', value: 'v' }, vaultKey);
+      await expect(getVaultItemDocument('u1', 'missing')).resolves.toBeNull();
+      await expect(getVaultItemDocument('u2', saved.id)).resolves.toBeNull();
+      await mockFirestore
+        .collection('VaultItems')
+        .doc('bad-doc')
+        .set({ userId: 'u1', ciphertext: 'x' });
+      await expect(getVaultItemDocument('u1', 'bad-doc')).resolves.toBeNull();
+    });
+
+    it('listVaultItemDocuments separates documents from malformed ids', async () => {
+      await saveVaultItem('u1', { name: 'good', value: 'v' }, vaultKey);
+      await mockFirestore
+        .collection('VaultItems')
+        .doc('bad-doc')
+        .set({ userId: 'u1', ciphertext: 'x' });
+      const { documents, malformedDocIds } = await listVaultItemDocuments('u1');
+      expect(documents.map((document) => document.id)).toHaveLength(1);
+      expect(malformedDocIds).toEqual(['bad-doc']);
+    });
+
+    it('removeVaultItem deletes only the caller’s item', async () => {
+      const mine = await saveVaultItem('u1', { name: 'mine', value: 'v' }, vaultKey);
+      const foreignId = await seedForeignEncrypted('theirs', 'secret', 'u2');
+      await removeVaultItem('u1', mine.id);
+      await expect(getVaultItemDocument('u1', mine.id)).resolves.toBeNull();
+      await removeVaultItem('u1', foreignId);
+      await expect(getVaultItemDocument('u2', foreignId)).resolves.not.toBeNull();
+      await removeVaultItem('u1', 'missing');
+    });
+
+    it('deleteVaultItems deletes only the caller’s items and counts them', async () => {
+      await saveVaultItem('u1', { name: 'a', value: '1' }, vaultKey);
+      await saveVaultItem('u1', { name: 'b', value: '2' }, vaultKey);
+      await saveVaultItem('u2', { name: 'c', value: '3' }, vaultKey);
+      expect(await deleteVaultItems('u1')).toBe(2);
+      expect(await getVaultItems('u1', vaultKey)).toEqual({ items: [], quarantined: [] });
+      expect((await getVaultItems('u2', vaultKey)).items).toHaveLength(1);
+      expect(await deleteVaultItems('u1')).toBe(0);
+    });
+
+    it('filterVaultItems searches decrypted names client-side', async () => {
+      const items = [
+        {
+          id: '1',
+          name: 'National Insurance',
+          value: 'x',
+          timestamp: 1,
+          userId: 'u1',
+          version: 1,
+          updatedAt: 1,
+        },
+        {
+          id: '2',
+          name: 'Passport',
+          value: 'y',
+          timestamp: 1,
+          userId: 'u1',
+          version: 1,
+          updatedAt: 1,
+        },
+      ];
+      expect(filterVaultItems(items, null)).toEqual(items);
+      expect(filterVaultItems(items, '  ')).toEqual(items);
+      expect(filterVaultItems(items, 'NAT')).toEqual([items[0]]);
+      expect(filterVaultItems(items, 'pass')).toEqual([items[1]]);
+      expect(filterVaultItems(items, 'zzz')).toEqual([]);
     });
   });
 });
