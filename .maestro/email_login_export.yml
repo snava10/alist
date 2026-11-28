@@ -3,6 +3,12 @@ appId: com.acorn.alist
 - launchApp:
     appId: com.acorn.alist
     clearState: true
+# The development build opens on the dev-server home screen after a
+# cold start; wait for its content before tapping the server row, or
+# the tap runs against an empty hierarchy and the bundle never loads.
+- extendedWaitUntil:
+    visible: "DEVELOPMENT SERVERS"
+    timeout: 60000
 - tapOn:
     text: ".*:8081"
     optional: true
@@ -27,6 +33,14 @@ appId: com.acorn.alist
 - inputText: "TestUser123!"
 - hideKeyboard
 - tapOn: "Sign in with email"
+- extendedWaitUntil:
+    visible: "Your vault is locked.*"
+    timeout: 120000
+- tapOn: "Master password"
+- inputText: "TestVault123!"
+- hideKeyboard
+- tapOn:
+    text: "^Unlock$"
 - extendedWaitUntil:
     visible: "Tap.*to add a new item"
     timeout: 120000

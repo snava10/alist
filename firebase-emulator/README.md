@@ -60,6 +60,10 @@ emulator, and must never be used for a production account:
 - Email: `test@alist.local`
 - Password: `TestUser123!`
 - Display name: Test User
+- Master password (vault lock screen, Maestro only): `TestVault123!` —
+  first run creates the vault with it, later runs unlock with it. If the
+  emulator's Firestore data is cleared, the vault is created again with
+  the same password.
 
 Type them in manually; the app does not prefill them. The seed files store
 only the password hash and salt — never edit `accounts.json` by hand to
