@@ -1,10 +1,10 @@
-import { BackupCadence, MembershipType, UserSettings, AListItem } from './DataModel';
+import { BackupCadence, MembershipType, UserSettings, AListItem, VaultProfile } from './DataModel';
 import firestore from '@react-native-firebase/firestore';
 import { EXPO_PUBLIC_FIREBASE_EMULATOR } from '@env';
 import auth from '@react-native-firebase/auth';
 import { Platform } from 'react-native';
 import { decrypt, encrypt } from './Security';
-import { validateUserSettings, validateFirestoreItem } from './Contracts';
+import { validateUserSettings, validateFirestoreItem, validateVaultProfile } from './Contracts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type FirestoreDocData = Record<string, unknown>;
@@ -93,6 +93,31 @@ export function setFirestoreClientForTesting(client: StorageFirestore) {
 
 export function resetFirestoreClientForTesting() {
   firestoreClient = createFirestoreClient();
+}
+
+// ── Vault profiles (schema v2) ────────────────────────────────────────────
+// The profile holds KDF parameters, a password verifier, and wrapped key
+// material only — never a master password or a cleartext key. A malformed
+// stored profile fails closed by throwing; it is never guessed at.
+
+export async function getVaultProfile(userId: string): Promise<VaultProfile | null> {
+  if (!userId) {
+    return null;
+  }
+  const doc = await getFirestoreClient().collection('VaultProfiles').doc(userId).get();
+  if (!doc.exists) {
+    return null;
+  }
+  const data = doc.data();
+  if (!data) {
+    return null;
+  }
+  return validateVaultProfile(data);
+}
+
+export async function saveVaultProfile(profile: VaultProfile): Promise<void> {
+  const validated = validateVaultProfile(profile);
+  await getFirestoreClient().collection('VaultProfiles').doc(validated.userId).set(validated);
 }
 
 function getItemDocId(name: string, userId: string): string {

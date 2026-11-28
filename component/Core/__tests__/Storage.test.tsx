@@ -9,6 +9,8 @@ import {
   getItem,
   getItems,
   getUserSettings,
+  getVaultProfile,
+  saveVaultProfile,
   removeItem,
   replaceItem,
   resetFirestoreClientForTesting,
@@ -16,8 +18,9 @@ import {
   setFirestoreClientForTesting,
   subscribeToItems,
 } from '../Storage';
-import { BackupCadence, MembershipType, type AListItem } from '../DataModel';
+import { BackupCadence, MembershipType, type AListItem, type VaultProfile } from '../DataModel';
 import { encrypt, generateAndStoreKeys } from '../Security';
+import { ZodError } from 'zod';
 import * as forge from 'node-forge';
 import { MockFirestore } from '../MockFirestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -496,6 +499,65 @@ describe('Storage', () => {
       });
       const items = await getAllItems('u1');
       expect(items.map((item) => item.name)).toEqual(['good']);
+    });
+  });
+
+  describe('Vault profiles', () => {
+    function validProfile(overrides: Partial<VaultProfile> = {}): VaultProfile {
+      return {
+        userId: 'u1',
+        schemaVersion: 1,
+        kdf: {
+          kdf: 'pbkdf2-hmac-sha256',
+          salt: 'AAAAAAAAAAAAAAAAAAAAAA==',
+          iterations: 100,
+          dkLen: 32,
+          version: 1,
+        },
+        verifier: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+        biometricEnabled: false,
+        ...overrides,
+      };
+    }
+
+    it('saves and reads back a vault profile', async () => {
+      const profile = validProfile({
+        wrappedVaultKey: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+        wrappedVaultKeyNonce: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      });
+      await saveVaultProfile(profile);
+      await expect(getVaultProfile('u1')).resolves.toEqual(profile);
+    });
+
+    it('returns null for a missing profile or an empty user id', async () => {
+      await expect(getVaultProfile('missing')).resolves.toBeNull();
+      await expect(getVaultProfile('')).resolves.toBeNull();
+    });
+
+    it('rejects saving a malformed profile and writes nothing', async () => {
+      const bad = {
+        ...validProfile(),
+        schemaVersion: 2,
+      } as unknown as VaultProfile;
+      await expect(saveVaultProfile(bad)).rejects.toThrow(ZodError);
+      const stored = await mockFirestore.collection('VaultProfiles').doc('u1').get();
+      expect(stored.exists).toBe(false);
+    });
+
+    it('rejects saving a profile with an extra field', async () => {
+      const bad = {
+        ...validProfile(),
+        recoveryKey: 'nope',
+      } as unknown as VaultProfile;
+      await expect(saveVaultProfile(bad)).rejects.toThrow(ZodError);
+    });
+
+    it('throws when reading a malformed stored profile', async () => {
+      await mockFirestore
+        .collection('VaultProfiles')
+        .doc('u1')
+        .set({ userId: 'u1', schemaVersion: 99 });
+      await expect(getVaultProfile('u1')).rejects.toThrow(ZodError);
     });
   });
 });
