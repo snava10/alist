@@ -129,6 +129,31 @@ describe('HomeScreen', () => {
     );
   });
 
+  it('filters the list client-side as the search text changes', async () => {
+    await saveItem({
+      name: 'National Insurance',
+      value: 'SA1',
+      timestamp: 1,
+      userId: 'u1',
+    });
+    await saveItem({ name: 'Passport', value: 'P1', timestamp: 2, userId: 'u1' });
+    renderHomeScreen();
+    await waitFor(() => {
+      expect(screen.getByText('Passport')).toBeTruthy();
+    });
+
+    fireEvent.changeText(screen.getByPlaceholderText('Search...'), 'nat');
+    await waitFor(() => {
+      expect(screen.getByText('National Insurance')).toBeTruthy();
+      expect(screen.queryByText('Passport')).toBeNull();
+    });
+
+    fireEvent.changeText(screen.getByPlaceholderText('Search...'), '');
+    await waitFor(() => {
+      expect(screen.getByText('Passport')).toBeTruthy();
+    });
+  });
+
   it('shows a newly added item when the list already has items', async () => {
     await saveItem({
       name: 'existing-item',

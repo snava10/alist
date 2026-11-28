@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View, Text, TextInput, Pressable } from 'react-native';
 import AddItemModal from './AddItemModal';
 import ConfirmationModal from './ConfirmationModal';
@@ -53,16 +53,25 @@ export default function HomeScreen({ route }: any) {
 
   // Live subscription: the snapshot delivered after a local write already
   // contains that write, so a newly added item appears without navigating
-  // away and back. Resubscribes when the search filter changes.
+  // away and back. Search is client-side over the decrypted items below,
+  // so no plaintext search index is queried or written.
   useFocusEffect(
     React.useCallback(() => {
       const userId = auth().currentUser?.uid ?? '';
-      const unsubscribe = subscribeToItems(userId, searchText, setAListItems, (error) => {
+      const unsubscribe = subscribeToItems(userId, null, setAListItems, (error) => {
         console.log(error);
       });
       return unsubscribe;
-    }, [searchText])
+    }, [])
   );
+
+  const visibleItems = useMemo(() => {
+    const term = searchText.trim().toLowerCase();
+    if (!term) {
+      return alistItems;
+    }
+    return alistItems.filter((item) => item.name.toLowerCase().includes(term));
+  }, [alistItems, searchText]);
 
   useEffect(() => {
     console.info('Use Effect Invoked', alistItems);
@@ -109,7 +118,7 @@ export default function HomeScreen({ route }: any) {
             </View>
           </View>
           <FlatList
-            data={alistItems}
+            data={visibleItems}
             renderItem={({ item }) => (
               <AListItemComponent
                 item={item}

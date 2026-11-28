@@ -6,6 +6,7 @@ import {
   createUserSettings,
   deleteItems,
   deleteVaultItems,
+  enableOfflinePersistence,
   filterVaultItems,
   getAllItems,
   getItem,
@@ -14,11 +15,15 @@ import {
   getVaultItemDocument,
   getVaultItems,
   getVaultProfile,
+  isOfflineCacheEnabled,
   listVaultItemDocuments,
+  mergeVaultSnapshot,
   removeVaultItem,
   restoreFromFirestore,
   saveVaultItem,
   saveVaultProfile,
+  type StorageFirestore,
+  subscribeToVaultItems,
   VaultLockedError,
   removeItem,
   replaceItem,
@@ -230,7 +235,8 @@ describe('Storage', () => {
     expect(storedDoc.exists).toBe(true);
     expect(stored?.encrypted).toBe(true);
     expect(stored?.value).not.toBe('secret');
-    expect(stored?.searchIndex).toContain('myitem');
+    // Step 7: saveItem no longer writes a plaintext searchIndex.
+    expect(stored?.searchIndex).toBeUndefined();
   });
 
   it('adds search indexes to items that are missing them', async () => {
@@ -447,6 +453,9 @@ describe('Storage', () => {
           userId: 'u1',
         },
       ]);
+      // saveItem no longer writes a searchIndex (Step 7); the legacy
+      // server-side search below needs the backfill applied first.
+      await addSearchIndexToItems('u1');
     });
 
     it('Search multiple word item', async () => {
@@ -493,6 +502,9 @@ describe('Storage', () => {
         { name: 'Passport', value: 'PAL1', timestamp: 1, userId: 'u1' },
         { name: 'other-user', value: 'x', timestamp: 1, userId: 'u2' },
       ]);
+      // The server-side filter reads searchIndex, which saveItem no
+      // longer writes (Step 7); apply the legacy backfill first.
+      await addSearchIndexToItems('u1');
       const seen: string[][] = [];
       const unsubscribe = subscribeToItems('u1', 'pass', (items) => {
         seen.push(items.map((item) => item.name));
@@ -804,6 +816,157 @@ describe('Storage', () => {
       expect(filterVaultItems(items, 'NAT')).toEqual([items[0]]);
       expect(filterVaultItems(items, 'pass')).toEqual([items[1]]);
       expect(filterVaultItems(items, 'zzz')).toEqual([]);
+    });
+  });
+
+  describe('mergeVaultSnapshot', () => {
+    const vaultKey = randomBytes(VAULT_KEY_LENGTH);
+    const otherKey = randomBytes(VAULT_KEY_LENGTH);
+
+    function vaultDocument(
+      id: string,
+      userId: string,
+      name: string,
+      value: string,
+      key: Uint8Array,
+      version = 1,
+      updatedAt = 1
+    ): VaultItemDocument {
+      const encrypted = encryptVaultItem(key, id, version, name, value);
+      return {
+        id,
+        userId,
+        ...encrypted,
+        algorithm: 'xchacha20-poly1305',
+        schemaVersion: 2,
+        version,
+        createdAt: updatedAt,
+        updatedAt,
+      };
+    }
+
+    function raw(document: VaultItemDocument) {
+      return { id: document.id, data: () => document };
+    }
+
+    it('keeps the newest version and never regresses to an older one', async () => {
+      const id = newItemId();
+      const old = vaultDocument(id, 'u1', 'name', 'old', vaultKey, 1, 100);
+      const newer = vaultDocument(id, 'u1', 'name', 'new', vaultKey, 2, 200);
+      const result = await mergeVaultSnapshot('u1', vaultKey, [raw(old), raw(newer)]);
+      expect(result.items).toEqual([expect.objectContaining({ id, value: 'new', version: 2 })]);
+      const regressed = await mergeVaultSnapshot('u1', vaultKey, [raw(newer), raw(old)]);
+      expect(regressed.items).toEqual([expect.objectContaining({ id, value: 'new', version: 2 })]);
+    });
+
+    it('breaks same-version ties by updatedAt', async () => {
+      const id = newItemId();
+      const first = vaultDocument(id, 'u1', 'name', 'first', vaultKey, 1, 100);
+      const second = vaultDocument(id, 'u1', 'name', 'second', vaultKey, 1, 200);
+      const result = await mergeVaultSnapshot('u1', vaultKey, [raw(first), raw(second)]);
+      expect(result.items).toEqual([expect.objectContaining({ value: 'second' })]);
+    });
+
+    it('quarantines foreign documents and keeps the rest', async () => {
+      const mine = vaultDocument(newItemId(), 'u1', 'mine', 'v', vaultKey);
+      const foreign = vaultDocument(newItemId(), 'u2', 'theirs', 'v', vaultKey);
+      const result = await mergeVaultSnapshot('u1', vaultKey, [raw(mine), raw(foreign)]);
+      expect(result.items.map((item) => item.name)).toEqual(['mine']);
+      expect(result.quarantined).toEqual([
+        expect.objectContaining({ legacyDocId: foreign.id, reason: 'owner-mismatch' }),
+      ]);
+    });
+
+    it('quarantines malformed documents once each', async () => {
+      const bad = { id: 'bad-doc', data: () => ({ userId: 'u1', ciphertext: 'x' }) };
+      const result = await mergeVaultSnapshot('u1', vaultKey, [bad, bad]);
+      expect(result.items).toEqual([]);
+      expect(result.quarantined).toEqual([
+        expect.objectContaining({ legacyDocId: 'bad-doc', reason: 'malformed-document' }),
+      ]);
+    });
+
+    it('quarantines undecryptable documents and keeps the rest', async () => {
+      const good = vaultDocument(newItemId(), 'u1', 'good', 'v', vaultKey);
+      const bad = vaultDocument(newItemId(), 'u1', 'bad', 'v', otherKey);
+      const result = await mergeVaultSnapshot('u1', vaultKey, [raw(good), raw(bad)]);
+      expect(result.items.map((item) => item.name)).toEqual(['good']);
+      expect(result.quarantined).toEqual([
+        expect.objectContaining({ legacyDocId: bad.id, reason: 'undecryptable' }),
+      ]);
+    });
+
+    it('fails closed without a vault key', async () => {
+      await expect(mergeVaultSnapshot('u1', null, [])).rejects.toThrow(VaultLockedError);
+    });
+  });
+
+  describe('subscribeToVaultItems', () => {
+    const vaultKey = randomBytes(VAULT_KEY_LENGTH);
+    const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    it('delivers snapshots after saves and edits, then stops on unsubscribe', async () => {
+      const seen: string[][] = [];
+      const unsubscribe = subscribeToVaultItems('u1', vaultKey, ({ items }) => {
+        seen.push(items.map((item) => `${item.name}:${item.value}`));
+      });
+      await flush();
+      expect(seen).toEqual([[]]);
+
+      const saved = await saveVaultItem('u1', { name: 'one', value: '1' }, vaultKey);
+      await flush();
+      expect(seen).toEqual([[], ['one:1']]);
+
+      await saveVaultItem('u1', { id: saved.id, name: 'one', value: '2' }, vaultKey);
+      await flush();
+      expect(seen).toEqual([[], ['one:1'], ['one:2']]);
+
+      unsubscribe();
+      await saveVaultItem('u1', { name: 'two', value: '2' }, vaultKey);
+      await flush();
+      expect(seen).toHaveLength(3);
+    });
+
+    it('throws synchronously without a vault key', () => {
+      expect(() => subscribeToVaultItems('u1', null, () => {})).toThrow(VaultLockedError);
+    });
+  });
+
+  describe('Offline persistent cache', () => {
+    it('requests persistence once when the SDK exposes settings', async () => {
+      const settings = jest.fn().mockResolvedValue(undefined);
+      const client = { settings } as unknown as StorageFirestore;
+      await expect(enableOfflinePersistence(client)).resolves.toBe(true);
+      expect(settings).toHaveBeenCalledWith({ persistence: true });
+      expect(isOfflineCacheEnabled(client)).toBe(true);
+      await expect(enableOfflinePersistence(client)).resolves.toBe(true);
+      expect(settings).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports false when the SDK does not expose settings', async () => {
+      const client = {} as unknown as StorageFirestore;
+      await expect(enableOfflinePersistence(client)).resolves.toBe(false);
+      expect(isOfflineCacheEnabled(client)).toBe(false);
+    });
+
+    it('reports false when settings rejects', async () => {
+      const settings = jest.fn().mockRejectedValue(new Error('already started'));
+      const client = { settings } as unknown as StorageFirestore;
+      await expect(enableOfflinePersistence(client)).resolves.toBe(false);
+      expect(isOfflineCacheEnabled(client)).toBe(false);
+    });
+
+    it('reports false for the mock Firestore client without settings', async () => {
+      await expect(enableOfflinePersistence()).resolves.toBe(false);
+      expect(isOfflineCacheEnabled()).toBe(false);
+    });
+  });
+
+  describe('Legacy searchIndex', () => {
+    it('saveItem no longer writes a searchIndex', async () => {
+      await saveItem({ name: 'plain', value: 'visible', timestamp: 1, userId: 'u1' });
+      const stored = await mockFirestore.collection('Items').doc('u1_plain').get();
+      expect(stored.data()).not.toHaveProperty('searchIndex');
     });
   });
 });

@@ -79,10 +79,58 @@ type FirestoreCollectionRef = {
 export type StorageFirestore = {
   collection: (name: string) => FirestoreCollectionRef;
   useEmulator?: (host: string, port: number) => void;
+  settings?: (settings: { persistence?: boolean; cacheSizeBytes?: number }) => Promise<void>;
 };
+
+// ── Offline persistent cache ──────────────────────────────────────────────
+// The SDK's offline cache is the only offline mechanism. It is requested
+// before any other Firestore use, as the SDK requires settings to be set
+// first. Whether it actually took effect is observable through
+// isOfflineCacheEnabled; on-device behaviour is not verified by unit
+// tests (see the Step 7 manual gate in the action plan).
+
+const offlineCacheResults = new WeakMap<object, boolean>();
+const offlineCacheAttempts = new WeakSet<object>();
+
+async function configureOfflineCache(client: StorageFirestore): Promise<boolean> {
+  if (offlineCacheAttempts.has(client)) {
+    return offlineCacheResults.get(client) ?? false;
+  }
+  offlineCacheAttempts.add(client);
+  if (!client.settings) {
+    offlineCacheResults.set(client, false);
+    return false;
+  }
+  try {
+    await client.settings({ persistence: true });
+    offlineCacheResults.set(client, true);
+    return true;
+  } catch {
+    offlineCacheResults.set(client, false);
+    return false;
+  }
+}
+
+/**
+ * Request the Firestore SDK offline/persistent cache for the current
+ * client. Returns true when the SDK accepted the setting. When the SDK
+ * in use does not expose settings, this returns false and no local
+ * offline layer is invented for sensitive data.
+ */
+export function enableOfflinePersistence(
+  client: StorageFirestore = getFirestoreClient()
+): Promise<boolean> {
+  return configureOfflineCache(client);
+}
+
+/** Whether the offline cache setting was accepted for the current client. */
+export function isOfflineCacheEnabled(client: StorageFirestore = getFirestoreClient()): boolean {
+  return offlineCacheResults.get(client) ?? false;
+}
 
 function createFirestoreClient(): StorageFirestore {
   const client = firestore() as StorageFirestore;
+  void configureOfflineCache(client);
   if (EXPO_PUBLIC_FIREBASE_EMULATOR === 'true' && client.useEmulator) {
     console.debug('Connecting to firebase emulator');
     if (Platform.OS === 'android') {
@@ -337,6 +385,83 @@ export async function restoreFromFirestore(
   };
 }
 
+/**
+ * Merges a snapshot of raw vault documents into a decrypted item list.
+ * Duplicate documents for one ID resolve last-writer-wins by
+ * (version, updatedAt); documents belonging to another user or carrying
+ * a malformed shape are quarantined once each; the rest decrypt
+ * per-item with quarantine isolation. The snapshot is the merge input:
+ * Firestore remains the source of truth and no divergent local copy
+ * is kept.
+ */
+export async function mergeVaultSnapshot(
+  userId: string,
+  vaultKey: Uint8Array | null | undefined,
+  rawDocs: Array<{ id: string; data: () => unknown }>
+): Promise<{ items: VaultItem[]; quarantined: QuarantineRecord[] }> {
+  const key = requireVaultKey(vaultKey);
+  const now = Date.now();
+  const quarantined: QuarantineRecord[] = [];
+  const quarantinedIds = new Set<string>();
+  const quarantineOnce = (legacyDocId: string, reason: string) => {
+    if (!quarantinedIds.has(legacyDocId)) {
+      quarantinedIds.add(legacyDocId);
+      quarantined.push({ legacyDocId, reason, at: now });
+    }
+  };
+  const byId = new Map<string, VaultItemDocument>();
+  for (const rawDoc of rawDocs) {
+    let document: VaultItemDocument;
+    try {
+      document = validateVaultItemDocument(rawDoc.data());
+    } catch {
+      quarantineOnce(rawDoc.id, 'malformed-document');
+      continue;
+    }
+    if (document.userId !== userId) {
+      quarantineOnce(document.id, 'owner-mismatch');
+      continue;
+    }
+    const previous = byId.get(document.id);
+    if (
+      !previous ||
+      document.version > previous.version ||
+      (document.version === previous.version && document.updatedAt > previous.updatedAt)
+    ) {
+      byId.set(document.id, document);
+    }
+  }
+  const decrypted = decryptDocuments([...byId.values()], [], key, now);
+  return { items: decrypted.items, quarantined: [...quarantined, ...decrypted.quarantined] };
+}
+
+/**
+ * Live sync: subscribes to the user's VaultItems collection. Remote and
+ * locally-queued (offline) changes arrive through the same snapshot,
+ * merged by mergeVaultSnapshot. A snapshot error is reported through
+ * `onError` and keeps the previous list. Returns the unsubscribe
+ * function.
+ */
+export function subscribeToVaultItems(
+  userId: string,
+  vaultKey: Uint8Array | null | undefined,
+  onResult: (result: { items: VaultItem[]; quarantined: QuarantineRecord[] }) => void,
+  onError?: (error: unknown) => void
+): () => void {
+  const key = requireVaultKey(vaultKey);
+  return getFirestoreClient()
+    .collection('VaultItems')
+    .where('userId', '==', userId)
+    .onSnapshot(
+      (snapshot) => {
+        void mergeVaultSnapshot(userId, key, snapshot.docs).then(onResult, onError);
+      },
+      (error) => {
+        onError?.(error);
+      }
+    );
+}
+
 /** Client-side search over decrypted items, after unlock. No server-side index. */
 export function filterVaultItems(items: VaultItem[], query: string | null): VaultItem[] {
   const term = (query ?? '').trim().toLowerCase();
@@ -546,10 +671,13 @@ export async function saveItem(item: AListItem) {
   if (!item.userId) {
     throw new Error('saveItem requires item.userId');
   }
+  // No searchIndex is written: search is client-side over decrypted
+  // items after unlock, so no plaintext name prefix may leak to
+  // Firestore. (addSearchIndexToItems below is the legacy backfill and
+  // is removed in Step 11 with the rest of the legacy paths.)
   const res = {
     ...item,
     encrypted: true,
-    searchIndex: buildSearchIndex(item.name),
   };
   res.value = await encrypt(item.value);
   console.log(`Encrypted result ${res.value}`);
